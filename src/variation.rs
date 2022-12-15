@@ -7,6 +7,7 @@ use crate::piece::Ply;
 use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Variation {
     moves: Vec<Move>,
 }

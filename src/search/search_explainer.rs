@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::domain::TreeCrit;
 // use crate::Bitboard;
 // use crate::board::Board;
 use crate::{bound::NodeType, piece::Ply};
@@ -35,10 +36,10 @@ pub struct Explainer {
     pub export_games: bool,
     pub log_dir: String,
     pub debug: bool,
-
     min_depth: Ply,
     max_additional_ply: Ply,
     is_explaining: bool,
+    pub tree_crit: TreeCrit,
 
     #[serde(skip)]
     iter: i32,
@@ -99,6 +100,7 @@ impl Default for Explainer {
             export_games: false,
             log_dir: String::new(),
             debug: false,
+            tree_crit: TreeCrit::default(),
             board: Default::default(),
             is_explaining: false,
             min_depth: 0,

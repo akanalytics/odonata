@@ -8,5 +8,5 @@ mod tree;
 
 pub use crate::domain::{
     material::Material, player::Player, player::PlayerKind, search_results::SearchResults,
-    trail::Trail, tree::SearchTree, tree::TreeNode, trail::ChessTree
+    trail::Trail, trail::TreeCrit, tree::SearchTree, tree::TreeNode, trail::ChessTree
 };

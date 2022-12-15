@@ -1,6 +1,7 @@
-use std::fmt;
+use std::{fmt, mem};
 
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     board::Board,
@@ -127,23 +128,26 @@ impl Tree {
     }
 }
 
+use std::fmt::Write;
+
 fn display_node(
     tree: &Tree,
     f: &mut fmt::Formatter,
-    payload: &impl Fn(&TreeNode) -> String,
+    payload: &impl Fn(&str, &TreeNode) -> String,
     indent: Vec<bool>,
     id: NodeId,
 ) -> fmt::Result {
     let node = tree.find_by_id(id);
     let children = tree.children_of(node.id);
     for (i, &child) in children.iter().enumerate() {
+        let mut twig = String::new();
         let last = i >= children.len() - 1;
         // print single line
         for s in &indent {
-            write!(f, "{}", if *s { "    " } else { "|   " })?;
+            write!(&mut twig, "{}", if *s { "    " } else { "|   " })?;
         }
-        write!(f, "{}", if last { "└── " } else { "├── " })?;
-        writeln!(f, "{}", payload(tree.find_by_id(child.id)))?;
+        write!(&mut twig, "{}", if last { "└── " } else { "├── " })?;
+        writeln!(f, "{}", payload(&twig, tree.find_by_id(child.id)))?;
 
         // for _ in spaces.len()..5 {
         //     write!(f, "    ")?;
@@ -166,11 +170,12 @@ fn display_node(
 
 impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let payload = |tn: &TreeNode| format!("{}", tn.mv.to_uci());
+        let payload = |twig: &str, tn: &TreeNode| format!("{twig} {}", tn.mv.to_uci());
         display_node(self, f, &payload, vec![], ROOT.id)
     }
 }
 
+/// show variation
 fn displayable<'a>(t: &'a Tree, bd: &'a Board) -> impl Fn(&mut fmt::Formatter) -> fmt::Result + 'a {
     fn format_data(tree: &Tree, bd: &Board, tn: &TreeNode, f: &mut fmt::Formatter) -> fmt::Result {
         let var = tree.variation_of(tn.id);
@@ -183,65 +188,72 @@ fn displayable<'a>(t: &'a Tree, bd: &'a Board) -> impl Fn(&mut fmt::Formatter) -
 
     // the displayable function
     |f: &mut fmt::Formatter| -> fmt::Result {
-        let payload = |tn: &TreeNode| format!("{}", Displayable(|f| format_data(t, bd, tn, f)));
+        let payload = |twig: &str, tn: &TreeNode| {
+            format!("{twig} {}", Displayable(|f| format_data(t, bd, tn, f)))
+        };
         display_node(t, f, &payload, vec![], ROOT.id)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct NodeDetails {
+pub(crate) struct NodeDetails {
     pub n: Node,
     pub e: Event, // <- bit flags ?
     pub sc: Score,
     pub nt: NodeType,
 }
 
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct TreeCrit {
+    pub enabled: bool,
+    pub starts_with: Variation,
+    pub max_ply: Ply,
+}
+
+impl TreeCrit {
+    // enable with RUST_LOG=tree=info
+    pub fn accept(&self, var: &Variation) -> bool {
+        self.enabled && var.len() <= self.starts_with.len() + self.max_ply as usize
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ChessTree {
-    starts_with: Variation,
     board: Board,
-    max_ply: Ply,
     tree: Tree,
     arena: Vec<NodeDetails>,
 }
 
 impl ChessTree {
-    #[inline(always)]
-    pub fn enabled(&self) -> bool {
-        log_enabled!(target: "tree", log::Level::Info)
-    }
-
     pub fn new(board: Board) -> Self {
         Self {
             board,
-            starts_with: Variation::new(),
-            max_ply: 7,
             tree: Tree::new(),
             arena: vec![],
         }
     }
 
-    pub fn merge(&mut self, var: &Variation, n: &Node, e: Event, sc: Score, nt: NodeType) {
-        // enable with RUST_LOG=tree=info
-
-        if self.enabled() {
-            if var.len() <= self.starts_with.len() + self.max_ply as usize {
-                if let Some(tn) = self.tree.find_by_var(&var.take(n.ply as usize)) {
-                    let nd = &mut self.arena[tn.index];
-                    nd.sc = sc;
-                    nd.n = *n;
-                    nd.e = e;
-                } else {
-                    self.tree.add(var, self.arena.len());
-                    self.arena.push(NodeDetails { n: *n, e, sc, nt });
-                }
-            }
+    pub(crate) fn merge(&mut self, var: &Variation, details: NodeDetails) {
+        if let Some(tn) = self.tree.find_by_var(&var.take(details.n.ply as usize)) {
+            let nd = &mut self.arena[tn.index];
+            nd.sc = details.sc;
+            nd.n = details.n;
+            nd.e = details.e;
+        } else {
+            self.tree.add(var, self.arena.len());
+            self.arena.push(details);
         }
     }
 }
 
+/// show variation and detail
 fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::Result + 'a {
-    fn format_data2(ct: &ChessTree, tn: &TreeNode, f: &mut fmt::Formatter) -> fmt::Result {
+    fn format_data2(
+        twig: &str,
+        ct: &ChessTree,
+        tn: &TreeNode,
+        f: &mut fmt::Formatter,
+    ) -> fmt::Result {
         let var = ct.tree.variation_of(tn.id);
         if let Some(stem) = &var.stem() {
             let san = ct.board.make_moves_old(stem).to_san(tn.mv);
@@ -249,28 +261,31 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
             let nd = &ct.arena[tn.index];
             let a = nd.n.alpha;
             let b = nd.n.beta;
-            let sc = nd.sc;
-            let nt = nd.n.node_type(sc);
+            let window = format!("[{:>5} {:>5}]", a.to_string(), b.to_string());
+            let sc = nd.sc.to_string();
+            let nt = nd.n.node_type(nd.sc);
             let p = nd.n.ply;
             let d = nd.n.depth;
             let nt = match nt {
-                NodeType::ExactPv => '=',
-                NodeType::LowerCut => '<',
-                NodeType::UpperAll => '>',
-                NodeType::Unused => ' ',
+                NodeType::ExactPv => "##",
+                NodeType::LowerCut => "↑",
+                NodeType::UpperAll => "↓",
+                NodeType::Unused => " ",
             };
             let qs = match d <= 0 {
                 true => '*',
                 false => ' ',
             };
             if f.alternate() {
+                let left = format!("{twig} {nt} {san}");
                 write!(
                     f,
-                    "{nt} {san}   {sc} [{a} {b}] {e} ({uci}) P{p}D{d} {qs}",
+                    "{left:<30} {sc:<6} {window} {e} ({uci}) P{p}D{d} {qs}",
                     e = nd.e
                 )?;
             } else {
-                write!(f, "{san}")?;
+                let left = format!("{twig} {san}");
+                write!(f, "{left}")?;
             }
         }
         Ok(())
@@ -278,7 +293,9 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
 
     // the displayable function
     |f: &mut fmt::Formatter| -> fmt::Result {
-        let payload2 = |tn: &TreeNode| format!("{:#}", Displayable(|f| format_data2(ct, tn, f)));
+        let payload2 = |twig: &str, tn: &TreeNode| {
+            format!("{:#}", Displayable(|f| format_data2(twig, ct, tn, f)))
+        };
         display_node(&ct.tree, f, &payload2, vec![], ROOT.id)
     }
 }
@@ -303,6 +320,7 @@ pub struct Trail {
     refutations: Vec<Variation>,
     refutation_scores: Vec<Score>,
     pub chess_tree: ChessTree,
+    tree_crit: TreeCrit,
 }
 
 /// PV[i] has len >= i. as the cv to ply i is len i.
@@ -321,14 +339,21 @@ impl Trail {
             score_for_ply: vec![Score::zero(); LEN_PLY],
             refutations: vec![],
             refutation_scores: vec![],
+            tree_crit: TreeCrit::default(),
             chess_tree: ChessTree::new(root.clone()),
             root,
         }
     }
 
-    pub fn set_tree_capture(&mut self, starts_with: Variation, max_ply: Ply) {
-        self.chess_tree.starts_with = starts_with;
-        self.chess_tree.max_ply = max_ply;
+    pub fn clear(&mut self) {
+        *self = Self::new(self.root.clone());
+    }
+
+    pub fn set_tree_crit(&mut self, crit: TreeCrit) {
+        self.tree_crit = crit;
+        if log_enabled!(target: "tree", log::Level::Info) {
+            self.tree_crit.enabled = true;
+        }
     }
 
     pub fn selective_depth(&self) -> Ply {
@@ -380,13 +405,17 @@ impl Trail {
             beta: -n.alpha,
         };
 
-        self.chess_tree.merge(
-            &self.path,
-            &n,
-            Event::MovePush,
-            Score::INFINITY,
-            NodeType::Unused,
-        )
+        if self.tree_crit.accept(&self.path) {
+            self.chess_tree.merge(
+                &self.path,
+                NodeDetails {
+                    n: n.clone(),
+                    e: Event::MovePush,
+                    sc: Score::INFINITY,
+                    nt: NodeType::Unused,
+                },
+            )
+        }
     }
 
     pub fn pop_move(&mut self, n: &Node, mv: Move) {
@@ -400,8 +429,17 @@ impl Trail {
         let ply = n.ply as usize;
         self.pv_for_ply[ply] = self.path.clone();
         trace!("set_pv:\n{self}");
-        self.chess_tree
-            .merge(&self.path, n, e, sc, NodeType::ExactPv);
+        if self.tree_crit.accept(&self.path) {
+            self.chess_tree.merge(
+                &self.path,
+                NodeDetails {
+                    n: n.clone(),
+                    e,
+                    sc,
+                    nt: NodeType::ExactPv,
+                },
+            );
+        }
     }
 
     /// mv at ply was good
@@ -418,7 +456,7 @@ impl Trail {
     /// so is at move "from-ply"
     /// when we are processing a node, we are looking at candidate moves FROM THAT NODE
     ///
-    pub fn alpha_raised(&mut self, n: &Node, s: Score, mv: Move, e: Event) {
+    pub fn alpha_raised(&mut self, n: &Node, sc: Score, mv: Move, e: Event) {
         let ply = n.ply as usize;
         // debug_assert_eq!(
         //     ply,
@@ -450,7 +488,17 @@ impl Trail {
         );
         self.pv_for_ply[ply] = var;
         trace!("update_pv:\n{self}");
-        self.chess_tree.merge(&path, n, e, s, NodeType::UpperAll)
+        if self.tree_crit.accept(&self.path) {
+            self.chess_tree.merge(
+                &path,
+                NodeDetails {
+                    n: n.clone(),
+                    e,
+                    sc,
+                    nt: NodeType::UpperAll,
+                },
+            )
+        }
     }
 
     pub fn ignore_move(&mut self, n: &Node, sc: Score, _mv: Move, _e: Event) {
@@ -460,14 +508,32 @@ impl Trail {
     /// we dont actually make the move - we futility prune it first
     pub fn prune_move(&mut self, n: &Node, sc: Score, mv: Move, e: Event) {
         self.push_move(n, mv); // the move wont have been made
-        self.chess_tree
-            .merge(&self.path, n, e, sc, NodeType::UpperAll);
+        if self.tree_crit.accept(&self.path) {
+            self.chess_tree.merge(
+                &self.path,
+                NodeDetails {
+                    n: n.clone(),
+                    e,
+                    sc,
+                    nt: NodeType::UpperAll,
+                },
+            )
+        }
         self.pop_move(n, mv);
     }
     pub fn prune_node(&mut self, n: &Node, sc: Score, e: Event) {
         debug_assert_eq!(self.path.len(), n.ply as usize, "{self:#}");
-        self.chess_tree
-            .merge(&self.path, n, e, sc, NodeType::LowerCut);
+        if self.tree_crit.accept(&self.path) {
+            self.chess_tree.merge(
+                &self.path,
+                NodeDetails {
+                    n: n.clone(),
+                    e,
+                    sc,
+                    nt: NodeType::LowerCut,
+                },
+            )
+        }
     }
 
     /// low or high - look at bounds
@@ -490,8 +556,22 @@ impl Trail {
         //     self.refutation_scores.push(sc);
         //     true
         // });
-        self.chess_tree
-            .merge(&self.path, n, e, sc, NodeType::LowerCut);
+        if self.tree_crit.accept(&self.path) {
+            self.chess_tree.merge(
+                &self.path,
+                NodeDetails {
+                    n: n.clone(),
+                    e,
+                    sc,
+                    nt: NodeType::LowerCut,
+                },
+            )
+        }
+    }
+
+    pub fn take_tree(&mut self) -> ChessTree {
+        let board = self.root().clone();
+        mem::replace(&mut self.chess_tree, ChessTree::new(board))
     }
 }
 
@@ -532,10 +612,14 @@ mod tests {
     use crate::{
         board::Board,
         catalog::Catalog,
-        domain::{trail::{displayable, NodeId, ROOT}, engine::Engine},
+        domain::{
+            engine::Engine,
+            trail::{displayable, NodeId, ROOT},
+        },
         infra::utils::Displayable,
         search::{node::Node, timecontrol::TimeControl},
-        variation::Variation, Algo,
+        variation::Variation,
+        Algo,
     };
 
     #[test]
@@ -545,22 +629,25 @@ mod tests {
         println!("{t}");
         let n = Node::root(0);
         t.push_move(&n, board.parse_san_move("e4").unwrap());
-        t.push_move(&n.new_child(),
+        t.push_move(
+            &n.new_child(),
             board.parse_san_variation("e4 e5").unwrap().last().unwrap(),
         );
         println!("e4 e5\n{t}");
     }
 
-
     #[test]
     fn display_tree() {
         let pos = Catalog::starting_position();
         let mut eng = Algo::new();
+        eng.explainer.tree_crit.enabled = true;
+        eng.explainer.tree_crit.max_ply = 2;
         let sr = eng.search(pos, TimeControl::Depth(6)).unwrap();
-        let _tree = sr.tree();
-        
+        println!("tree...");
+        if let Some(tree) = sr.tree() {
+            println!("{tree:#}");
+        }
     }
-
 
     #[test]
     fn tree_basics() -> anyhow::Result<()> {

@@ -41,7 +41,7 @@ use super::node::Event;
 use super::qs::Qs;
 use super::reverse_futility::ReverseFutility;
 use super::search_explainer::Explainer;
-use crate::domain::{SearchResults};
+use crate::domain::{SearchResults, Trail};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -391,8 +391,9 @@ impl Algo {
 
     pub fn run_search(&mut self) {
         {
+            let mut trail = Trail::new(self.board.clone());
             self.set_state(State::StartSearch);
-            self.search_iteratively();
+            self.search_iteratively(&mut trail);
             self.set_state(State::EndSearch);
         }
     }

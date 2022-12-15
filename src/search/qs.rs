@@ -353,7 +353,6 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::domain::engine::Engine;
-    use crate::domain::ChessTree;
     use crate::infra::profiler::{PerfProfiler};
     use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
@@ -379,7 +378,6 @@ mod tests {
         dbg!(log_enabled!(target: "tree", log::Level::Error));
         dbg!(log_enabled!(target: "tree", log::Level::Info));
         dbg!(log_enabled!(target: "tree", log::Level::Trace));
-        dbg!(ChessTree::new(Board::default()).enabled());
         invoke(&Catalog::quiesce()[0].board().to_fen(), 2);
 
         invoke("8/1p4PR/1k6/3pNK2/5P2/r7/2p2n2/8 w - - 0 74", 1);

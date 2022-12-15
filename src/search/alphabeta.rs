@@ -5,7 +5,7 @@ use crate::domain::Trail;
 use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::piece::{Ply};
+use crate::piece::Ply;
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
 use crate::variation::Variation;
@@ -25,7 +25,8 @@ impl Algo {
         *trail = Trail::new(board.clone());
         self.current_variation = Variation::new();
         self.max_depth = 0;
-
+        trail.clear();
+        trail.set_tree_crit(self.explainer.tree_crit.clone());
         debug_assert!(n.alpha < n.beta);
 
         let t = Metrics::timing_start();
@@ -555,7 +556,11 @@ mod tests {
                     pos
                 );
             }
-            assert_eq!(res.score().unwrap().mate_in(), Some(4), "res={res}\npos={pos}");
+            assert_eq!(
+                res.score().unwrap().mate_in(),
+                Some(4),
+                "res={res}\npos={pos}"
+            );
         }
         Ok(())
     }

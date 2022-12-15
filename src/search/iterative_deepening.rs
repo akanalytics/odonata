@@ -86,7 +86,7 @@ impl IterativeDeepening {
 impl Algo {
     // run_search -> search_iteratively -> aspirated_search -> root_search -> alpha_beta
 
-    pub fn search_iteratively(&mut self) {
+    pub fn search_iteratively(&mut self, trail: &mut Trail) {
         self.ids.calc_range(&self.mte.time_control());
         let mut ply = self.ids.start_ply;
         // let mut last_good_multi_pv = Vec::new();
@@ -102,12 +102,10 @@ impl Algo {
             let mut multi_pv = Vec::new();
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
             // let mut exit = false;
-            let mut trail = Trail::new(self.board.clone());
             for i in 0..self.restrictions.multi_pv_count {
-                trail = Trail::new(self.board.clone());
                 score = self
                     .aspirated_search(
-                        &mut trail,
+                        trail,
                         &mut self.board.clone(),
                         &mut Node::root(ply),
                         score,
@@ -159,10 +157,7 @@ impl Algo {
                 if let Some(mv) = multi_pv[i].0.first() {
                     self.restrictions.exclude_moves.push(mv);
                 }
-                if trail.chess_tree.enabled() {
-                    // info!(target:"tree", "chess tree\n{:#?}", trail.chess_tree);
-                    trace!(target:"tree","chess tree\n{:#}", trail.chess_tree);
-                }
+                trace!(target:"tree","trail\n{trail:#}");
             }
             if let Some(t) = t {
                 Metrics::elapsed(ply, t.elapsed(), Event::DurationIterActual);
@@ -170,7 +165,7 @@ impl Algo {
             if self.time_up_or_cancelled(ply, false).0 {
                 break 'outer;
             }
-            last_results = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.chess_tree);
+            last_results = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.take_tree());
             if self.mte.probable_timeout(ply) || ply >= self.ids.end_ply || ply >= MAX_PLY / 2 {
                 break 'outer;
             }
