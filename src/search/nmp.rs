@@ -15,6 +15,7 @@ use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use std::fmt;
+use tracing::instrument;
 
 // CLOP
 // 75+0.6  a=2.7  b=0.198 c=0.000167
@@ -70,7 +71,7 @@ impl Default for NullMovePruning {
 // works for moves that are just "too good to be true"
 impl NullMovePruning {
     #[inline]
-    pub fn allow(&self, trail: &mut Trail,b: &Board, n: &Node, eval: Score, ) -> bool {
+    pub fn allow(&self, trail: &mut Trail, b: &Board, n: &Node, eval: Score) -> bool {
         if !self.enabled {
             return false;
         }
@@ -86,7 +87,8 @@ impl NullMovePruning {
             return false;
         }
         if (!self.prune_alpha_mate && n.alpha.is_mate())
-            || (!self.prune_beta_mate && n.beta.is_mate()) {
+            || (!self.prune_beta_mate && n.beta.is_mate())
+        {
             Metrics::incr_node(n, Event::NmpDeclineMateBound);
             return false;
         }
@@ -167,11 +169,25 @@ impl NullMovePruning {
 }
 
 impl Algo {
+    #[instrument(target="tree", "nmp", skip_all, fields(trail=?trail))]
     #[inline]
-    pub fn nmp_node(&mut self, trail: &mut Trail, b: &Board, n: &Node, eval: Score) -> Result<Option<Score>, Event> {
+    pub fn nmp_node(
+        &mut self,
+        trail: &mut Trail,
+        b: &Board,
+        n: &Node,
+        eval: Score,
+    ) -> Result<Option<Score>, Event> {
         if !self.nmp.allow(trail, b, n, eval) {
             return Ok(None);
         }
+
+        // let span = if n.ply < 2 {
+        //     span!(target: "tree", Level::INFO, "nmp", trail=?trail )
+        // } else {
+        //     Span::none()
+        // };
+        // let lifetime = span.enter();
 
         let r = self.nmp.depth_reduction(eval, b, n);
         let mv = Move::NULL_MOVE;
@@ -186,6 +202,7 @@ impl Algo {
 
         let child_score = -self
             .alphabeta(
+                "nmp",
                 trail,
                 &mut child_board,
                 n.ply + 1,
@@ -223,6 +240,7 @@ impl Algo {
             return Ok(Some(child_score));
         }
         Metrics::incr_node(n, Event::NmpFail);
+        // drop(lifetime);
         Ok(None)
     }
 }

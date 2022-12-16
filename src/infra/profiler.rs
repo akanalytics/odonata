@@ -21,7 +21,7 @@ impl fmt::Debug for Flamegraph<'_> {
 impl<'a> Flamegraph<'a> {
     pub fn new(name: String) -> Flamegraph<'a> {
         let mut prof = Flamegraph { guard: None, name: None };
-        if log_enabled!(target: "flamegraph", log::Level::Trace) {
+        if event_enabled!(target: "flamegraph", tracing::Level::TRACE) {
             prof.enable(name);
         }
         prof

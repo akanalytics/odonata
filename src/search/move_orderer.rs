@@ -301,7 +301,13 @@ impl MoveOrderer {
 }
 
 impl Algo {
-    pub fn order_moves(&mut self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>, bd: &Board) {
+    pub fn order_moves(
+        &mut self,
+        ply: Ply,
+        movelist: &mut MoveList,
+        tt_mv: &Option<Move>,
+        bd: &Board,
+    ) {
         if !self.move_orderer.enabled {
             return;
         }
@@ -418,7 +424,6 @@ impl OrderedMoveList {
         let t = Metrics::timing_start();
         let m = self.calc_next_move_(b, algo);
         Metrics::profile(t, Timing::TimingSortMoves);
-
         m
     }
 
@@ -542,6 +547,9 @@ impl OrderedMoveList {
             // Killers
             MoveType::Killer => {
                 algo.killers.legal_moves_for(self.n.ply, b, moves);
+                if !self.tt.is_null() {
+                    // moves.retain(|&mut mv| mv != self.tt); // only keep killers that aren't hash moves
+                }
                 all_moves.retain(|m| !moves.contains(m));
                 // moves.sort_unstable_by_key(Move::mvv_lva_score);
                 // moves.reverse();

@@ -1,3 +1,5 @@
+use tracing::{instrument, event, Level} ;
+
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::{TtNode, TtScore};
@@ -36,6 +38,7 @@ impl Algo {
         debug_assert!(self.current_variation.len() == 0);
 
         let (score, category) = match self.alphabeta(
+            "root",
             trail,
             board,
             n.ply,
@@ -116,8 +119,10 @@ impl Algo {
         score
     }
 
+    #[instrument(target="tree", "", skip_all, fields(k=kind, t=?trail))]
     pub fn alphabeta(
         &mut self,
+        kind: &str, 
         trail: &mut Trail,
         b: &mut Board,
         ply: Ply,
@@ -213,9 +218,15 @@ impl Algo {
         let mut sorted_moves = self
             .move_orderer
             .create_sorted_moves(n, b, tt_mv, last_move);
+        if trail.path().len() < 2 {
+             event!(target:"ab", Level::INFO, "{var} generating moves...", var = trail.path(), );
+        }
         let mut count = 0;
         let mut quiets = 0;
         while let Some((mt, mv)) = sorted_moves.next_move(b, self) {
+            if trail.path().len() < 2 {
+                event!(target:"ab",Level::DEBUG, "Trying move {mv} of kind {mt}");
+            }
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
@@ -262,6 +273,7 @@ impl Algo {
             if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
                 Metrics::incr_node(&n, Event::SearchFwFd);
                 (s, ev) = self.alphabeta(
+                    "fwfd",
                     trail,
                     &mut child_board,
                     ply + 1,
@@ -306,6 +318,7 @@ impl Algo {
                     } else {
                         Metrics::incr_node(&n, Event::SearchZwRd);
                         (s, ev) = self.alphabeta(
+                            "zwrd",
                             trail,
                             &mut child_board,
                             ply + 1,
@@ -319,6 +332,7 @@ impl Algo {
                 } else {
                     Metrics::incr_node(&n, Event::SearchZwFd);
                     (s, ev) = self.alphabeta(
+                        "zwfd",
                         trail,
                         &mut child_board,
                         ply + 1,
@@ -347,6 +361,7 @@ impl Algo {
                 if s > n.alpha && !(lmr == 0) {
                     Metrics::incr_node(&n, Event::ReSearchZwFd);
                     (s, ev) = self.alphabeta(
+                        "zwfd",
                         trail,
                         &mut child_board,
                         ply + 1,
@@ -362,6 +377,7 @@ impl Algo {
                 if s > n.alpha && !(lmr == 0 && n.is_zw()) {
                     Metrics::incr_node(&n, Event::ReSearchFwFd);
                     (s, ev) = self.alphabeta(
+                        "fwfd",
                         trail,
                         &mut child_board,
                         ply + 1,
@@ -407,14 +423,14 @@ impl Algo {
                 self.killers.store(ply, &mv, b);
                 // self.history.beta_cutoff(&n, b, &mv);
                 self.history
-                    .beta_variation(&n, b, &self.current_variation, mv);
+                    .beta_variation(&n, b, &self.current_variation, mv, mt);
                 self.counter_move.store(b.color_us(), last_move, mv, &n, b);
                 self.report_refutation(n.ply);
                 break;
             }
             if s > n.alpha {
-                n.alpha = s;
                 trail.alpha_raised(&n, s, mv, Event::AlphaRaised);
+                n.alpha = s;
                 nt = NodeType::ExactPv;
                 debug_assert!(
                     b.is_pseudo_legal_move(bm.unwrap()),
@@ -422,13 +438,15 @@ impl Algo {
                     bm.unwrap(),
                     b
                 );
-                self.history.raised_alpha(&n, b, mv);
+                self.history.raised_alpha(&n, b, mv, mt);
             } else {
                 trail.ignore_move(&n, s, mv, Event::MoveScoreLow);
-                self.history.duff(&n, b, mv);
+                self.history.duff(&n, b, mv, mt);
             }
         }
-
+        // if trail.path().len() < 2 {
+        //     debug!(target:"ab", "Node: {n} finished moves... with score {score}");
+        // }
         if count == 0 {
             if n.is_qs() {
                 Metrics::incr_node(&n, Event::NodeLeafQuietEval);

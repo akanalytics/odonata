@@ -234,13 +234,16 @@ impl ChessTree {
     }
 
     pub(crate) fn merge(&mut self, var: &Variation, details: NodeDetails) {
+        // let sp = Span::current().field("trail").to_string_or("<na>");
+        event!(target: "tree", tracing::Level::INFO, "E: {var:<20} {event}" ,var = var.to_uci(), event=details.e);
         if let Some(tn) = self.tree.find_by_var(&var.take(details.n.ply as usize)) {
             let nd = &mut self.arena[tn.index];
             nd.sc = details.sc;
             nd.n = details.n;
             nd.e = details.e;
+            nd.nt = details.nt;
         } else {
-            self.tree.add(var, self.arena.len());
+            self.tree.add(var, self.arena.len()); // use the arena index as the ID
             self.arena.push(details);
         }
     }
@@ -270,7 +273,7 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
                 NodeType::ExactPv => "##",
                 NodeType::LowerCut => "↑",
                 NodeType::UpperAll => "↓",
-                NodeType::Unused => " ",
+                NodeType::Unused => "?",
             };
             let qs = match d <= 0 {
                 true => '*',
@@ -351,7 +354,7 @@ impl Trail {
 
     pub fn set_tree_crit(&mut self, crit: TreeCrit) {
         self.tree_crit = crit;
-        if log_enabled!(target: "tree", log::Level::Info) {
+        if log::log_enabled!(target: "tree", log::Level::Info) {
             self.tree_crit.enabled = true;
         }
     }
@@ -409,7 +412,7 @@ impl Trail {
             self.chess_tree.merge(
                 &self.path,
                 NodeDetails {
-                    n: n.clone(),
+                    n,
                     e: Event::MovePush,
                     sc: Score::INFINITY,
                     nt: NodeType::Unused,
@@ -436,7 +439,7 @@ impl Trail {
                     n: n.clone(),
                     e,
                     sc,
-                    nt: NodeType::ExactPv,
+                    nt: n.node_type(sc),
                 },
             );
         }
@@ -486,19 +489,19 @@ impl Trail {
             var.validate(root).is_ok(),
             "update_pv: new pv at ply {ply}: {var} = cv ({path}) + mv ({mv}) + pv[{ply}+1][{ply}+1:] ({extend}) is invalid\nevent {e}\n{self:#}"
         );
-        self.pv_for_ply[ply] = var;
         trace!("update_pv:\n{self}");
         if self.tree_crit.accept(&self.path) {
             self.chess_tree.merge(
-                &path,
+                &var,
                 NodeDetails {
                     n: n.clone(),
                     e,
                     sc,
-                    nt: NodeType::UpperAll,
+                    nt: NodeType::ExactPv,
                 },
             )
         }
+        self.pv_for_ply[ply] = var;
     }
 
     pub fn ignore_move(&mut self, n: &Node, sc: Score, _mv: Move, _e: Event) {
@@ -530,7 +533,7 @@ impl Trail {
                     n: n.clone(),
                     e,
                     sc,
-                    nt: NodeType::LowerCut,
+                    nt: n.node_type(sc),
                 },
             )
         }
@@ -572,6 +575,18 @@ impl Trail {
     pub fn take_tree(&mut self) -> ChessTree {
         let board = self.root().clone();
         mem::replace(&mut self.chess_tree, ChessTree::new(board))
+    }
+}
+
+impl fmt::Debug for Trail {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{}", self)?;
+        } else {
+            // this is used for tracing
+            write!(f, "{}", self.path().to_uci())?;
+        }
+        Ok(())
     }
 }
 
@@ -621,6 +636,7 @@ mod tests {
         variation::Variation,
         Algo,
     };
+    use test_log::test;
 
     #[test]
     fn trail() {
@@ -641,11 +657,18 @@ mod tests {
         let pos = Catalog::starting_position();
         let mut eng = Algo::new();
         eng.explainer.tree_crit.enabled = true;
-        eng.explainer.tree_crit.max_ply = 2;
+        eng.explainer.tree_crit.max_ply = 3;
         let sr = eng.search(pos, TimeControl::Depth(6)).unwrap();
         println!("tree...");
-        if let Some(tree) = sr.tree() {
-            println!("{tree:#}");
+        {
+            // let span = span!(Level::WARN, "my span");
+            // let _ = span.enter();
+            if let Some(tree) = sr.tree() {
+                println!("{tree:#}");
+                // for nd in tree.arena.iter() {
+                //     println!("nd: {nd:?}");
+                // }
+            }
         }
     }
 

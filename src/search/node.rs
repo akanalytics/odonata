@@ -348,6 +348,7 @@ pub enum Event {
     QsInsufficientMaterial,
 }
 
+
 impl Default for Event {
     fn default() -> Self {
         Event::Unknown
@@ -439,12 +440,23 @@ impl Node {
     }
 
     pub fn node_type(&self, score: Score) -> NodeType {
-        if score <= self.alpha {
-            NodeType::UpperAll
-        } else if score >= self.beta {
-            NodeType::LowerCut 
-        } else {
-            NodeType::ExactPv  // alpha < score < beta
+        match score {
+            s if s <= self.alpha => NodeType::UpperAll,
+            s if s >= self.beta => NodeType::LowerCut,
+            _ => NodeType::ExactPv  // alpha < score < beta
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use strum::EnumCount;
+    use test_log::test;
+
+    use crate::search::node::Event;
+
+    #[test]
+    fn event() {
+        println!("{}", Event::COUNT);
     }
 }

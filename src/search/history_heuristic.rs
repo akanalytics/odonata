@@ -2,7 +2,7 @@ use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::piece::{Color, Piece, Ply};
+use crate::piece::{Color, MoveType, Piece, Ply};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -165,9 +165,30 @@ impl HistoryHeuristic {
         }
     }
 
+    pub fn is_accepted(&self, n: &Node, mv: Move, mt: MoveType) -> bool {
+        if !self.enabled {
+            return false;
+        }
+
+        if mv.is_null() {
+            return false;
+        }
+
+        if  n.ply > self.max_ply || n.depth < self.min_depth {
+            return false;
+        }
+        // if mt == MoveType::Hash {
+        //     return true;
+        // }
+        if mv.is_capture() { 
+            return false;
+        }
+        true
+    }
+
     #[inline]
-    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: Move) {
-        if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
+    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: Move, mt: MoveType) {
+        if !self.is_accepted(n, mv, mt) {
             return;
         }
         use AccumulateMethod::*;
@@ -184,18 +205,21 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn beta_variation(&mut self, n: &Node, b: &Board, var: &Variation, mv: Move) {
-        self.beta_cutoff(n, b, mv);
+    pub fn beta_variation(&mut self, n: &Node, b: &Board, var: &Variation, mv: Move, mt: MoveType) {
+        if !self.is_accepted(n, mv, mt) {
+            return;
+        }
+        self.beta_cutoff(n, b, mv, mt);
         if self.variation {
             for m in var.moves().rev().skip(1).step_by(2).take(3) {
-                self.beta_cutoff(n, b, m);
+                self.beta_cutoff(n, b, m, mt);
             }
         }
     }
 
     #[inline]
-    pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: Move) {
-        if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
+    fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: Move, mt: MoveType) {
+        if !self.is_accepted(n, mv, mt) {
             return;
         }
         use AccumulateMethod::*;
@@ -208,12 +232,12 @@ impl HistoryHeuristic {
         if i64::checked_add(self.get_mut(b.color_us(), mv, b).good, add).is_none() {
             self.adjust_by_factor(2);
         }
-        self.get_mut(b.color_us(), mv, b).good += add
+        self.get_mut(b.color_us(), mv, b).good += add;
     }
 
     #[inline]
-    pub fn duff(&mut self, n: &Node, b: &Board, mv: Move) {
-        if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
+    pub fn duff(&mut self, n: &Node, b: &Board, mv: Move, mt: MoveType) {
+        if !self.is_accepted(n, mv, mt) {
             return;
         }
         use AccumulateMethod::*;

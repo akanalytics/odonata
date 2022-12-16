@@ -33,8 +33,15 @@ extern crate regex;
 
 // pub use crate::logger::LogInit;
 
+// #[macro_use]
+// extern crate log;
+
 #[macro_use]
-extern crate log;
+extern crate tracing;
+
+pub use crate::tracing::{debug, error, info, trace, warn};
+pub use crate::tracing::log::Level;
+pub use crate::tracing::event_enabled;
 
 // pub mod logger;
 pub mod bits;

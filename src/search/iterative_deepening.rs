@@ -157,15 +157,22 @@ impl Algo {
                 if let Some(mv) = multi_pv[i].0.first() {
                     self.restrictions.exclude_moves.push(mv);
                 }
-                trace!(target:"tree","trail\n{trail:#}");
+                info!(target:"tree","trail\n{trail:#}");
             }
             if let Some(t) = t {
                 Metrics::elapsed(ply, t.elapsed(), Event::DurationIterActual);
             }
+
+            // some stuff is captured even if we exit part way through an iteration
+            let sr = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.take_tree());
+            last_results.nodes = sr.nodes;
+            last_results.nodes_thread = sr.nodes_thread;
+            last_results.infos = sr.infos.clone();
+
             if self.time_up_or_cancelled(ply, false).0 {
                 break 'outer;
             }
-            last_results = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.take_tree());
+            last_results = sr;
             if self.mte.probable_timeout(ply) || ply >= self.ids.end_ply || ply >= MAX_PLY / 2 {
                 break 'outer;
             }
@@ -175,6 +182,7 @@ impl Algo {
         // record final outcome of search
         // self.game
         //     .make_engine_move(results.clone(), Duration::from_millis(results.time_millis)); // *self.mte.time_control());
+        
         self.results = last_results;
 
         let info = Info {

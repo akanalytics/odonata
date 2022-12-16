@@ -373,11 +373,11 @@ mod tests {
             let res = eng.search(pos.clone(), TimeControl::Depth(depth)).unwrap();
             println!("{}", res);
         }
-        dbg!(log_enabled!(log::Level::Info));
-        dbg!(log_enabled!(log::Level::Trace));
-        dbg!(log_enabled!(target: "tree", log::Level::Error));
-        dbg!(log_enabled!(target: "tree", log::Level::Info));
-        dbg!(log_enabled!(target: "tree", log::Level::Trace));
+        dbg!(log::log_enabled!(log::Level::Info));
+        dbg!(log::log_enabled!(log::Level::Trace));
+        dbg!(log::log_enabled!(target: "tree", log::Level::Error));
+        dbg!(log::log_enabled!(target: "tree", log::Level::Info));
+        dbg!(log::log_enabled!(target: "tree", log::Level::Trace));
         invoke(&Catalog::quiesce()[0].board().to_fen(), 2);
 
         invoke("8/1p4PR/1k6/3pNK2/5P2/r7/2p2n2/8 w - - 0 74", 1);

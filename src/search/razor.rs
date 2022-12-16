@@ -178,13 +178,14 @@ impl Algo {
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
-                let (score, _event) = self.alphabeta(trail, b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                let (score, _event) = self.alphabeta("rz", trail, b, n.ply, 0, n.alpha, n.beta, last_move)?;
                 Metrics::incr_node(n, Event::RazorSuccess);
                 Metrics::incr_node(n, event);
                 return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
                 let (score, _event) = self.alphabeta(
+                    "rzzw",
                     trail, 
                     b,
                     n.ply,

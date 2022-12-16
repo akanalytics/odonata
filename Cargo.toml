@@ -57,12 +57,17 @@ strum_macros = "0.24"
 tabled = "0.8.0"
 thread_local = "1.1.4"
 toml = "0.5.8"
+tracing = { version = "0.1.37", features = ["max_level_trace", "release_max_level_debug", "log"] }
 
 [dev-dependencies]
 criterion = "0.4"
-env_logger = "0.9"
+# test-log = "0.2.11"
+test-log = { version = "0.2.11", features=["trace"]}
 perf-event = {version = "0.4.7"}
 pprof = {version = "0.11.0", features = ["flamegraph"]}
+env_logger = "0.9"
+tracing = {version = "0.1.37", default-features = false}
+tracing-subscriber = {version = "0.3.16", default-features = false, features = ["env-filter", "fmt"]}
 
 [build-dependencies]
 built = {version = "0.5", features = ["chrono", "semver", "git2"
