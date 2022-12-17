@@ -167,6 +167,8 @@ impl Algo {
             let sr = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.take_tree());
             last_results.nodes = sr.nodes;
             last_results.nodes_thread = sr.nodes_thread;
+            last_results.nps = sr.nps;
+            last_results.time_millis = sr.time_millis;
             last_results.infos = sr.infos.clone();
 
             if self.time_up_or_cancelled(ply, false).0 {

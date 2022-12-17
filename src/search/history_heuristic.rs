@@ -197,7 +197,7 @@ impl HistoryHeuristic {
                 Power => 2 << (n.depth / 4),
                 Squared => n.depth * n.depth,
                 Zero => 0,
-            }) as i64;
+            }) as i64 * if mt == MoveType::Killer { 2 } else { 1 };
         if i64::checked_add(self.get_mut(b.color_us(), mv, b).good, add).is_none() {
             self.adjust_by_factor(2);
         }
@@ -228,11 +228,11 @@ impl HistoryHeuristic {
                 Power => 2 << (n.depth / 4),
                 Squared => n.depth * n.depth,
                 Zero => 0,
-            }) as i64;
-        if i64::checked_add(self.get_mut(b.color_us(), mv, b).good, add).is_none() {
+            }) as i64 * if mt == MoveType::Killer { 2 } else { 1 };
+        if i64::checked_add(self.get_mut(b.color_us(), mv, b).good, 2 * add).is_none() {
             self.adjust_by_factor(2);
         }
-        self.get_mut(b.color_us(), mv, b).good += add;
+        self.get_mut(b.color_us(), mv, b).good += add ;
     }
 
     #[inline]
@@ -245,7 +245,7 @@ impl HistoryHeuristic {
             Power => (2 << (n.depth / 4)) / self.malus_factor as i32,
             Squared => n.depth * n.depth / self.malus_factor as i32,
             Zero => 0,
-        }) as i64;
+        }) as i64 * if mt == MoveType::Killer { 2 } else { 1 };
         if i64::checked_add(self.get_mut(b.color_us(), mv, b).bad, add).is_none() {
             self.adjust_by_factor(2);
         }
