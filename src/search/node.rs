@@ -337,7 +337,7 @@ pub enum Event {
     QsTtHit,
     QsAlphaRaised,
     QsMoveScoreLow,
-    QsStandingPatPrune,
+    QsStandingPatFailHigh,
     QsStandingPatAlphaRaised,
     QsMoveCount,
     QsMoveCountAtPvNode,

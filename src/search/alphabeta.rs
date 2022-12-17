@@ -38,7 +38,7 @@ impl Algo {
         debug_assert!(self.current_variation.len() == 0);
 
         let (score, category) = match self.alphabeta(
-            "root",
+            "begin",
             trail,
             board,
             n.ply,
@@ -119,7 +119,7 @@ impl Algo {
         score
     }
 
-    #[instrument(target="tree", "", skip_all, fields(k=kind, t=?trail))]
+    #[instrument(target="tree", "", skip_all, fields(k=kind,a=%alpha,b=%beta,t=?trail))]
     pub fn alphabeta(
         &mut self,
         kind: &str, 
@@ -273,7 +273,7 @@ impl Algo {
             if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
                 Metrics::incr_node(&n, Event::SearchFwFd);
                 (s, ev) = self.alphabeta(
-                    "fwfd",
+                    "!pvs",
                     trail,
                     &mut child_board,
                     ply + 1,

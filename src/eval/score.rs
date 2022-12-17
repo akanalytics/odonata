@@ -307,7 +307,10 @@ impl std::ops::Add for Score {
     // we allow adding of 1 to a mate score (null window around mate)
     #[inline]
     fn add(self, o: Self) -> Self {
-        debug_assert!(o.is_numeric(), "cannot add scores {self} + {o}");
+        debug_assert!(
+            self.is_numeric() && o.is_numeric(),
+            "cannot add scores {self} + {o}"
+        );
         debug_assert!(
             self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
             "cannot add scores {self} + {o}"
@@ -367,9 +370,9 @@ impl fmt::Display for Score {
         } else if self.cp == i16::MAX {
             f.write_str("+inf")
         } else if self.cp < 0 {
-            write!(f, "loss({})", self.ply_loss())
+            write!(f, "L({})", self.ply_loss())
         } else {
-            write!(f, "win({})", self.ply_win())
+            write!(f, "W({})", self.ply_win())
         }
     }
 }
@@ -381,7 +384,7 @@ mod tests {
     use crate::infra::profiler::*;
 
     #[test]
-    fn test_score() {
+    fn score_basics() {
         assert_eq!(Score::from_cp(1).negate(), Score::from_cp(-1));
         assert_eq!(Score::we_win_in(1).negate(), Score::we_lose_in(1));
         assert_eq!(Score::we_win_in(0).negate(), Score::we_lose_in(0));
@@ -434,7 +437,10 @@ mod tests {
         // assert_eq!(-3 * Score::we_win_in(2), Score::we_lose_in(2));
         // assert_eq!(1 * Score::we_win_in(2), Score::we_win_in(2));
         assert!(Score::we_win_in(1) < Score::INFINITY);
-        assert!(Score::we_win_in(0) == Score::we_win_in(0));
+        assert_eq!(Score::we_win_in(0), Score::we_win_in(0));
+        assert_eq!((-Score::INFINITY).clamp_score(), Score::from_cp(-20000));
+
+
         assert!(Score::from_cp(0).win_probability() > 0.499);
         assert!(Score::from_cp(0).win_probability() < 0.501);
         assert!(Score::from_cp(1000).win_probability() > 0.95);
@@ -513,16 +519,16 @@ mod tests {
     }
 
     #[test]
-    fn test_score_fmt() {
+    fn score_fmt() {
         assert_eq!(format!("{}", Score::from_cp(1000)), "1000");
         assert_eq!(format!("{}", Score::INFINITY), "+inf");
-        assert_eq!(format!("{}", Score::we_win_in(2)), "win(2)");
-        assert_eq!(format!("{}", Score::we_lose_in(3)), "loss(3)");
-        assert_eq!(format!("{:>8}", Score::we_lose_in(3)), "loss(3)");
-        assert_eq!(
-            format!("{:>8}", Score::we_lose_in(3).to_string()),
-            " loss(3)"
-        );
+        assert_eq!(format!("{}", -Score::INFINITY), "-inf");
+        assert_eq!(format!("{}", --Score::INFINITY), "+inf");
+
+        assert_eq!(format!("{}", Score::we_win_in(2)), "W(2)");
+        assert_eq!(format!("{}", Score::we_lose_in(3)), "L(3)");
+        assert_eq!(format!("{:>8}", Score::we_lose_in(3)), "L(3)");
+        assert_eq!(format!("{:>5}", Score::we_lose_in(3).to_string()), " L(3)");
     }
 
     #[test]

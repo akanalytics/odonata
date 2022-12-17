@@ -137,6 +137,9 @@ fn display_node(
     indent: Vec<bool>,
     id: NodeId,
 ) -> fmt::Result {
+    if id == ROOT.id {
+        writeln!(f, "{}", payload("", tree.find_by_id(id)))?;
+    }
     let node = tree.find_by_id(id);
     let children = tree.children_of(node.id);
     for (i, &child) in children.iter().enumerate() {
@@ -195,7 +198,7 @@ fn displayable<'a>(t: &'a Tree, bd: &'a Board) -> impl Fn(&mut fmt::Formatter) -
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub(crate) struct NodeDetails {
     pub n: Node,
     pub e: Event, // <- bit flags ?
@@ -226,16 +229,17 @@ pub struct ChessTree {
 
 impl ChessTree {
     pub fn new(board: Board) -> Self {
+        let root = NodeDetails::default();
         Self {
             board,
             tree: Tree::new(),
-            arena: vec![],
+            arena: vec![root],
         }
     }
 
     pub(crate) fn merge(&mut self, var: &Variation, details: NodeDetails) {
         // let sp = Span::current().field("trail").to_string_or("<na>");
-        event!(target: "tree", tracing::Level::INFO, "E: {var:<20} {event}" ,var = var.to_uci(), event=details.e);
+        event!(target: "tree", tracing::Level::INFO, "E: {var:<20} {event} {sc}" ,var = var.to_uci(), event=details.e, sc=details.sc);
         if let Some(tn) = self.tree.find_by_var(&var.take(details.n.ply as usize)) {
             let nd = &mut self.arena[tn.index];
             nd.sc = details.sc;
@@ -243,6 +247,7 @@ impl ChessTree {
             nd.e = details.e;
             nd.nt = details.nt;
         } else {
+            debug!(target: "tree", "TREE: adding at {var} {details:?} index {}", self.arena.len());
             self.tree.add(var, self.arena.len()); // use the arena index as the ID
             self.arena.push(details);
         }
@@ -257,39 +262,42 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
         tn: &TreeNode,
         f: &mut fmt::Formatter,
     ) -> fmt::Result {
+
         let var = ct.tree.variation_of(tn.id);
-        if let Some(stem) = &var.stem() {
-            let san = ct.board.make_moves_old(stem).to_san(tn.mv);
-            let uci = tn.mv.to_uci();
-            let nd = &ct.arena[tn.index];
-            let a = nd.n.alpha;
-            let b = nd.n.beta;
-            let window = format!("[{:>5} {:>5}]", a.to_string(), b.to_string());
-            let sc = nd.sc.to_string();
-            let nt = nd.n.node_type(nd.sc);
-            let p = nd.n.ply;
-            let d = nd.n.depth;
-            let nt = match nt {
-                NodeType::ExactPv => "##",
-                NodeType::LowerCut => "↑",
-                NodeType::UpperAll => "↓",
-                NodeType::Unused => "?",
-            };
-            let qs = match d <= 0 {
-                true => '*',
-                false => ' ',
-            };
-            if f.alternate() {
-                let left = format!("{twig} {nt} {san}");
-                write!(
-                    f,
-                    "{left:<30} {sc:<6} {window} {e} ({uci}) P{p}D{d} {qs}",
-                    e = nd.e
-                )?;
-            } else {
-                let left = format!("{twig} {san}");
-                write!(f, "{left}")?;
-            }
+        let san = if let Some(stem) = &var.stem() {
+            ct.board.make_moves_old(stem).to_san(tn.mv)
+        } else {
+            String::new()
+        };
+        let uci = tn.mv.to_uci();
+        let nd = &ct.arena[tn.index];
+        let a = nd.n.alpha;
+        let b = nd.n.beta;
+        let window = format!("[{:>5} {:>5}]", a.to_string(), b.to_string());
+        let sc = nd.sc.to_string();
+        let nt = nd.n.node_type(nd.sc);
+        let p = nd.n.ply;
+        let d = nd.n.depth;
+        let nt = match nt {
+            NodeType::ExactPv => "##",
+            NodeType::LowerCut => "↑",
+            NodeType::UpperAll => "↓",
+            NodeType::Unused => "?",
+        };
+        let qs = match d <= 0 {
+            true => '*',
+            false => ' ',
+        };
+        if f.alternate() {
+            let left = format!("{twig} {nt} {san}");
+            write!(
+                f,
+                "{left:<30} {sc:<6} {window} {e} ({uci}) P{p}D{d} {qs}",
+                e = nd.e
+            )?;
+        } else {
+            let left = format!("{twig} {san}");
+            write!(f, "{left}")?;
         }
         Ok(())
     }
@@ -631,7 +639,7 @@ mod tests {
             engine::Engine,
             trail::{displayable, NodeId, ROOT},
         },
-        infra::utils::Displayable,
+        infra::utils::{Displayable, ToStringOr},
         search::{node::Node, timecontrol::TimeControl},
         variation::Variation,
         Algo,
@@ -657,17 +665,20 @@ mod tests {
         let pos = Catalog::starting_position();
         let mut eng = Algo::new();
         eng.explainer.tree_crit.enabled = true;
-        eng.explainer.tree_crit.max_ply = 3;
-        let sr = eng.search(pos, TimeControl::Depth(6)).unwrap();
+        eng.explainer.tree_crit.max_ply = 5;
+        let sr = eng.search(pos.clone(), TimeControl::Depth(1)).unwrap();
+        println!(
+            "score: {sc} {pv}",
+            sc = sr.score().to_string_or("-"),
+            pv = sr.pv().to_san(pos.board())
+        );
         println!("tree...");
         {
-            // let span = span!(Level::WARN, "my span");
-            // let _ = span.enter();
             if let Some(tree) = sr.tree() {
                 println!("{tree:#}");
-                // for nd in tree.arena.iter() {
-                //     println!("nd: {nd:?}");
-                // }
+                for nd in tree.arena.iter() {
+                    println!("nd: {nd:?}");
+                }
             }
         }
     }

@@ -340,6 +340,7 @@ impl Metrics {
     #[allow(unused_variables)]
     #[inline]
     pub fn incr_node(n: &Node, e: Event) {
+        trace!(target: "metrics", "{n} {e}");
         #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().nodes[e.index()].add(n, 1));
     }

@@ -165,7 +165,7 @@ impl HistoryHeuristic {
         }
     }
 
-    pub fn is_accepted(&self, n: &Node, mv: Move, mt: MoveType) -> bool {
+    pub fn is_accepted(&self, n: &Node, mv: Move, _mt: MoveType) -> bool {
         if !self.enabled {
             return false;
         }

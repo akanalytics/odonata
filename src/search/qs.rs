@@ -87,6 +87,8 @@ impl Algo {
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     // since we only consider captures, repeats aren't an issue
+
+    #[instrument(target="tree", "qs", skip_all, fields(t=?trail,%n))]
     pub fn qs(
         &mut self,
         mut n: Node,
@@ -172,8 +174,8 @@ impl Algo {
         }
         if !in_check {
             if pat >= n.beta {
-                Metrics::incr_node(&n, Event::QsStandingPatPrune);
-                trail.prune_node(&n, pat, Event::QsStandingPatPrune);
+                Metrics::incr_node(&n, Event::QsStandingPatFailHigh);
+                trail.prune_node(&n, pat, Event::QsStandingPatFailHigh);
                 return pat.clamp_score();
             }
             // TODO: zugawang check
@@ -186,8 +188,8 @@ impl Algo {
                     Move::NULL_MOVE,
                     "alpha raised by static eval",
                 );
-                n.alpha = pat;
                 trail.terminal(&n, pat, Event::QsStandingPatAlphaRaised);
+                n.alpha = pat;
             }
             // coarse delta prune - where margin bigger than any possible move
             // b.most_valuable_piece_except_king(b.them());
