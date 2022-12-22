@@ -1,15 +1,16 @@
 use crate::bits::Square;
 use crate::board::Board;
 use crate::bound::NodeType;
+use crate::cache::tt2::TranspositionTable2;
 use crate::domain::Trail;
 use crate::eval::endgame::EndGame;
+use crate::eval::eval::Eval;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::piece::Ply;
-use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
@@ -81,31 +82,23 @@ impl fmt::Display for Qs {
     }
 }
 
-impl Algo {
+pub struct RunQs<'a> {
+    pub eval: &'a Eval,
+    pub tt: &'a TranspositionTable2,
+    pub config: &'a Qs,
+    pub trail: &'a mut Trail,
+}
+
+impl RunQs<'_> {
     // if the move resulted in checkmate, we should return a mate score
     // if the move results in a position which after quiesce, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     // since we only consider captures, repeats aren't an issue
 
-    #[instrument(target="tree", "qs", skip_all, fields(t=?trail,%n))]
-    pub fn qs(
-        &mut self,
-        mut n: Node,
-        trail: &mut Trail,
-        bd: &mut Board,
-        lm: Option<Move>,
-    ) -> Score {
-        debug_assert!(n.alpha < n.beta, "{n}");
-        debug_assert!(n.ply >= 0);
-        debug_assert!(n.depth <= 0);
-        Self::trace(
-            n,
-            trail,
-            Score::zero(),
-            lm.unwrap_or_default(),
-            "qs started",
-        );
+    #[instrument(target="tree", "qs", skip_all, fields(t=?self.trail,%n))]
+    pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<Move>) -> Result<Score, Score> {
+        debug_assert!(n.alpha < n.beta && n.ply >= 0 && n.depth <= 0, "{n}");
         // if n.beta.is_mate() && n.beta < 0.cp()  {
         //     let s = n.beta; // bd.static_eval(&self.eval);
         //     trail.prune_node(&n, s, Event::QsEvalStatic);
@@ -120,8 +113,9 @@ impl Algo {
         }
 
         if EndGame::is_insufficient_material(&bd) {
-            trail.terminal(&n, Score::DRAW, Event::QsInsufficientMaterial);
-            return Score::DRAW;
+            self.trail
+                .terminal(&n, Score::DRAW, Event::QsInsufficientMaterial);
+            return Err(Score::DRAW);
         }
 
         Metrics::incr_node(&n, Event::QsEvalStatic);
@@ -129,79 +123,42 @@ impl Algo {
         let mut pat = bd.static_eval(&self.eval);
         Metrics::profile(t, Timing::TimingQsEval);
 
-        if !self.qs.enabled {
-            trail.terminal(&n, pat, Event::QsEvalStatic);
-            return pat;
+        if !self.config.enabled {
+            self.trail.terminal(&n, pat, Event::QsEvalStatic);
+            return Err(pat);
         }
 
         let in_check = bd.is_in_check(bd.color_us());
 
-        let mut hm = Move::NULL_MOVE;
-        if self.qs.probe_tt {
-            Metrics::incr_node(&n, Event::QsTtProbe);
-            if let Some(tt) = self.tt.probe_by_hash(bd.hash()) {
-                let s = tt.score.as_score(n.ply);
-                debug_assert!(s.is_finite());
-                Metrics::incr_node(&n, Event::QsTtHit);
-                match tt.nt {
-                    NodeType::ExactPv => {
-                        if self.tt.allow_truncated_pv {
-                            // let mv = tt.validate_move(&bd); 
-                            trail.terminal(&n, s, Event::TtPv);
-                            return s;
-                        }
-                    }
-                    NodeType::UpperAll => {
-                        if s <= n.alpha {
-                            trail.prune_node(&n, s, Event::TtAll);
-                            return s;
-                        };
-                        pat = Score::min(pat, s);
-                    }
-                    NodeType::LowerCut => {
-                        if s >= n.beta {
-                            trail.prune_node(&n, s, Event::TtCut);
-                            return s;
-                        };
-                        pat = Score::max(pat, s);
-                    }
-                    NodeType::Unused => unreachable!(),
-                }
-                if self.qs.use_hash_move {
-                    hm = tt.validate_move(bd);
-                }
-            }
-        }
+        let hm = self.probe_tt(&mut n, bd, &mut pat)?;
+
         if !in_check {
             if pat >= n.beta {
                 Metrics::incr_node(&n, Event::QsStandingPatFailHigh);
-                trail.prune_node(&n, pat, Event::QsStandingPatFailHigh);
-                return pat.clamp_score();
+                self.trail.prune_node(&n, pat, Event::QsStandingPatFailHigh);
+                return Err(pat.clamp_score());
             }
             // TODO: zugawang check
             // you cant stand pat unless theres already a move/pv (alpha=finite)
             if pat > n.alpha && n.alpha.is_finite() && n.ply >= 1 {
-                Self::trace(
-                    n,
-                    trail,
-                    pat,
-                    Move::NULL_MOVE,
-                    "alpha raised by static eval",
-                );
-                trail.terminal(&n, pat, Event::QsStandingPatAlphaRaised);
+                self.trail
+                    .terminal(&n, pat, Event::QsStandingPatAlphaRaised);
                 n.alpha = pat;
             }
             // coarse delta prune - where margin bigger than any possible move
             // b.most_valuable_piece_except_king(b.them());
-            let mut p = bd.most_valuable_piece_except_king(bd.occupied()).unwrap_or((Piece::Queen, Square::A1)).0;
-            if p !=Piece::Queen {
+            let mut p = bd
+                .most_valuable_piece_except_king(bd.occupied())
+                .unwrap_or((Piece::Queen, Square::A1))
+                .0;
+            if p != Piece::Queen {
                 p = Piece::Rook;
             }
             let ph = bd.phase(&self.eval.phaser);
             let pawn = self.eval.mb.piece_weights[Piece::Pawn].interpolate(ph);
             let mvp = self.eval.mb.piece_weights[p].interpolate(ph) + pawn;
 
-            let mut margin = self.qs.delta_prune_node_margin + Score::from_f32(mvp);
+            let mut margin = self.config.delta_prune_node_margin + Score::from_f32(mvp);
             if (bd.pawns() & bd.white() & Bitboard::RANK_7
                 | bd.pawns() & bd.black() & Bitboard::RANK_2)
                 .any()
@@ -209,28 +166,73 @@ impl Algo {
                 let queen = self.eval.mb.piece_weights[Piece::Queen].interpolate(ph);
                 margin = margin + Score::from_f32(queen);
             }
-            if bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
+            if bd.occupied().popcount() >= self.config.delta_prune_min_pieces
                 && pat.is_numeric()
                 && pat + margin <= n.alpha
             {
                 Metrics::incr_node(&n, Event::QsDeltaPruneNode);
-                trail.prune_node(&n, pat + margin, Event::QsDeltaPruneNode);
-                return (pat + margin).clamp_score();
+                self.trail
+                    .prune_node(&n, pat + margin, Event::QsDeltaPruneNode);
+                return Err((pat + margin).clamp_score());
             }
         } else {
             Metrics::incr_node(&n, Event::NodeQsInCheck);
         }
 
         let moves = bd.legal_moves();
+        let moves = self.sort_moves(&moves, in_check, &n, bd, lm, hm);
+
+        let mut unpruned_move_count = 0;
+        let mut bs = None;
+        for &mv in moves.iter() {
+            Metrics::incr_node(&n, Event::QsMoveCount);
+            if !in_check && self.can_delta_prune_move(mv, &n, pat, bd) {
+                continue;
+            }
+
+            if !in_check && self.can_see_prune_move(mv, &n, pat, bd) {
+                continue;
+            }
+
+            unpruned_move_count += 1;
+            self.child_move(&mut n, bd, mv, &mut bs, unpruned_move_count)?;
+        }
+
+        if bs < Some(orig_alpha) {
+            Metrics::incr_node(&n, Event::NodeQsAll);
+            if orig_alpha.is_numeric() && bs < Some(orig_alpha - 200.cp()) {
+                Metrics::incr_node(&n, Event::NodeQsAllVeryLow);
+            }
+        } else {
+            Metrics::incr_node(&n, Event::NodeQsPv);
+            Metrics::add_node(&n, Event::QsMoveCountAtPvNode, unpruned_move_count);
+        }
+        trace!("leaving qs: orig alpha {orig_alpha} and new {}", n.alpha);
+
+        Ok(bs.unwrap_or(n.alpha).clamp_score())
+    }
+
+    //
+    // sort moves
+    //
+    fn sort_moves(
+        &self,
+        moves: &MoveList,
+        in_check: bool,
+        n: &Node,
+        bd: &Board,
+        lm: Option<Move>,
+        hm: Move,
+    ) -> MoveList {
         let capture_only = |mv: &&Move| in_check || mv.is_capture();
         let incl_promo = |mv: &&Move| in_check || mv.is_capture() || mv.is_promo();
         let some_promos =
-            |mv: &&Move| in_check || mv.is_capture() || mv.promo() == self.qs.promo_piece;
+            |mv: &&Move| in_check || mv.is_capture() || mv.promo() == self.config.promo_piece;
 
         Metrics::incr_node(&n, Event::NodeQsInterior);
 
         let t = Metrics::timing_start();
-        let mut moves: MoveList = match (self.qs.promos, self.qs.promo_piece) {
+        let mut moves: MoveList = match (self.config.promos, self.config.promo_piece) {
             (false, _) => moves.iter().filter(capture_only).cloned().collect(),
             (true, None) => moves.iter().filter(incl_promo).cloned().collect(),
             (true, Some(_)) => moves.iter().filter(some_promos).cloned().collect(),
@@ -240,7 +242,7 @@ impl Algo {
             Move::mvv_lva_score(m, bd)
                 + if let Some(lm) = lm {
                     if m.to() == lm.to() {
-                        self.qs.recapture_score
+                        self.config.recapture_score
                     } else {
                         0
                     }
@@ -251,103 +253,133 @@ impl Algo {
         });
         moves.reverse();
         Metrics::profile(t, Timing::TimingQsMoveSort);
-
-        let mut unpruned_move = 0;
-        let mut bs = None;
-        for &mv in moves.iter() {
-            Metrics::incr_node(&n, Event::QsMoveCount);
-            if !in_check
-                && pat.is_numeric()
-                && self.qs.delta_prune
-                && (self.qs.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
-                && (self.qs.delta_prune_gives_check || !bd.gives_check(mv))
-                && (self.qs.delta_prune_near_promos || !mv.is_near_promo(&bd))
-                && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
-                && pat + bd.eval_move_material(&self.eval, mv) + self.qs.delta_prune_move_margin
-                    <= n.alpha
-            {
-                Metrics::incr_node(&n, Event::QsDeltaPruneMove);
-                continue;
-            }
-
-            if !in_check
-                && mv.is_capture()
-                && (self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
-                && (self.qs.see_prune_gives_check || !bd.gives_check(mv))
-                && (self.qs.see_prune_near_promos || !mv.is_near_promo(&bd))
-                && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
-            {
-                let t = Metrics::timing_start();
-                let score = bd.eval_move_see(&self.eval, mv);
-                Metrics::profile(t, Timing::TimingQsSee);
-
-                if score == 0.cp() && n.depth >= -self.qs.even_exchange_max_ply || score < 0.cp() {
-                    Metrics::incr_node(&n, Event::QsSeePruneMove);
-                    continue;
-                }
-            }
-
-            unpruned_move += 1;
-            let mut child = bd.make_move(mv);
-            trail.push_move(&n, mv.clone());
-            // self.current_variation.push(mv);
-            let qsn = Node {
-                ply: n.ply + 1,
-                depth: n.depth - 1,
-                alpha: -n.beta,
-                beta: -n.alpha,
-            };
-            let s = -self.qs(qsn, trail, &mut child, Some(mv));
-            trail.pop_move(&n, mv);
-            // self.current_variation.pop();
-            // bd.undo_move(&mv);
-            if bs.is_none() || s > bs.unwrap() {
-                bs = Some(s);
-            }
-            // cutoffs before any pv recording
-            if s >= n.beta {
-                Self::trace(n, trail, s, mv, "mv is cut");
-                Metrics::incr_node(&n, Event::NodeQsCut);
-                Metrics::add_node(&n, Event::QsMoveCountAtCutNode, unpruned_move);
-                trail.fail(&n, s, mv, Event::NodeQsCut);
-                return s.clamp_score();
-            }
-            if s > n.alpha {
-                Self::trace(n, trail, s, mv, "*mv raises alpha");
-                trail.alpha_raised(&n, s, mv, Event::QsAlphaRaised);
-                // self.record_move(n.ply, &mv);
-                n.alpha = s;
-            } else {
-                trail.ignore_move(&n, s, mv, Event::QsMoveScoreLow);
-                Self::trace(n, trail, s, mv, "mv doesn't raise alpha");
-            }
-        }
-
-        if bs < Some(orig_alpha) {
-            Metrics::incr_node(&n, Event::NodeQsAll);
-            if orig_alpha.is_numeric() && bs < Some(orig_alpha - 200.cp()) {
-                Metrics::incr_node(&n, Event::NodeQsAllVeryLow);
-            }
-        } else {
-            Metrics::incr_node(&n, Event::NodeQsPv);
-            Metrics::add_node(&n, Event::QsMoveCountAtPvNode, unpruned_move);
-        }
-        trace!("leaving qs: orig alpha {orig_alpha} and new {}", n.alpha);
-
-        bs.unwrap_or(n.alpha).clamp_score()
+        moves
     }
 
-    #[inline]
-    #[allow(unused_variables)]
-    fn trace(n: Node, trail: &mut Trail, eval: Score, mv: Move, comment: &str) {
-        trace!(
-            "{cv} {n:<25}  {eval:<6} {comment}",
-            cv = trail.path().display_san(trail.root()),
-            // mv = mv.to_string(),
-            n = n.to_string(),
-            eval = eval.to_string(),
-            // var = self.current_variation.to_uci()
-        );
+    //
+    // delta prune
+    //
+    fn can_delta_prune_move(&self, mv: Move, n: &Node, pat: Score, bd: &Board) -> bool {
+        if pat.is_numeric()
+            && self.config.delta_prune
+            && (self.config.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
+            && (self.config.delta_prune_gives_check || !bd.gives_check(mv))
+            && (self.config.delta_prune_near_promos || !mv.is_near_promo(&bd))
+            && bd.occupied().popcount() >= self.config.delta_prune_min_pieces
+            && pat + bd.eval_move_material(&self.eval, mv) + self.config.delta_prune_move_margin
+                <= n.alpha
+        {
+            Metrics::incr_node(&n, Event::QsDeltaPruneMove);
+            true
+        } else {
+            false
+        }
+    }
+
+    //
+    // see prune
+    //
+    fn can_see_prune_move(&self, mv: Move, n: &Node, _pat: Score, bd: &Board) -> bool {
+        if mv.is_capture()
+            && (self.config.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
+            && (self.config.see_prune_gives_check || !bd.gives_check(mv))
+            && (self.config.see_prune_near_promos || !mv.is_near_promo(&bd))
+            && bd.occupied().popcount() >= self.config.delta_prune_min_pieces
+        {
+            let t = Metrics::timing_start();
+            let score = bd.eval_move_see(&self.eval, mv);
+            Metrics::profile(t, Timing::TimingQsSee);
+
+            if score == 0.cp() && n.depth >= -self.config.even_exchange_max_ply || score < 0.cp() {
+                Metrics::incr_node(&n, Event::QsSeePruneMove);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    fn probe_tt(&mut self, n: &mut Node, bd: &Board, pat: &mut Score) -> Result<Move, Score> {
+        if !self.config.probe_tt {
+            return Ok(Move::NULL_MOVE);
+        };
+        Metrics::incr_node(&n, Event::QsTtProbe);
+        if let Some(ttn) = self.tt.probe_by_hash(bd.hash()) {
+            let s = ttn.score.as_score(n.ply);
+            debug_assert!(s.is_finite());
+            Metrics::incr_node(&n, Event::QsTtHit);
+            match ttn.nt {
+                NodeType::ExactPv => {
+                    if self.tt.allow_truncated_pv {
+                        // let mv = tt.validate_move(&bd);
+                        self.trail.terminal(&n, s, Event::TtPv);
+                        return Err(s);
+                    }
+                }
+                NodeType::UpperAll => {
+                    if s <= n.alpha {
+                        self.trail.prune_node(&n, s, Event::TtAll);
+                        return Err(s);
+                    };
+                    *pat = Score::min(*pat, s);
+                }
+                NodeType::LowerCut => {
+                    if s >= n.beta {
+                        self.trail.prune_node(&n, s, Event::TtCut);
+                        return Err(s);
+                    };
+                    *pat = Score::max(*pat, s);
+                }
+                NodeType::Unused => unreachable!(),
+            }
+            if self.config.use_hash_move {
+                return Ok(ttn.validate_move(bd));
+            }
+        }
+        Ok(Move::NULL_MOVE)
+    }
+
+    fn child_move(
+        &mut self,
+        n: &mut Node,
+        bd: &Board,
+        mv: Move,
+        bs: &mut Option<Score>,
+        unpruned_move_count: u64,
+    ) -> Result<(), Score> {
+        let mut child = bd.make_move(mv);
+        self.trail.push_move(&n, mv.clone());
+        // self.current_variation.push(mv);
+        let qsn = Node {
+            ply: n.ply + 1,
+            depth: n.depth - 1,
+            alpha: -n.beta,
+            beta: -n.alpha,
+        };
+        let s = -self.qs(qsn, &mut child, Some(mv)).unwrap_or_else(|e| e);
+        self.trail.pop_move(&n, mv);
+        // self.current_variation.pop();
+        // bd.undo_move(&mv);
+        if bs.is_none() || s > bs.unwrap() {
+            *bs = Some(s);
+        }
+        // cutoffs before any pv recording
+        if s >= n.beta {
+            Metrics::incr_node(&n, Event::NodeQsCut);
+            Metrics::add_node(&n, Event::QsMoveCountAtCutNode, unpruned_move_count);
+            self.trail.fail(&n, s, mv, Event::NodeQsCut);
+            return Err(s.clamp_score());
+        }
+        if s > n.alpha {
+            self.trail.alpha_raised(&n, s, mv, Event::QsAlphaRaised);
+            // self.record_move(n.ply, &mv);
+            n.alpha = s;
+        } else {
+            self.trail.ignore_move(&n, s, mv, Event::QsMoveScoreLow);
+        }
+        Ok(())
     }
 }
 
@@ -355,11 +387,11 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::domain::engine::Engine;
-    use crate::infra::profiler::{PerfProfiler};
+    use crate::infra::profiler::PerfProfiler;
     use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
     use crate::test_log::test;
-    use crate::{catalog::*, Position};
+    use crate::{catalog::*, Algo, Position};
     use anyhow::Result;
 
     #[test]
@@ -393,16 +425,23 @@ mod tests {
     #[test]
     fn bench_qs() {
         // PROFD: qs  13 cyc=37,091  ins=29,170 br=2,676  304  978
+        // PROFD: qs     13          48,295          76,501           7,917             563           1,284
 
         let catalog = Catalog::quiesce();
         // let mut flame = ProfProfiler::new("qs".to_string());
         let mut prof = PerfProfiler::new("qs".to_string());
         for pos in catalog {
             let mut trail = Trail::new(pos.board().clone());
-            let mut eng = Algo::new();
+            let eng = Algo::new();
             let node = Node::root(0);
             let mut board = pos.board().clone();
-            let _score = prof.benchmark(|| eng.qs(node, &mut trail, &mut board, None));
+            let mut qs = RunQs {
+                eval: &eng.eval,
+                tt: &eng.tt,
+                config: &eng.qs,
+                trail: &mut trail,
+            };
+            let _score = prof.benchmark(|| qs.qs(node, &mut board, None));
             trace!("{pos}\n{trail}\n");
         }
     }

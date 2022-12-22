@@ -1,4 +1,4 @@
-use tracing::{instrument, event, Level} ;
+use tracing::{event, instrument, Level};
 
 use crate::board::Board;
 use crate::bound::NodeType;
@@ -10,6 +10,7 @@ use crate::mv::Move;
 use crate::piece::Ply;
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
+use crate::search::qs::RunQs;
 use crate::variation::Variation;
 
 use super::node::Event;
@@ -122,7 +123,7 @@ impl Algo {
     #[instrument(target="tree", "", skip_all, fields(k=kind,a=%alpha,b=%beta,t=?trail))]
     pub fn alphabeta(
         &mut self,
-        kind: &str, 
+        kind: &str,
         trail: &mut Trail,
         b: &mut Board,
         ply: Ply,
@@ -163,7 +164,13 @@ impl Algo {
         if n.is_qs() {
             Metrics::incr_node(&n, Event::NodeLeafQs);
             let t = Metrics::timing_start();
-            let s = self.qs(n, trail, b, Some(last_move));
+            let mut qs = RunQs {
+                eval: &self.eval,
+                tt: &self.tt,
+                trail,
+                config: &self.qs,
+            };
+            let s = qs.qs(n, b, Some(last_move)).unwrap_or_else(|e| e);
             Metrics::profile(t, Timing::TimingQs);
             return Ok((s, Event::NodeLeafQs));
         }
@@ -219,7 +226,7 @@ impl Algo {
             .move_orderer
             .create_sorted_moves(n, b, tt_mv, last_move);
         if trail.path().len() < 2 {
-             event!(target:"ab", Level::INFO, "{var} generating moves...", var = trail.path(), );
+            event!(target:"ab", Level::INFO, "{var} generating moves...", var = trail.path(), );
         }
         let mut count = 0;
         let mut quiets = 0;

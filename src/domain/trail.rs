@@ -328,6 +328,7 @@ pub struct Trail {
     pv_for_ply: Vec<Variation>,
     score_for_ply: Vec<Score>,
     root: Board,
+
     refutations: Vec<Variation>,
     refutation_scores: Vec<Score>,
     pub chess_tree: ChessTree,
