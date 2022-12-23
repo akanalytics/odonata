@@ -1,7 +1,7 @@
 use crate::bits::bitboard::Dir;
 use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
-use crate::board::analysis::Analysis;
+// use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
@@ -118,19 +118,19 @@ trait White {
 // }
 
 #[derive()]
-pub struct Calc<'a> {
-    _analysis: Analysis<'a>,
+pub struct Calc {
+    // _analysis: Analysis<'a>,
     pawn_structure: Pawns,
     // a: &'a (),
 }
 
-impl<'a> Calc<'a> {
+impl Calc {
     #[inline]
-    pub fn new(_b: &'a Board) -> Self {
+    pub fn new(_b: &Board) -> Self {
         Self {
             // a: &(),
             // analysis: Analysis::of(b),
-            _analysis: Default::default(),
+            // _analysis: Default::default(),
             pawn_structure: Pawns::default(),
         }
     }
@@ -170,7 +170,7 @@ impl<'a> Calc<'a> {
 //     }
 // }
 
-impl<'a> Calc<'a> {
+impl Calc {
     #[inline]
     pub fn score(&mut self, scorer: &mut impl ScorerBase, b: &Board) {
         let t = Metrics::timing_start();

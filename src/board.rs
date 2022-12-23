@@ -24,8 +24,11 @@ pub mod rules;
 
 pub use boardcalcs::BoardCalcs;
 
-unsafe impl Send for Board {}
-unsafe impl Sync for Board {}
+
+
+
+// unsafe impl Send for Board {}
+// unsafe impl Sync for Board {}
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
@@ -48,23 +51,50 @@ pub struct Board {
 }
 
 impl Serialize for Board {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.to_fen())
     }
 }
 
-// impl<'de> Deserialize<'de> for Board {
-//     fn deserialize<D>(deserializer: D) -> Result<Board, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         deserializer.deserialize_str()
-//         Ok(Board::new_empty())
-//     }
-// }
+
+impl Default for Board {
+    #[inline]
+    fn default() -> Self {
+        Board {
+            pieces: Default::default(),
+            colors: Default::default(),
+            castling: CastlingRights::NONE,
+            en_passant: Default::default(),
+            turn: Default::default(),
+            ply: 0,
+            fifty_clock: Default::default(),
+            fullmove_number: 1,
+            repetition_count: Cell::<_>::new(Repeats::default()),
+            threats_to: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            checkers_of: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            pinned: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            discoverer: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            // material: Cell::<_>::new(Material::niche()),
+            hash: 0,
+            // moves: MoveList,
+        }
+        // b.hash = Hasher::default().hash_board(&b);
+    }
+}
+
+
 
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -559,11 +589,7 @@ impl fmt::Display for Board {
                     self.pieces(p)
                 )?;
             }
-            writeln!(
-                f,
-                "En passant:\n{}\n",
-                self.en_passant
-            )?;
+            writeln!(f, "En passant:\n{}\n", self.en_passant)?;
             writeln!(
                 f,
                 "Pinned on white king:\n{}\n",
@@ -600,42 +626,6 @@ impl fmt::Display for Board {
     }
 }
 
-impl Default for Board {
-    #[inline]
-    fn default() -> Self {
-        Board {
-            pieces: Default::default(),
-            colors: Default::default(),
-            castling: CastlingRights::NONE,
-            en_passant: Default::default(),
-            turn: Default::default(),
-            ply: 0,
-            fifty_clock: Default::default(),
-            fullmove_number: 1,
-            repetition_count: Cell::<_>::new(Repeats::default()),
-            threats_to: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            checkers_of: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            pinned: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            discoverer: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            // material: Cell::<_>::new(Material::niche()),
-            hash: 0,
-            // moves: MoveList,
-        }
-        // b.hash = Hasher::default().hash_board(&b);
-    }
-}
 
 impl Board {
     // pub fn new_empty() -> BoardBuf {

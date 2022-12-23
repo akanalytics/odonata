@@ -18,8 +18,6 @@ use anyhow::Result;
 use bitflags::_core::sync::atomic::AtomicU32;
 use bitflags::_core::sync::atomic::Ordering;
 use itertools::Itertools;
-use rayon::prelude::IndexedParallelIterator;
-use rayon::prelude::IntoParallelRefIterator;
 // use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -184,10 +182,8 @@ impl Tuning {
         let likely = AtomicU32::new(0);
         let certain = AtomicU32::new(0);
         let max_evals = AtomicU32::new(0);
-        use rayon::iter::ParallelIterator;
         let weights_vec = eng.algo.eval.weights_vector();
-        eng.tuner.explains = positions
-            .par_iter()
+        eng.tuner.explains = positions.iter()
             .enumerate()
             .filter_map(|(_i, pos)| {
                 if eng.tuner.ignore_certain_endgames && pos.board().outcome().is_game_over() {
