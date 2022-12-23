@@ -307,14 +307,14 @@ impl std::ops::Add for Score {
     // we allow adding of 1 to a mate score (null window around mate)
     #[inline]
     fn add(self, o: Self) -> Self {
-        debug_assert!(
-            self.is_numeric() && o.is_numeric(),
-            "cannot add scores {self} + {o}"
-        );
-        debug_assert!(
-            self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
-            "cannot add scores {self} + {o}"
-        );
+        // debug_assert!(
+        //     self.is_numeric() && o.is_numeric(),
+        //     "cannot add scores {self} + {o}"
+        // );
+        // debug_assert!(
+        //     self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
+        //     "cannot add scores {self} + {o}"
+        // );
         return Score {
             cp: self.cp.saturating_add(o.cp),
         };
