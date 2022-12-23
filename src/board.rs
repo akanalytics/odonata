@@ -24,9 +24,6 @@ pub mod rules;
 
 pub use boardcalcs::BoardCalcs;
 
-
-
-
 // unsafe impl Send for Board {}
 // unsafe impl Sync for Board {}
 
@@ -43,7 +40,7 @@ pub struct Board {
 
     castling: CastlingRights,
     en_passant: Bitboard,
-    fifty_clock: u16,
+    half_move_clock: u16,
     threats_to: [Cell<Bitboard>; Color::len()],
     checkers_of: [Cell<Bitboard>; Color::len()],
     pinned: [Cell<Bitboard>; Color::len()],
@@ -56,7 +53,6 @@ impl Serialize for Board {
     }
 }
 
-
 impl Default for Board {
     #[inline]
     fn default() -> Self {
@@ -67,7 +63,7 @@ impl Default for Board {
             en_passant: Default::default(),
             turn: Default::default(),
             ply: 0,
-            fifty_clock: Default::default(),
+            half_move_clock: Default::default(),
             fullmove_number: 1,
             repetition_count: Cell::<_>::new(Repeats::default()),
             threats_to: [
@@ -93,8 +89,6 @@ impl Default for Board {
         // b.hash = Hasher::default().hash_board(&b);
     }
 }
-
-
 
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -338,8 +332,8 @@ impl Board {
     }
 
     #[inline]
-    pub fn fifty_halfmove_clock(&self) -> i32 {
-        self.fifty_clock.into()
+    pub fn halfmove_clock(&self) -> i32 {
+        self.half_move_clock.into()
     }
 
     #[inline]
@@ -452,7 +446,7 @@ impl Board {
             } else {
                 self.en_passant().uci()
             },
-            fifty = self.fifty_halfmove_clock(),
+            fifty = self.halfmove_clock(),
             count = self.fullmove_number()
         )
     }
@@ -626,7 +620,6 @@ impl fmt::Display for Board {
     }
 }
 
-
 impl Board {
     // pub fn new_empty() -> BoardBuf {
     //     BoardBuf { board: Board::new_empty() }
@@ -651,8 +644,8 @@ impl Board {
     }
 
     #[inline]
-    pub fn set_fifty_halfmove_clock(&mut self, hmvc: i32) {
-        self.fifty_clock = hmvc as u16;
+    pub fn set_halfmove_clock(&mut self, hmvc: i32) {
+        self.half_move_clock = hmvc as u16;
         self.calculate_internals();
     }
 
@@ -728,9 +721,9 @@ impl Board {
         Ok(self)
     }
 
-    pub fn as_board(&self) -> Board {
-        self.clone()
-    }
+    // pub fn as_board(&self) -> Board {
+    //     self.clone()
+    // }
 
     pub fn validate(&self) -> Result<()> {
         if self.black().intersects(self.white()) {
@@ -818,7 +811,7 @@ impl Board {
         } else {
             Bitboard::parse_square(words[3])?.as_bb()
         };
-        bb.fifty_clock = words[4]
+        bb.half_move_clock = words[4]
             .parse()
             .with_context(|| format!("Invalid halfmove clock '{}'", words[4]))?;
         bb.fullmove_number = words[5]
@@ -839,9 +832,8 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            .unwrap()
-            .as_board();
+        let board1 =
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         assert_eq!(
             serde_json::to_string(&board1).unwrap(),
             "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""
@@ -857,12 +849,10 @@ mod tests {
 
     #[test]
     fn test_color_flip() {
-        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            .unwrap()
-            .as_board();
-        let board2 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
-            .unwrap()
-            .as_board();
+        let board1 =
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let board2 =
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
         assert_eq!(
             board1.color_flip().to_fen(),
             board2.to_fen(),
@@ -895,7 +885,7 @@ mod tests {
             Catalog::STARTING_POSITION_FEN,
             "8/8/8/8/8/8/8/B7 w - - 0 0",
         ] {
-            let b = Board::parse_fen(fen).unwrap().as_board();
+            let b = Board::parse_fen(fen).unwrap();
             assert_eq!(fen, b.to_fen());
             println!("{:#}", b);
             println!("{}", b);
@@ -905,9 +895,8 @@ mod tests {
 
     #[test]
     fn board_bitboards() -> Result<(), String> {
-        let board = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
-            .unwrap()
-            .as_board();
+        let board =
+            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         assert_eq!(board.color_us(), Color::White);
         assert_eq!(board.color_them(), Color::Black);
         // assert_eq!(board.en_passant(), Bitboard::empty());
@@ -919,47 +908,6 @@ mod tests {
         Ok(())
     }
 
-    //
-    // interface designs....
-    //
-    // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };
-    // let b = BoardBuf::new().rooks(a1|h1).knights(b1|g1).pawns(rank_2).set("RNBQKBNR", rank_1);
-    // let b = BoardBuf::new("rnbqkbnr/
-    //     pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
-    // let b = BoardBuf::new().k(a1).K(h8).r(a2).R(c3);
-    // let b = BoardBuf::new().set(a1=k, rank_2=p, );
-    // todo!()
-
-    #[test]
-    fn boardbuf_sets() -> Result<()> {
-        let board = Board::new_empty();
-        assert_eq!(board.kings(), Bitboard::EMPTY);
-        assert_eq!(board.us(), Bitboard::EMPTY);
-        assert_eq!(board.color_us(), Color::White);
-
-        // assert_eq!(board[a1], 'R');
-        let mut board1 = Board::new_empty();
-        board1 = board1
-            .set(Bitboard::RANK_2, "PPPPPPPP")?
-            .set(a1 | h1, "RR")?
-            .set(b1 | g1, "NN")?
-            .set(c1 | d1 | e1 | f1, "BQKB")?
-            .as_board();
-        board1
-            .set(Bitboard::RANK_7, "pppppppp")?
-            .set(Bitboard::RANK_8, "rnbqkbnr")?
-            .as_board();
-        assert_eq!(board1.get(a1), "R");
-        let str1 = board1.to_string();
-        let mut board2 = board1;
-        let board2 = board2
-            .set(Bitboard::RANK_7, "pppppppp")?
-            .set(Bitboard::RANK_8, "rnbqkbnr")?
-            .as_board();
-        assert_eq!(str1, board2.to_string());
-        println!("{}", board2.as_board());
-        Ok(())
-    }
 
     #[test]
     fn parse_piece() -> Result<()> {
@@ -991,10 +939,10 @@ mod tests {
 
     #[test]
     fn parse_fen() -> Result<()> {
-        let b = Board::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?.as_board();
+        let b = Board::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?;
         assert_eq!(b.color_us(), Color::Black);
         assert_eq!(b.fullmove_number(), 100);
-        assert_eq!(b.fifty_halfmove_clock(), 45);
+        assert_eq!(b.halfmove_clock(), 45);
         assert_eq!(b.castling(), CastlingRights::all());
         Ok(())
     }

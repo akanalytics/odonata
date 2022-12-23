@@ -140,9 +140,7 @@ mod tests {
 
     #[test]
     fn test_threats_to() {
-        let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1")
-            .unwrap()
-            .as_board();
+        let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1").unwrap();
         let bb = BoardCalcs::all_attacks_on(&board, Color::White, board.occupied());
         println!("{}", !bb);
         assert_eq!(
@@ -171,9 +169,7 @@ mod tests {
 
     #[test]
     fn test_attacked_by() {
-        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1")
-            .unwrap()
-            .as_board();
+        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1").unwrap();
         let bb = BoardCalcs::attacked_by(f4, board.white() | board.black(), &board);
         println!("{}", bb);
         assert_eq!(bb, g3 | g5 | e3 | d3 | f8);

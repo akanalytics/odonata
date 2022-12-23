@@ -122,7 +122,7 @@ impl Board {
             turn: self.turn.opposite(),
             ply: self.ply,
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
-            fifty_clock: self.fifty_clock + 1,
+            half_move_clock: self.half_move_clock + 1,
             repetition_count: Cell::new(Repeats::default()),
             threats_to: [
                 Cell::<_>::new(Bitboard::niche()),
@@ -151,21 +151,21 @@ impl Board {
         if m.is_null() {
             let move_hash = Hasher::default().hash_move(m, self);
             b.hash = self.hash ^ move_hash;
-    
+
             Metrics::profile(t, Timing::TimingMakeMove);
-    
+
             debug_assert!(
                 b.hash == Hasher::default().hash_board(&b),
                 "\n{self}.make_move({m}) = {b};\ninconsistent incremental hash {:x} (should be {:x})\n{self:#}\n{m:?}",
                 b.hash,
                 Hasher::default().hash_board(&b),
             );
-    
+
             return b;
         }
 
         if let Some(c) = m.capture_piece(self) {
-            b.fifty_clock = 0;
+            b.half_move_clock = 0;
             if m.is_ep_capture(self) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 b.remove_piece(m.capture_square(self).as_bb(), c, b.turn);
@@ -184,11 +184,16 @@ impl Board {
         // clear one bit and set another for the move using xor
         if !m.is_null() {
             // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(self), self.turn);
+            b.move_piece(
+                m.from().as_bb(),
+                m.to().as_bb(),
+                m.mover_piece(self),
+                self.turn,
+            );
         }
 
         if m.mover_piece(self) == Piece::Pawn {
-            b.fifty_clock = 0;
+            b.half_move_clock = 0;
             if m.is_pawn_double_push(self) {
                 b.en_passant = m.ep().as_bb();
             }
@@ -251,7 +256,7 @@ impl Board {
             en_passant: self.en_passant(),
             turn: self.turn,
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
-            fifty_clock: self.fifty_clock + 1,
+            half_move_clock: self.half_move_clock + 1,
             repetition_count: Cell::new(Repeats::default()),
             threats_to: [
                 Cell::<_>::new(Bitboard::niche()),
@@ -302,7 +307,7 @@ impl Board {
         b.en_passant = Bitboard::EMPTY;
 
         if mover == Piece::Pawn {
-            b.fifty_clock = 0;
+            b.half_move_clock = 0;
             if m.is_pawn_double_push(b) {
                 b.en_passant = m.ep().as_bb();
             }
@@ -324,7 +329,7 @@ impl Board {
         }
 
         if let Some(c) = m.capture_piece(b) {
-            b.fifty_clock = 0;
+            b.half_move_clock = 0;
             if m.is_ep_capture(b) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
@@ -343,21 +348,14 @@ impl Board {
         // clear one bit and set another for the move using xor
         if !m.is_null() {
             // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.move_piece(
-                m.from().as_bb(),
-                m.to().as_bb(),
-                mover,
-                b.turn.opposite(),
-            );
+            b.move_piece(m.from().as_bb(), m.to().as_bb(), mover, b.turn.opposite());
         }
-
 
         if let Some(promo) = m.promo() {
             // fifty clock handled by pawn move above;
             b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
             // pawn has already moved
         }
-
 
         // castling *rights*
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
@@ -378,7 +376,7 @@ impl Board {
             b.en_passant = Bitboard::EMPTY;
 
             if let Some(c) = m.capture_piece(b) {
-                b.fifty_clock = 0;
+                b.half_move_clock = 0;
                 if m.is_ep_capture(b) {
                     // ep capture is like capture but with capture piece on *ep* square not *dest*
                     b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
@@ -406,7 +404,7 @@ impl Board {
             }
 
             if m.mover_piece(b) == Piece::Pawn {
-                b.fifty_clock = 0;
+                b.half_move_clock = 0;
                 if m.is_pawn_double_push(b) {
                     b.en_passant = m.ep().as_bb();
                 }
@@ -491,9 +489,7 @@ mod tests {
 
     #[test]
     fn test_try_move_promotion() {
-        let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'")
-            .unwrap()
-            .as_board();
+        let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap();
         board = board.make_move(board.parse_uci_move("a7a8q").unwrap());
         assert_eq!(board.get(a8), "Q");
         assert_eq!(board.get(a7), ".");
@@ -503,7 +499,7 @@ mod tests {
     fn test_castling_rights() {
         // check castling rights parsed-from and returned-in fen
         let epd = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 id: 'castling1'";
-        let board = Board::parse_fen(epd).unwrap().as_board();
+        let board = Board::parse_fen(epd).unwrap();
         board.validate().unwrap();
         assert_eq!(board.castling().to_string(), "KQkq");
 
@@ -516,7 +512,7 @@ mod tests {
     #[test]
     fn test_castling() {
         let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1 id: 'castling1'";
-        let board = Board::parse_fen(epd).unwrap().as_board();
+        let board = Board::parse_fen(epd).unwrap();
         // casle kings side for w and then b
         assert!(!board.is_in_check(board.color_us()));
         assert!(board.checkers_of(board.color_us()).is_empty());
@@ -534,7 +530,7 @@ mod tests {
         assert_eq!(board.total_halfmoves(), 2);
 
         // castle queens side
-        let board = Board::parse_fen(epd).unwrap().as_board();
+        let board = Board::parse_fen(epd).unwrap();
         let board = board.make_move(board.parse_uci_move("e1c1").unwrap());
         let board = board.make_move(board.parse_uci_move("e8c8").unwrap());
         assert_eq!(
@@ -543,7 +539,7 @@ mod tests {
         );
 
         // rook moves queens side for w and then b, losing q-side castling rights
-        let board = Board::parse_fen(epd).unwrap().as_board();
+        let board = Board::parse_fen(epd).unwrap();
         let board = board.make_move(board.parse_uci_move("a1b1").unwrap());
         let board = board.make_move(board.parse_uci_move("a8b8").unwrap());
         assert_eq!(
