@@ -7,6 +7,7 @@ use std::backtrace::Backtrace;
 use std::panic;
 
 use crate::comms::uci_server::UciServer;
+use crate::infra::profiler::Flamegraph;
 use crate::infra::utils::ToStringOr;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
@@ -83,6 +84,11 @@ pub fn main() -> anyhow::Result<()> {
         .get_matches();
 
     LoggingSystem::init()?;
+    let _profiler = if let Ok(_s) = std::env::var("RUST_FLAME") {
+        Some(Flamegraph::new("flame".to_owned()))
+    } else {
+        None
+    };
 
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {

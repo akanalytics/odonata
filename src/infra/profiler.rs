@@ -4,7 +4,11 @@ use std::{fmt, sync::Mutex};
 use super::{black_box, utils::IntegerFormatter};
 
 pub struct Flamegraph<'a> {
+    #[cfg(not(windows))]
     guard: Option<pprof::ProfilerGuard<'a>>,
+
+    #[cfg(windows)]
+    guard: Option<&str<'a>>,
     name: Option<String>,
 }
 
@@ -20,28 +24,41 @@ impl fmt::Debug for Flamegraph<'_> {
 /// enable with RUST_LOG=flamegraph=trace
 impl<'a> Flamegraph<'a> {
     pub fn new(name: String) -> Flamegraph<'a> {
-        let mut prof = Flamegraph { guard: None, name: None };
-        if event_enabled!(target: "flamegraph", tracing::Level::TRACE) {
+        let mut prof = Flamegraph {
+            guard: None,
+            name: None,
+        };
+        if event_enabled!(target: "flamegraph", tracing::Level::INFO) || log::log_enabled!(target: "flamegraph", log::Level::Info){
             prof.enable(name);
+            eprintln!("Flamegraph enabled");
         }
         prof
     }
 
-    pub fn enable(&mut self, name: String ) {
+    pub fn enable(&mut self, name: String) {
         if self.guard.is_none() {
-            self.guard = Some(
-                pprof::ProfilerGuardBuilder::default()
-                    .frequency(1_000_000)
-                    .blocklist(&["libc", "libgcc", "pthread", "vdso"])
-                    .build()
-                    .unwrap(),
-            );
+            #[cfg(not(windows))]
+            {
+                self.guard = Some(
+                    pprof::ProfilerGuardBuilder::default()
+                        .frequency(1_000_000)
+                        .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+                        .build()
+                        .unwrap(),
+                );
+            }
             self.name = Some(name);
         }
     }
 
-    /// returns the filenames created
+    #[cfg(windows)]
     pub fn report(&mut self) -> anyhow::Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
+    /// returns the filenames created
+    #[cfg(not(windows))]
+    pub fn report(&mut self) -> anyhow::Result<()> {
         fn proc() -> impl Fn(&mut pprof::Frames) {
             move |frames| {
                 // let vec = &frames.frames;
@@ -55,7 +72,7 @@ impl<'a> Flamegraph<'a> {
         }
         use itertools::Itertools;
         let Some(guard) = &self.guard else {
-            return Ok(vec![]);
+            return Ok(());
         };
         let Ok(report) = guard.report().frames_post_processor(proc()).build() else {
             anyhow::bail!("Unable to build flamegraph report");
@@ -76,14 +93,24 @@ impl<'a> Flamegraph<'a> {
         let mut options = pprof::flamegraph::Options::default();
         options.reverse_stack_order = true;
         report.flamegraph_with_options(file, &mut options)?;
-        Ok(vec![name1, name2])
+        eprintln!("Generated flamegraphs {name1} and {name2}");
+        Ok(())
     }
 }
 
-static FLAMEGRAPH: Mutex<Flamegraph> = Mutex::new(Flamegraph {
-    guard: None,
-    name: None,
-});
+impl<'a> Drop for Flamegraph<'a> {
+    fn drop(&mut self) {
+        let _files = self.report().unwrap_or_default();
+        // for filename in &files {
+        //     let path = PathBuf::from(filename).as_path().canonicalize().unwrap();
+
+        //     let Ok(url) = Url::from_file_path(&path) else {
+        //             eprintln!("Invalid flamegraph path {}", path.display());
+        //         };
+        //     eprintln!("Flamegraph: {url}")
+        // }
+    }
+}
 
 pub struct PerfProfiler {
     benchmark_iters: usize,
@@ -97,6 +124,11 @@ pub struct PerfProfiler {
     // cache_refs: Counter,
     cycles: Counter,
 }
+
+static FLAMEGRAPH: Mutex<Flamegraph> = Mutex::new(Flamegraph {
+    guard: None,
+    name: None,
+});
 
 impl fmt::Display for PerfProfiler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -194,16 +226,16 @@ impl PerfProfiler {
         self.iters = iters as u64
     }
 
-    pub fn assert_counts(&mut self, expected: u64) {
-        let low = (expected as f64 * 0.95) as u64;
-        let high = (expected as f64 * 1.05) as u64;
-        let ins = self.instructions() / self.iters;
-        assert!(
-            ins >= low && ins <= high,
-            "Profiler for {name} failed with {low} < {ins} < {high}",
-            name = self.name
-        );
-    }
+    // pub fn assert_counts(&mut self, expected: u64) {
+    //     let low = (expected as f64 * 0.95) as u64;
+    //     let high = (expected as f64 * 1.05) as u64;
+    //     let ins = self.instructions() / self.iters;
+    //     assert!(
+    //         ins >= low && ins <= high,
+    //         "Profiler for {name} failed with {low} < {ins} < {high}",
+    //         name = self.name
+    //     );
+    // }
 
     #[inline]
     pub fn write<W: std::io::Write>(&mut self, mut w: W) -> anyhow::Result<()> {
@@ -253,14 +285,14 @@ mod tests {
             let mut flamer = FLAMEGRAPH.lock().unwrap();
             let files = flamer.report().unwrap_or_default(); // silent fail in drop
             flamer.guard = None;
-            if files.len() > 0 {
-                println!("flamegraphs: {}", files.iter().format(", "));
-            }
+            // if files.len() > 0 {
+            //     println!("flamegraphs: {}", files.iter().format(", "));
+            // }
             // if log::log_enabled!(log::Level::Trace) {
-            let mut buf = Vec::new();
-            self.write(&mut buf).unwrap();
-            let s = String::from_utf8(buf).unwrap();
-            println!("{s}");
+            // let mut buf = Vec::new();
+            // self.write(&mut buf).unwrap();
+            // let s = String::from_utf8(buf).unwrap();
+            // println!("{s}");
             // let _ = self.write(std::io::stdout());
             // }
         }

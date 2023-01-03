@@ -9,7 +9,7 @@ pub mod utils;
 pub mod version;
 
 
-#[cfg(any(test, feature = "profiler"))]
+#[cfg(not(windows))]
 pub mod profiler;
 
 // from iai/bencher/criterion etc - the "standard" black_box def

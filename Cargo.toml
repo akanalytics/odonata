@@ -44,9 +44,7 @@ jsonrpc-core = "17.1"
 jsonrpc-derive = "17.1"
 log = {version = "0.4", features = ["release_max_level_debug"]}
 num-traits = "0.2"
-perf-event = {version = "0.4.7", optional = true}
 petgraph = "0.6.0"
-pprof = {version = "0.11.0", features = ["flamegraph"], optional = true}
 rayon = "1.5"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
@@ -59,14 +57,18 @@ thread_local = "1.1.4"
 toml = "0.5.8"
 tracing = { version = "0.1.37", features = ["max_level_trace", "release_max_level_debug", "log"] }
 
+[target.'cfg(not(windows))'.dependencies]
+pprof = { version = "0.11", features = ["flamegraph"]}
+perf-event = {version = "0.4.7"}
+
+
 [dev-dependencies]
 criterion = "0.4"
 # test-log = "0.2.11"
 test-log = { version = "0.2.11", features=["trace"]}
-perf-event = {version = "0.4.7"}
-pprof = {version = "0.11.0", features = ["flamegraph"]}
+# pprof = {version = "0.11.0", features = ["flamegraph"]}
 env_logger = "0.9"
-tracing = {version = "0.1.37", default-features = false}
+# tracing = {version = "0.1.37", default-features = false}
 tracing-subscriber = {version = "0.3.16", default-features = false, features = ["env-filter", "fmt"]}
 
 [build-dependencies]
@@ -99,7 +101,7 @@ split-debuginfo = "off" # for hotspot profiler disassembly
 
 [profile.release]
 codegen-units = 256 
-debug = true # allow profiling of the  main executable 
+debug = 1 #true # allow profiling of the  main executable 
 incremental = false 
 opt-level = 3 
 split-debuginfo = "unpacked" 
@@ -117,7 +119,7 @@ test = false
 
 [features]
 fast = ["remove_logging", "unchecked_indexing", "remove_metrics"]
-profiler = ["pprof", "perf-event"]
+# profiler = ["pprof", "perf-event"]
 remove_logging = []
 remove_metrics = []
 unchecked_indexing = []
