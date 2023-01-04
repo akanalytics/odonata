@@ -1,8 +1,8 @@
-use crate::bound::NodeType;
+use crate::domain::NodeType;
 use crate::infra::component::Component;
 use crate::piece::Ply;
 use crate::search::node::Node;
-use crate::{board::Board, Algo};
+use crate::{boards::Board, Algo};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -79,7 +79,7 @@ mod tests {
     use crate::infra::utils::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
-    use crate::tags::*;
+    use crate::other::Tag;
 
     // use crate::search::timecontrol::*;
 

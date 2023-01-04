@@ -1,11 +1,11 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::utils::Displayable;
 use crate::mv::Move;
-use crate::parse::Parse;
+use crate::other::Parse;
 use crate::piece::MAX_LEGAL_MOVES;
 use crate::piece::{Color, Piece};
-use crate::tags::Tags;
+use crate::other::Tags;
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use arrayvec::ArrayVec;

@@ -3,7 +3,7 @@ use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::piece::{MoveType, Ply};
 use crate::search::node::Node;
-use crate::{board::Board, Algo};
+use crate::{boards::Board, Algo};
 use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -163,7 +163,7 @@ mod tests {
     use crate::infra::utils::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
-    use crate::tags::*;
+    use crate::other::Tag;
 
     // use crate::search::timecontrol::*;
 

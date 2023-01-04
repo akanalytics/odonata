@@ -1,9 +1,9 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::phaser::Phase;
+use crate::other::Phase;
 use crate::piece::{Color, MoveType, Piece, Ply};
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
@@ -802,7 +802,7 @@ mod tests {
     use crate::search::algo::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
-    use crate::tags::*;
+    use crate::other::Tag;
     // use crate::search::timecontrol::*;
 
     #[test]

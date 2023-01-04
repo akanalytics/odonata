@@ -1,6 +1,6 @@
-use crate::bound::NodeType;
+use crate::domain::NodeType;
 use crate::eval::score::Score;
-// use crate::board::Board;
+// use crate::boards::Board;
 
 use crate::piece::Ply;
 

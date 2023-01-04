@@ -1,7 +1,7 @@
 use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
-use crate::board::{Board, BoardCalcs};
+use crate::boards::{Board, BoardCalcs};
 use crate::globals::constants::*;
 use crate::infra::utils::{Displayable, StringUtils};
 use crate::piece::{Color, Piece};
@@ -673,7 +673,7 @@ impl fmt::Display for Move {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{catalog::Catalog, perft::Perft, Position};
+    use crate::{catalog::Catalog, other::Perft, Position};
     // use crate::movelist::MoveValidator;
 
     #[test]

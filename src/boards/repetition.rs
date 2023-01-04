@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::infra::component::Component;
 use crate::infra::utils::Displayable;
 use crate::mv::Move;
@@ -213,7 +213,7 @@ mod tests {
     use crate::search::algo::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
-    use crate::tags::Tag;
+    use crate::other::Tag;
     use test_log::test;
 
     #[test]

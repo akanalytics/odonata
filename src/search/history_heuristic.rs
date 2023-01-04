@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::piece::{Color, MoveType, Piece, Ply};

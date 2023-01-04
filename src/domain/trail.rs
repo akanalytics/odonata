@@ -4,8 +4,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    board::Board,
-    bound::NodeType,
+    boards::Board,
+    domain::NodeType,
     eval::score::Score,
     infra::utils::Displayable,
     mv::Move,
@@ -634,7 +634,7 @@ impl fmt::Display for Trail {
 mod tests {
     use super::{Trail, Tree};
     use crate::{
-        board::Board,
+        boards::Board,
         catalog::Catalog,
         domain::{
             engine::Engine,

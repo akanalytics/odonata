@@ -1,9 +1,9 @@
 use crate::catalog::*;
 use crate::infra::component::{Component, State};
-use crate::perft::Perft;
+use crate::other::Perft;
 use crate::search::engine::ThreadedSearch;
 use crate::search::timecontrol::TimeControl;
-use crate::tags::Tag;
+use crate::other::Tag;
 // use env_logger;
 use crate::infra::utils::Formatting;
 // use crate::globals::counts;

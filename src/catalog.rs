@@ -1,8 +1,8 @@
 use crate::bits::castling::CastlingRights;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::globals::constants::*;
 use crate::position::Position;
-use crate::tags::Tag;
+use crate::other::Tag;
 use crate::{bits::bitboard::Bitboard, infra::resources::RESOURCE_DIR};
 use serde::{Deserialize, Serialize};
 use std::fmt;

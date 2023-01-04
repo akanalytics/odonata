@@ -1,6 +1,6 @@
 use crate::bits::square::Square;
-use crate::board::Board;
-use crate::bound::NodeType;
+use crate::boards::Board;
+use crate::domain::NodeType;
 use crate::cache::lockless_hashmap::HashEntry;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};

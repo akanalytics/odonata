@@ -7,7 +7,7 @@
 // use odonata::bits::square::*;
 // use odonata::board::analysis::Analysis;
 // use odonata::board::rules::Rules;
-// use odonata::board::Board;
+// use odonata::boards::Board;
 // use odonata::board::BoardCalcs;
 // use odonata::bound::NodeType;
 // use odonata::cache::hasher::*;

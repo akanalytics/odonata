@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;

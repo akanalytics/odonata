@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::infra::utils::{Displayable, Formatting};
 use crate::movelist::{MoveList, ScoredMoveList};
 use crate::mv::Move;

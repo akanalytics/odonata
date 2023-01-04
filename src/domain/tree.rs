@@ -3,8 +3,8 @@ use itertools::Itertools;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use crate::board::Board;
-use crate::bound::NodeType;
+use crate::boards::Board;
+use crate::domain::NodeType;
 use crate::eval::score::WhiteScore;
 use crate::mv::Move;
 use crate::search::node::Event;

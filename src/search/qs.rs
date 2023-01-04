@@ -1,6 +1,6 @@
 use crate::bits::Square;
-use crate::board::Board;
-use crate::bound::NodeType;
+use crate::boards::Board;
+use crate::domain::NodeType;
 use crate::cache::tt2::TranspositionTable2;
 use crate::domain::Trail;
 use crate::eval::endgame::EndGame;

@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::domain::engine::Engine;
@@ -10,7 +10,7 @@ use crate::infra::component::{Component, State};
 use crate::mv::Move;
 use crate::piece::Ply;
 use crate::position::Position;
-use crate::repetition::Repetition;
+use crate::boards::Repetition;
 use crate::search::aspiration::Aspiration;
 use crate::search::extensions::Extensions;
 use crate::search::futility::Futility;

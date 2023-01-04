@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;

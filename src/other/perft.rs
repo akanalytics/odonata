@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 

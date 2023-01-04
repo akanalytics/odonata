@@ -15,35 +15,30 @@ use std::fmt::{self, Write};
 use std::iter::*;
 use std::str::FromStr;
 
-pub mod analysis;
-pub mod boardbuf;
-pub mod boardcalcs;
-pub mod makemove;
-pub mod movegen;
-pub mod rules;
+use super::BoardCalcs;
 
-pub use boardcalcs::BoardCalcs;
+
 
 // unsafe impl Send for Board {}
 // unsafe impl Sync for Board {}
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
-    pieces: [Bitboard; Piece::len()],
-    colors: [Bitboard; Color::len()],
-    fullmove_number: u16,
-    turn: Color,
-    hash: Hash,
-    ply: Ply,
+    pub(super) pieces: [Bitboard; Piece::len()],
+    pub(super) colors: [Bitboard; Color::len()],
+    pub(super) fullmove_number: u16,
+    pub(super) turn: Color,
+    pub(super) hash: Hash,
+    pub(super) ply: Ply,
 
-    castling: CastlingRights,
-    en_passant: Bitboard,
-    half_move_clock: u16,
-    threats_to: [Cell<Bitboard>; Color::len()],
-    checkers_of: [Cell<Bitboard>; Color::len()],
-    pinned: [Cell<Bitboard>; Color::len()],
-    discoverer: [Cell<Bitboard>; Color::len()],
-    repetition_count: Cell<Repeats>,
+    pub(super) castling: CastlingRights,
+    pub(super) en_passant: Bitboard,
+    pub(super) half_move_clock: u16,
+    pub(super) threats_to: [Cell<Bitboard>; Color::len()],
+    pub(super) checkers_of: [Cell<Bitboard>; Color::len()],
+    pub(super) pinned: [Cell<Bitboard>; Color::len()],
+    pub(super) discoverer: [Cell<Bitboard>; Color::len()],
+    pub(super) repetition_count: Cell<Repeats>,
 }
 
 impl Serialize for Board {

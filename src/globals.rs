@@ -117,8 +117,8 @@ mod tests {
     use crate::bits::castling::*;
     use crate::bits::precalc::*;
     use crate::bits::square::*;
-    use crate::board::Board;
-    use crate::bound::NodeType;
+    use crate::boards::Board;
+    use crate::domain::NodeType;
     use crate::cache::hasher::*;
     use crate::cache::tt2::*;
     use crate::clock::Clock;
@@ -130,7 +130,7 @@ mod tests {
     use crate::mv::*;
     use crate::piece::*;
     use crate::position::*;
-    use crate::repetition::Repetition;
+    use crate::boards::Repetition;
     use crate::search::aspiration::Aspiration;
     use crate::search::extensions::Extensions;
     use crate::search::futility::Futility;
@@ -146,7 +146,7 @@ mod tests {
     use crate::search::razor::Razor;
     use crate::search::restrictions::Restrictions;
     use crate::search::search_explainer::Explainer;
-    use crate::tags::*;
+    use crate::other::Tag;
     use crate::variation::*;
     use crate::Algo;
     use std::mem::size_of;

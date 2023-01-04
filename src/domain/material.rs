@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::piece::{Color, Piece};
 use anyhow::Result;
 use itertools::Itertools;

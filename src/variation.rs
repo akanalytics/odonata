@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::board::Board;
+use crate::boards::Board;
 use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;

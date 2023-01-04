@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::fmt;
 
 use crate::{
-    board::Board,
+    boards::Board,
     eval::score::Score,
     infra::utils::{Displayable, KeywordIter, Uci, Differ},
     mv::Move,

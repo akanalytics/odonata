@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::eval::endgame::EndGame;
 use crate::infra::utils::{Displayable, Formatting};
 use crate::mv::Move;

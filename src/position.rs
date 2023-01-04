@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::catalog::Catalog;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
@@ -10,7 +10,7 @@ use crate::bits::castling::CastlingRights;
 use crate::infra::utils::{StringUtils, Uci};
 use crate::movelist::MoveList;
 use crate::piece::{Color, Ply};
-use crate::tags::{Tag, Tags};
+use crate::other::{Tag, Tags};
 use anyhow::{anyhow, bail, Context, Result};
 use itertools::Itertools;
 use once_cell::sync::Lazy;

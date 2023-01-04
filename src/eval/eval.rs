@@ -1,5 +1,5 @@
 use crate::bits::square::Square;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::cache::lockless_hashmap::UnsharedTable;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
@@ -10,7 +10,7 @@ use crate::infra::component::Component;
 use crate::infra::component::State;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::phaser::Phaser;
+use crate::other::Phaser;
 use crate::piece::{Color, Piece};
 use crate::search::node::Counter;
 use crate::search::node::Event;

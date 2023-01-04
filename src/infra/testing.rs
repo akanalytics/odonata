@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::variation::Variation;

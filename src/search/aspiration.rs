@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::domain::Trail;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
@@ -138,7 +138,7 @@ mod tests {
     use crate::infra::utils::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
-    use crate::tags::*;
+    use crate::other::Tag;
 
     // use crate::search::timecontrol::*;
 

@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::cache::hasher::Hasher;
 use crate::infra::black_box;
 use crate::infra::metric::Metrics;

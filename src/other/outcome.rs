@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::piece::Color;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};

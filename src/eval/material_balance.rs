@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::domain::Material;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
@@ -660,7 +660,7 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 mod tests {
     use super::*;
     // use crate::{debug, info, logger::LogInit};
-    use crate::board::Board;
+    use crate::boards::Board;
     use crate::eval::eval::Eval;
     use crate::eval::score::Score;
     use crate::search::node::Node;

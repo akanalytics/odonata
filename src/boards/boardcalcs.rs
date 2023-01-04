@@ -1,6 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::piece::Color;
 
 pub struct BoardCalcs {}

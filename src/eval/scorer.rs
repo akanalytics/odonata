@@ -9,8 +9,8 @@ use tabled::{
 };
 
 use crate::{
-    bits::precalc::Pawns, board::Board, infra::utils::Formatting, other::outcome::Outcome,
-    phaser::Phase, Bitboard, Color,
+    bits::precalc::Pawns, boards::Board, infra::utils::Formatting, other::outcome::Outcome,
+    other::Phase, Bitboard, Color,
 };
 
 use super::{eval::Feature, eval::WeightsVector, weight::Weight};
@@ -366,7 +366,7 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::eval::calc::Calc;
-    use crate::phaser::Phaser;
+    use crate::other::Phaser;
     use crate::search::engine::ThreadedSearch;
     use crate::test_log::test;
     // use crate::infra::utils::StringUtils;

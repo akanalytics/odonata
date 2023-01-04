@@ -1,8 +1,8 @@
-use crate::board::Board;
+use crate::boards::Board;
 use crate::domain::TreeCrit;
 // use crate::Bitboard;
-// use crate::board::Board;
-use crate::{bound::NodeType, piece::Ply};
+// use crate::boards::Board;
+use crate::{domain::NodeType, piece::Ply};
 // use crate::eval::weight::Weight;
 // use crate::search::node::Node;
 use crate::eval::score::Score;

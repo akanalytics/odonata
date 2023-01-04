@@ -1,5 +1,5 @@
-use crate::board::Board;
-use crate::bound::NodeType;
+use crate::boards::Board;
+use crate::domain::NodeType;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;

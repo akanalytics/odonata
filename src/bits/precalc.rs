@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::board::Board;
+use crate::boards::Board;
 use crate::piece::{Color, Piece};
 // use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bits::bb_hyperbola::Hyperbola;

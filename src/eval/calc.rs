@@ -2,7 +2,7 @@ use crate::bits::bitboard::Dir;
 use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
 // use crate::board::analysis::Analysis;
-use crate::board::Board;
+use crate::boards::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
 use crate::infra::metric::Metrics;
@@ -1548,7 +1548,7 @@ mod tests {
     use crate::eval::weight::Weight;
     use crate::infra::black_box;
     use crate::infra::profiler::*;
-    use crate::phaser::Phaser;
+    use crate::other::Phaser;
     use crate::test_log::test;
     use crate::Position;
     // use crate::infra::utils::StringUtils;

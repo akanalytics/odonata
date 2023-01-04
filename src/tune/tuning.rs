@@ -12,7 +12,7 @@ use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::engine::ThreadedSearch;
 use crate::search::node::Timing;
-use crate::tags::Tag;
+use crate::other::Tag;
 use crate::Color;
 use anyhow::Result;
 use bitflags::_core::sync::atomic::AtomicU32;
