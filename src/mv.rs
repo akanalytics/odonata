@@ -273,19 +273,13 @@ impl fmt::Debug for Move {
 impl Move {
     const OFFSET_FROM: i32 = 0;
     const OFFSET_TO: i32 = 6;
-    const OFFSET_IS_CAPTURE: i32 = 12; // 7 bits
-                                       // const OFFSET_MOVER: i32 = 19;
-                                       // const OFFSET_CAPTURE: i32 = 22;
-    const OFFSET_PROMO: i32 = 13;
+    const OFFSET_IS_CAPTURE: i32 = 12; 
+    const OFFSET_PROMO: i32 = 13;      // 13, 14, 15
     // const OFFSET_CASTLE: i32 = 28;
 
     // from = 6 bits
     // to = 6 bits
-    // flags = 3 bits
-    //   nothing special
-    //   promo QRBK
-    //   double push
-    //   ep capture
+    // flags = 3 bits// 7 bits
     //   castle
 
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {

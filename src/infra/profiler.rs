@@ -283,7 +283,7 @@ mod tests {
     impl Drop for PerfProfiler {
         fn drop(&mut self) {
             let mut flamer = FLAMEGRAPH.lock().unwrap();
-            let files = flamer.report().unwrap_or_default(); // silent fail in drop
+            let _files = flamer.report().unwrap_or_default(); // silent fail in drop
             flamer.guard = None;
             // if files.len() > 0 {
             //     println!("flamegraphs: {}", files.iter().format(", "));
@@ -384,7 +384,6 @@ mod tests {
         }
     }
 
-    use itertools::Itertools;
     use std::cell::Cell;
     use thread_local::ThreadLocal;
 

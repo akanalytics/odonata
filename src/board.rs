@@ -31,10 +31,8 @@ pub use boardcalcs::BoardCalcs;
 pub struct Board {
     pieces: [Bitboard; Piece::len()],
     colors: [Bitboard; Color::len()],
-
     fullmove_number: u16,
     turn: Color,
-    repetition_count: Cell<Repeats>,
     hash: Hash,
     ply: Ply,
 
@@ -45,6 +43,7 @@ pub struct Board {
     checkers_of: [Cell<Bitboard>; Color::len()],
     pinned: [Cell<Bitboard>; Color::len()],
     discoverer: [Cell<Bitboard>; Color::len()],
+    repetition_count: Cell<Repeats>,
 }
 
 impl Serialize for Board {
@@ -452,17 +451,7 @@ impl Board {
     }
 }
 
-// thread_local! {
-//     static CACHE: [SimpleCache<Bitboard>;2] = Default::default();
-// }
-// #[derive(Default)]
-// struct CacheX([ArrayCache<Bitboard, LEN_PLY >;2]);
 
-// unsafe impl Sync for CacheX {}
-
-// use static_init::dynamic;
-// #[dynamic]
-// static CACHE: CacheX = Default::default();
 
 impl Board {
     // all pieces of either color attacking a region
@@ -517,20 +506,6 @@ impl Board {
         }
         ch
     }
-
-    // #[inline]
-    // pub fn checkers_of(&self, king_color: Color) -> Bitboard {
-    //     // CACHE.with(|c| {
-    //         let checkers = CACHE.0[king_color.index()].probe(self.ply(), self.hash());
-    //         if let Some(checkers) = checkers {
-    //             checkers
-    //         } else {
-    //             let ch = BoardCalcs::checkers_of(self, king_color);
-    //             CACHE.0[king_color.index()].store(self.ply(), self.hash(), ch);
-    //             ch
-    //         }
-    //     // })
-    // }
 
     #[inline]
     pub fn all_attacks_on(&self, defender: Color) -> Bitboard {
@@ -655,15 +630,6 @@ impl Board {
         self.calculate_internals();
     }
 
-    // #[inline]
-    // fn color_at(&self, at: Bitboard) -> Option<Color> {
-    //     if self.color(Color::White).contains(at) {
-    //         return Some(Color::White);
-    //     } else if self.color(Color::Black).contains(at) {
-    //         return Some(Color::Black);
-    //     }
-    //     None
-    // }
 
     #[inline]
     fn color_of(&self, sq: Square) -> Option<Color> {
@@ -675,11 +641,11 @@ impl Board {
         None
     }
 
-    #[inline]
-    fn color_of_unchecked(&self, sq: Square) -> Color {
-        self.color_of(sq)
-            .unwrap_or_else(|| panic!("No coloured piece at {} of {}", sq, self.to_fen()))
-    }
+    // #[inline]
+    // fn color_of_unchecked(&self, sq: Square) -> Color {
+    //     self.color_of(sq)
+    //         .unwrap_or_else(|| panic!("No coloured piece at {} of {}", sq, self.to_fen()))
+    // }
 
     pub fn get(&self, bb: Bitboard) -> String {
         let mut res = String::new();

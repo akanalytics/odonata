@@ -60,7 +60,6 @@ pub enum Color {
     Black = 1,
 } // numbering as per CPW
 
-
 impl<T> std::ops::Index<Color> for [T] {
     type Output = T;
     #[inline]
@@ -195,12 +194,12 @@ impl<T> std::ops::Index<Piece> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Piece) -> &Self::Output {
-        #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
+        #[cfg(not(debug_assertions))]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
+        #[cfg(debug_assertions)]
         &self[(i.index())]
     }
 }
@@ -479,6 +478,15 @@ mod tests {
             serde_json::from_str::<Color>("\"w\"").unwrap(),
             Color::White
         );
+    }
+
+    // panic is caused by debug assertions - so only run this test in debug
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    fn piece_panic1() {
+        let array = [0u32; Piece::len() - 1];
+        assert_eq!(array[Piece::King], 1); // triggers panic not mismatch
     }
 
     #[test]

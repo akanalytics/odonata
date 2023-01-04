@@ -275,7 +275,6 @@ mod tests {
     use crate::globals::constants::*;
     use crate::{catalog::*, Color};
     use anyhow::Result;
-    extern crate env_logger;
     // use crate::movelist::MoveValidator;
 
     fn _init() {
