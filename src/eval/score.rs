@@ -301,23 +301,47 @@ impl Default for Score {
     }
 }
 
+impl Score {
+    fn add_score(&self, o: Score) -> Score {
+        debug_assert!(
+            self.is_finite() && o.is_finite(),
+            "cannot add scores when either is infinite: {self} + {o}"
+        );
+        debug_assert!(
+            self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
+            "cannot add non unity scores to a mate score: {self} + {o}"
+        );
+        let oo = if !self.is_mate() {
+            o
+        } else {
+            Score::from_cp(o.cp.signum() as i32)
+        };
+
+        if oo > 0.cp() {
+            return Score {
+                cp: self.cp.saturating_add(oo.cp),
+            };
+        } else if o == 0.cp() {
+            return *self;
+        } else {
+            return Score {
+                cp: self.cp.saturating_sub(-oo.cp),
+            };
+        }
+    }
+
+    fn sub_score(&self, o: Score) -> Score {
+        self.add_score(-o)
+    }
+}
+
 impl std::ops::Add for Score {
     type Output = Self;
 
     // we allow adding of 1 to a mate score (null window around mate)
     #[inline]
     fn add(self, o: Self) -> Self {
-        // debug_assert!(
-        //     self.is_numeric() && o.is_numeric(),
-        //     "cannot add scores {self} + {o}"
-        // );
-        // debug_assert!(
-        //     self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
-        //     "cannot add scores {self} + {o}"
-        // );
-        return Score {
-            cp: self.cp.saturating_add(o.cp),
-        };
+        self.add_score(o)
     }
 }
 
@@ -338,17 +362,7 @@ impl std::ops::Sub for Score {
 
     #[inline]
     fn sub(self, o: Self) -> Self {
-        debug_assert!(
-            self.is_finite() && o.is_finite(),
-            "Score {self} + {o} cannot subtract infinities"
-        );
-        debug_assert!(
-            !self.is_mate() && !o.is_mate(),
-            "Score {self} - {o} subtraction with mate scores"
-        );
-        Score {
-            cp: self.cp.saturating_sub(o.cp),
-        }
+        self.sub_score(o)
     }
 }
 
@@ -440,7 +454,6 @@ mod tests {
         assert_eq!(Score::we_win_in(0), Score::we_win_in(0));
         assert_eq!((-Score::INFINITY).clamp_score(), Score::from_cp(-20000));
 
-
         assert!(Score::from_cp(0).win_probability() > 0.499);
         assert!(Score::from_cp(0).win_probability() < 0.501);
         assert!(Score::from_cp(1000).win_probability() > 0.95);
@@ -497,6 +510,8 @@ mod tests {
         Ok(())
     }
 
+    // panic is caused by debug assertions - so only run this test in debug
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic]
     fn test_score_panic1() {
