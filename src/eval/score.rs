@@ -527,6 +527,7 @@ mod tests {
         );
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic]
     fn test_score_panic3() {

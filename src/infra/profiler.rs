@@ -136,6 +136,9 @@ impl fmt::Display for PerfProfiler {
     }
 }
 
+const NOOP_INSTRUCTION_OVERHEAD: u64 = 76;
+const NOOP_BRANCH_OVERHEAD: u64 = 20;
+
 impl PerfProfiler {
     #[inline]
     pub fn new(name: String) -> Self {
@@ -219,7 +222,7 @@ impl PerfProfiler {
     }
 
     pub fn instructions(&mut self) -> u64 {
-        self.group.read().unwrap()[&self.ins]
+        self.group.read().unwrap()[&self.ins] - NOOP_INSTRUCTION_OVERHEAD
     }
 
     pub fn set_iters(&mut self, iters: u64) {
@@ -245,9 +248,9 @@ impl PerfProfiler {
             w,
             "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name",
+            "instructions",
             "iters",
             "cycles",
-            "instructions",
             "branches",
             "branch-misses",
             "cache-misses",
@@ -258,11 +261,11 @@ impl PerfProfiler {
         writeln!(w,
         "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
         self.name,
+        ((counts[&self.ins]) / self.iters - NOOP_INSTRUCTION_OVERHEAD).human(),
         self.iters,
         // Formatting::u128((0u32).into()),
         (counts[&self.cycles] / self.iters).human(),
-        (counts[&self.ins] / self.iters).human(),
-        (counts[&self.branches] / self.iters).human(),
+        (counts[&self.branches] / self.iters - NOOP_BRANCH_OVERHEAD).human(),
         (counts[&self.branch_misses] / self.iters).human(),
         (counts[&self.cache_misses] / self.iters).human(),
         (0u32).human(),
@@ -289,10 +292,10 @@ mod tests {
             //     println!("flamegraphs: {}", files.iter().format(", "));
             // }
             // if log::log_enabled!(log::Level::Trace) {
-            // let mut buf = Vec::new();
-            // self.write(&mut buf).unwrap();
-            // let s = String::from_utf8(buf).unwrap();
-            // println!("{s}");
+            let mut buf = Vec::new();
+            self.write(&mut buf).unwrap();
+            let s = String::from_utf8(buf).unwrap();
+            println!("{s}");
             // let _ = self.write(std::io::stdout());
             // }
         }
@@ -318,6 +321,13 @@ mod tests {
     #[derive(Default)]
     struct Array {
         a: [i32; 8],
+    }
+
+    #[test]
+    fn bench_noop() {
+        let mut prof1 = PerfProfiler::new("noop".into());
+        prof1.benchmark(|| {
+        })
     }
 
     #[test]

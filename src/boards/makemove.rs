@@ -237,7 +237,7 @@ impl Board {
         b
     }
 
-    pub fn make_move_new(&self, m: &Move) -> Board {
+    pub fn make_move_new(&self, m: Move) -> Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
@@ -278,9 +278,11 @@ impl Board {
             // moves: self.moves.clone(),
             pieces: self.pieces.clone(),
             colors: self.colors.clone(),
-            ..*self
+            castling: self.castling,
+            hash: 0,
+            ply: self.ply,
         };
-        b.do_move(*m);
+        b.apply_move(m);
         Metrics::profile(t, Timing::TimingMakeMove);
 
         debug_assert!(
@@ -297,7 +299,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn do_move(&mut self, m: Move) {
+    pub fn apply_move(&mut self, m: Move) {
         let mut b = self;
         let move_hash = Hasher::default().hash_move(m, b);
         b.hash = b.hash ^ move_hash;
@@ -447,6 +449,7 @@ mod tests {
     use crate::catalog::*;
     use crate::globals::constants::*;
     use crate::infra::profiler::PerfProfiler;
+    use crate::other::Perft;
     use anyhow::Result;
 
     #[test]
@@ -549,16 +552,26 @@ mod tests {
     }
 
     #[test]
-    fn bench_do_move() {
+    fn bench_make_move() {
         let mut b = Catalog::starting_board();
         let mv = b.parse_san_move("e4").unwrap();
-        PerfProfiler::new("do_move".to_string()).benchmark(|| {
-            b.do_move(mv);
-            ()
-        });
+        PerfProfiler::new("move: apply_move".to_string()).benchmark(|| _ = b.apply_move(mv));
         let b = Catalog::starting_board();
-        PerfProfiler::new("make_move".to_string()).benchmark(|| b.make_move(mv));
+        PerfProfiler::new("move: make_move".to_string()).benchmark(|| b.make_move(mv));
 
+        let mut prof = PerfProfiler::new("move: perft_make_move".into());
+        let mut func = |b: &Board, mv: Move| _ = prof.benchmark(|| b.make_move(mv));
+        let mut b = Catalog::starting_board();
+        Perft::perft_fn(&mut b, 3, &mut func);
+
+        let mut prof = PerfProfiler::new("move: perft_make_move_new".into());
+        let mut func = |b: &Board, mv: Move| _ = prof.benchmark(|| b.make_move_new(mv));
+        let mut b = Catalog::starting_board();
+        Perft::perft_fn(&mut b, 3, &mut func);
+    }
+
+    #[test]
+    fn bench_cell() {
         let mut cells: [Cell<Bitboard>; 32] = <_>::default();
         PerfProfiler::new("cell_default".to_string()).benchmark(|| {
             cells = <_>::default();
@@ -566,7 +579,7 @@ mod tests {
         });
 
         let mut cells: [Cell<Option<Bitboard>>; 32] = <_>::default();
-        PerfProfiler::new("cell_option".to_string()).benchmark(|| {
+        PerfProfiler::new("cell_option_bitboard".to_string()).benchmark(|| {
             cells = <_>::default();
             cells.len()
         });

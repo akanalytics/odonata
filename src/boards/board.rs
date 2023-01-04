@@ -17,8 +17,6 @@ use std::str::FromStr;
 
 use super::BoardCalcs;
 
-
-
 // unsafe impl Send for Board {}
 // unsafe impl Sync for Board {}
 
@@ -102,7 +100,6 @@ impl FromStr for Board {
 
 impl Board {
     /// white to move, no castling rights or en passant
-    #[inline]
     pub fn new_empty() -> Board {
         Default::default()
     }
@@ -201,30 +198,31 @@ impl Board {
     }
 
     #[inline]
+    pub fn piece_is(&self, sq: Square, p: Piece) -> bool {
+        sq.is_in(self.pieces(p))
+    }
+
+    #[inline]
     pub fn piece_unchecked(&self, sq: Square) -> Piece {
         self.piece(sq)
             .unwrap_or_else(|| panic!("No piece found on {} of {} ", sq, self.to_fen()))
     }
 
-    #[inline]
     pub fn remove_piece(&mut self, sq: Bitboard, p: Piece, c: Color) {
         self.pieces[p].remove(sq);
         self.colors[c].remove(sq);
     }
 
-    #[inline]
     pub fn move_piece(&mut self, from_sq: Bitboard, to_sq: Bitboard, p: Piece, c: Color) {
         self.pieces[p] ^= from_sq | to_sq;
         self.colors[c] ^= from_sq | to_sq;
     }
 
-    #[inline]
     pub fn change_piece(&mut self, sq: Bitboard, from: Piece, to: Piece) {
         self.pieces[from].remove(sq);
         self.pieces[to].insert(sq);
     }
 
-    #[inline]
     pub fn set_piece_at(&mut self, sq: Square, p: Option<Piece>) {
         for bb in self.pieces.iter_mut() {
             bb.remove(sq.as_bb());
@@ -236,7 +234,6 @@ impl Board {
         self.calculate_internals();
     }
 
-    #[inline]
     pub fn set_color_at(&mut self, sq: Bitboard, c: Option<Color>) {
         if let Some(c) = c {
             self.colors[c.opposite()].remove(sq);
@@ -446,8 +443,6 @@ impl Board {
     }
 }
 
-
-
 impl Board {
     // all pieces of either color attacking a region
     #[inline]
@@ -625,7 +620,6 @@ impl Board {
         self.calculate_internals();
     }
 
-
     #[inline]
     fn color_of(&self, sq: Square) -> Option<Color> {
         if sq.is_in(self.color(Color::White)) {
@@ -790,6 +784,7 @@ mod tests {
     use crate::globals::constants::*;
     use crate::infra::black_box;
     use crate::infra::profiler::PerfProfiler;
+    use crate::other::Perft;
 
     #[test]
     fn test_serde() {
@@ -869,7 +864,6 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
     fn parse_piece() -> Result<()> {
         let fen1 = "1/1/7/8/8/8/PPPPPPPP/RNBQKBNR";
@@ -938,33 +932,55 @@ mod tests {
 
     #[test]
     fn bench_board() {
-        let bd =
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let mut starting_pos = Board::starting_pos();
 
-        let mut prof1 = PerfProfiler::new("board.piece".into());
-        for sq in bd.occupied().squares() {
-            prof1.benchmark(|| bd.piece(black_box(sq)));
-        }
+        let mut prof_clone = PerfProfiler::new("board.clone".into());
+        let mut prof_make_move_new = PerfProfiler::new("move: perft_make_move_new".into());
+        let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
+        let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
+        let mut prof_is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
+        let mut prof_piece_is = PerfProfiler::new("board: piece_is".into());
+        let mut prof_piece_at = PerfProfiler::new("board: piece_at".into());
+        let mut prof_piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
+        let mut prof_mover_piece = PerfProfiler::new("move: mover_piece".into());
 
-        let mut prof3 = PerfProfiler::new("fast.board.is_pawn".into());
-        let mut prof4 = PerfProfiler::new("board.is_pawn".into());
-        for sq in bd.pawns().squares() {
-            prof3.benchmark(|| black_box(sq).is_in(black_box(&bd).pawns()));
-            prof4.benchmark(|| black_box(&bd).piece(black_box(sq)).unwrap() == Piece::Pawn);
-        }
+        let mut func = |bd: &Board, mv: Move| {
+            prof_clone.benchmark(|| black_box(black_box(bd).clone()));
+            prof_make_move_new.benchmark(|| black_box(bd).make_move_new(mv));
+            prof_is_pawn.benchmark(|| black_box(bd).piece(mv.from()) == Some(Piece::Pawn));
+            prof_is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
+            prof_piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
+            prof_piece_at.benchmark(|| black_box(bd).piece(mv.from()));
+            prof_piece_is.benchmark(|| black_box(bd).piece_is(mv.from(), Piece::Knight));
+            prof_mover_piece.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
+            prof_is_b_or_n.benchmark(|| {
+                black_box(bd).piece(Square::A3) == Some(Piece::Bishop)
+                    || black_box(bd).piece(Square::A3) == Some(Piece::Knight)
+            });
+        };
+        Perft::perft_fn(&mut starting_pos, 3, &mut func);
+
+        //     let mut prof1 = PerfProfiler::new("board.piece".into());
+        // for sq in bd.occupied().squares() {
+        //     prof1.benchmark(|| bd.piece(black_box(sq)));
+        // }
+
+        // let mut prof3 = PerfProfiler::new("board: is_pawn.fast".into());
+        // let mut prof4 = PerfProfiler::new("board: is_pawn".into());
+        // for sq in bd.pawns().squares() {
+        //     prof3.benchmark(|| black_box(sq).is_in(black_box(&bd).pawns()));
+        //     prof4.benchmark(|| black_box(&bd).piece(black_box(sq)).unwrap() == Piece::Pawn);
+        // }
 
         // piece.at 64, mv.piece_field 61
-        let e1e2 = bd.parse_san_move("Ke2").unwrap();
-        let e3e4 = bd.parse_san_move("e4").unwrap();
-        let c1c3 = bd.parse_san_move("Nc3").unwrap();
-        let mut prof2 = PerfProfiler::new("mv.mover".into());
-        prof2.benchmark(|| black_box(e3e4.mover_piece(&bd)));
-        prof2.benchmark(|| black_box(c1c3.mover_piece(&bd)));
-        prof2.benchmark(|| black_box(e1e2.mover_piece(&bd)));
-        for &mv in bd.legal_moves().iter() {
-            prof2.benchmark(|| black_box(mv.mover_piece(&bd)));
-        }
-        let mut prof3 = PerfProfiler::new("empty".into());
-        prof3.benchmark(|| black_box(()));
+        // let e1e2 = bd.parse_san_move("Ke2").unwrap();
+        // let e3e4 = bd.parse_san_move("e4").unwrap();
+        // let c1c3 = bd.parse_san_move("Nc3").unwrap();
+        // prof2.benchmark(|| black_box(e3e4.mover_piece(&bd)));
+        // prof2.benchmark(|| black_box(c1c3.mover_piece(&bd)));
+        // prof2.benchmark(|| black_box(e1e2.mover_piece(&bd)));
+        // for &mv in bd.legal_moves().iter() {
+        //     prof2.benchmark(|| black_box(mv.mover_piece(&bd)));
+        // }
     }
 }

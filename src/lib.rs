@@ -1,4 +1,5 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
+#![cfg_attr(not(debug_assertions), allow(dead_code))]
 #![warn(
     clippy::all,
     clippy::pedantic,
