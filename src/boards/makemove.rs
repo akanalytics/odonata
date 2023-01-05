@@ -89,6 +89,10 @@ impl Board {
     }
 
     pub fn make_move(&self, m: Move) -> Board {
+        self.make_move_new(m)
+    }
+
+    pub fn make_move_old(&self, m: Move) -> Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
@@ -279,10 +283,36 @@ impl Board {
             pieces: self.pieces.clone(),
             colors: self.colors.clone(),
             castling: self.castling,
-            hash: 0,
+            hash: self.hash,
             ply: self.ply,
         };
+        debug_assert!(
+            self.validate().is_ok(),
+            "board {self} failed validation before move {m} with '{}'\n{self:#}",
+            self.validate().unwrap_err()
+        );
+
+        #[cfg(debug_assertions)]
+        let old_board = self.clone();
+
+        #[cfg(debug_assertions)]
+        let move_details = format!(
+            "Move:\ncapture_square: {cs}\nis_capture:{ic}\nis_ep_capture:{ep}\ncapture_piece:{cp:?}\n",
+            // san = m.to_san(&b),
+            cs = m.capture_square(&b),
+            ic = m.is_capture(),
+            cp = m.capture_piece(&b),
+            ep = m.is_ep_capture(&b)
+        );
+
         b.apply_move(m);
+        #[cfg(debug_assertions)]
+        debug_assert!(
+            b.validate().is_ok(),
+            "board {b} failed validation after move {m} with '{}'\n{b:#}\n{old_board:#}\n{move_details}",
+            b.validate().unwrap_err()
+        );
+
         Metrics::profile(t, Timing::TimingMakeMove);
 
         debug_assert!(
@@ -303,31 +333,21 @@ impl Board {
         let mut b = self;
         let move_hash = Hasher::default().hash_move(m, b);
         b.hash = b.hash ^ move_hash;
-        let mover = m.mover_piece(b);
         // now hash calculated - we can adjust these
         b.turn = b.turn.opposite();
-        b.en_passant = Bitboard::EMPTY;
+        if m.is_null() {
+            b.en_passant = Bitboard::EMPTY;
+            return;
+        }
 
+        let mover = m.mover_piece(b);
+
+        let mut en_passant = Bitboard::EMPTY;
         if mover == Piece::Pawn {
             b.half_move_clock = 0;
             if m.is_pawn_double_push(b) {
-                b.en_passant = m.ep().as_bb();
+                en_passant = m.ep().as_bb();
             }
-        }
-
-        // castling *moves*
-        if m.is_castle(b) {
-            // rules say no reset of fifty clock
-            // king move already handled, castling rights handled below, just the rook move
-
-            let (rook_from, rook_to) = m.rook_move_from_to();
-            // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.move_piece(
-                rook_from.as_bb(),
-                rook_to.as_bb(),
-                Piece::Rook,
-                b.turn.opposite(),
-            )
         }
 
         if let Some(c) = m.capture_piece(b) {
@@ -345,6 +365,25 @@ impl Board {
                 );
                 b.remove_piece(m.to().as_bb(), c, b.turn);
             }
+        }
+
+        // safely set e/p flag now that weve handled the capture
+        b.en_passant = en_passant;
+
+
+        // castling *moves*
+        if m.is_castle(b) {
+            // rules say no reset of fifty clock
+            // king move already handled, castling rights handled below, just the rook move
+
+            let (rook_from, rook_to) = m.rook_move_from_to();
+            // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
+            b.move_piece(
+                rook_from.as_bb(),
+                rook_to.as_bb(),
+                Piece::Rook,
+                b.turn.opposite(),
+            )
         }
 
         // clear one bit and set another for the move using xor

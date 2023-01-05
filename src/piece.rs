@@ -158,7 +158,7 @@ impl Color {
         match s {
             "w" => Ok(Color::White),
             "b" => Ok(Color::Black),
-            _ => Err(anyhow!("Invalid color: '{}'", s)),
+            _ => Err(anyhow!("invalid color: '{}'", s)),
         }
     }
 
@@ -169,7 +169,7 @@ impl Color {
         } else if ch.is_uppercase() {
             return Ok(Color::White);
         }
-        Err(anyhow!("Cannot get color for char '{}'", ch))
+        Err(anyhow!("cannot get color for char '{}'", ch))
     }
 }
 
@@ -461,7 +461,7 @@ mod tests {
         assert_eq!(Color::from_piece_char('n').unwrap(), Color::Black);
         assert_eq!(
             Color::parse("B").unwrap_err().to_string(),
-            "Invalid color: 'B'".to_string()
+            "invalid color: 'B'".to_string()
         );
         assert_eq!(Piece::King.to_char(Color::Black), 'k');
         assert_eq!(Piece::King.to_char(Color::White), 'K');

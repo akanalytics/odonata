@@ -447,7 +447,7 @@ impl Move {
         } else if self.is_capture() {
             self.to()
         } else {
-            debug_assert!(false, "capture square {self} on board {b}");
+            // debug_assert!(false, "capture square {self} on board {b}");
             Square::null()
         }
     }
@@ -527,7 +527,7 @@ impl Move {
 
     #[inline]
     pub fn is_ep_capture(&self, b: &Board) -> bool {
-        self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
+        !self.is_null() && self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
     }
 
     #[inline]

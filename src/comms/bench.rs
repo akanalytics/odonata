@@ -170,7 +170,7 @@ mod tests {
     use test_log::test;
 
     #[test]
-    fn bench_bk() {
+    fn bench_bratko() {
         let mut total_nodes = 0;
         let mut prof = PerfProfiler::new("bench_bratko".into());
         prof.benchmark(|| total_nodes += Bench::search(TimeControl::NodeCount(1000), None));

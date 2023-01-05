@@ -85,7 +85,7 @@ impl CastlingRights {
                 'Q' => castling |= Self::WHITE_QUEEN,
                 'k' => castling |= Self::BLACK_KING,
                 'q' => castling |= Self::BLACK_QUEEN,
-                _ => bail!("Invalid character '{}' in castling rights '{}'", ch, s),
+                _ => bail!("invalid character '{}' in castling rights '{}'", ch, s),
             }
         }
         Ok(castling)

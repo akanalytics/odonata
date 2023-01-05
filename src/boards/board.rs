@@ -198,7 +198,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn piece_is(&self, sq: Square, p: Piece) -> bool {
+    pub fn is_occupied_by(&self, sq: Square, p: Piece) -> bool {
         sq.is_in(self.pieces(p))
     }
 
@@ -710,14 +710,14 @@ impl Board {
         if !ep.is_empty() {
             if !ep.intersects(Bitboard::RANK_3 | Bitboard::RANK_6) {
                 bail!(
-                    "En passant square must be rank 3 or 6 not {}",
+                    "en passant square must be rank 3 or 6 not {}",
                     ep.sq_as_uci()
                 );
             }
             let capture_square = ep.shift(self.color_them().forward());
             if !(self.pawns() & self.them()).contains(capture_square) {
                 bail!(
-                    "En passant square of {} entails a pawn on square {}",
+                    "en passant square of {} entails a pawn on square {}",
                     ep.sq_as_uci(),
                     capture_square.sq_as_uci()
                 );
@@ -740,7 +740,7 @@ impl Board {
         // pos.retain(|ch| "pPRrNnBbQqKk ".contains(ch));
         let r: Vec<&str> = pos.rsplit('/').collect();
         if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
-            bail!("Expected 8 ranks of 8 pieces in fen {}", fen);
+            bail!("expected 8 ranks of 8 pieces in fen {}", fen);
         }
         bb.set(Bitboard::all(), &r.concat())?;
         bb.calculate_internals();
@@ -768,10 +768,10 @@ impl Board {
         };
         bb.half_move_clock = words[4]
             .parse()
-            .with_context(|| format!("Invalid halfmove clock '{}'", words[4]))?;
+            .with_context(|| format!("invalid halfmove clock '{}'", words[4]))?;
         bb.fullmove_number = words[5]
             .parse()
-            .with_context(|| format!("Invalid fullmove count '{}'", words[5]))?;
+            .with_context(|| format!("invalid fullmove count '{}'", words[5]))?;
         bb.calculate_internals();
         bb.validate()?;
         Ok(bb)
@@ -869,16 +869,16 @@ mod tests {
         let fen1 = "1/1/7/8/8/8/PPPPPPPP/RNBQKBNR";
         assert_eq!(
             Board::parse_piece_placement(fen1).unwrap_err().to_string(),
-            "Expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR"
+            "expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR"
         );
         assert!(Board::parse_piece_placement("8")
             .unwrap_err()
             .to_string()
-            .starts_with("Expected 8"));
+            .starts_with("expected 8"));
         assert!(Board::parse_piece_placement("8/8")
             .unwrap_err()
             .to_string()
-            .starts_with("Expected 8"));
+            .starts_with("expected 8"));
         assert_eq!(
             Board::parse_piece_placement("X7/8/8/8/8/8/8/8")
                 .unwrap_err()
@@ -907,25 +907,25 @@ mod tests {
             Board::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100")
                 .unwrap_err()
                 .to_string(),
-            "Invalid color: 'B'".to_string()
+            "invalid color: 'B'".to_string()
         );
         assert_eq!(
             Board::parse_fen("7k/8/8/8/8/8/8/7K b XQkq - 45 100")
                 .unwrap_err()
                 .to_string(),
-            "Invalid character 'X' in castling rights 'XQkq'".to_string()
+            "invalid character 'X' in castling rights 'XQkq'".to_string()
         );
         assert_eq!(
             Board::parse_fen("7k/8/8/8/8/8/8/7K b - - fifty 100")
                 .unwrap_err()
                 .to_string(),
-            "Invalid halfmove clock 'fifty'".to_string()
+            "invalid halfmove clock 'fifty'".to_string()
         );
         assert_eq!(
             Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 50 full")
                 .unwrap_err()
                 .to_string(),
-            "Invalid fullmove count 'full'".to_string()
+            "invalid fullmove count 'full'".to_string()
         );
         Ok(())
     }
@@ -939,7 +939,7 @@ mod tests {
         let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
         let mut prof_is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
-        let mut prof_piece_is = PerfProfiler::new("board: piece_is".into());
+        let mut prof_piece_is = PerfProfiler::new("board: is_occupied_by".into());
         let mut prof_piece_at = PerfProfiler::new("board: piece_at".into());
         let mut prof_piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
         let mut prof_mover_piece = PerfProfiler::new("move: mover_piece".into());
@@ -951,7 +951,7 @@ mod tests {
             prof_is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
             prof_piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
             prof_piece_at.benchmark(|| black_box(bd).piece(mv.from()));
-            prof_piece_is.benchmark(|| black_box(bd).piece_is(mv.from(), Piece::Knight));
+            prof_piece_is.benchmark(|| black_box(bd).is_occupied_by(mv.from(), Piece::Knight));
             prof_mover_piece.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
             prof_is_b_or_n.benchmark(|| {
                 black_box(bd).piece(Square::A3) == Some(Piece::Bishop)
