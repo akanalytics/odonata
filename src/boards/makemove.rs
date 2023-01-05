@@ -384,11 +384,6 @@ mod tests {
         PerfProfiler::new("move: apply_move".to_string()).benchmark(|| _ = b.apply_move(mv));
         let b = Catalog::starting_board();
         PerfProfiler::new("move: make_move".to_string()).benchmark(|| b.make_move(mv));
-
-        let mut prof = PerfProfiler::new("move: perft_make_move".into());
-        let mut func = |b: &Board, mv: Move| _ = prof.benchmark(|| b.make_move(mv));
-        let mut b = Catalog::starting_board();
-        Perft::perft_fn(&mut b, 3, &mut func);
     }
 
     #[test]

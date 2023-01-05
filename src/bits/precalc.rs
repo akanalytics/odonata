@@ -29,6 +29,8 @@ impl PreCalc {
 pub struct PreCalc {
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
+    bishop_moves: [Bitboard; 64],
+    rook_moves: [Bitboard; 64],
     pawn_front_span: [[Bitboard; 64]; 2],
     pawn_push: [[Bitboard; 64]; 2],
     pawn_double_push: [[Bitboard; 64]; 2],
@@ -47,6 +49,8 @@ impl PreCalc {
             sliding_piece_attacks: BestSlidingPieceAttacks::new(),
             king_moves: [Bitboard::EMPTY; 64],
             knight_moves: [Bitboard::EMPTY; 64],
+            bishop_moves: [Bitboard::EMPTY; 64],
+            rook_moves: [Bitboard::EMPTY; 64],
             pawn_front_span: [[Bitboard::EMPTY; 64]; 2],
             pawn_push: [[Bitboard::EMPTY; 64]; 2],
             pawn_double_push: [[Bitboard::EMPTY; 64]; 2],
@@ -60,7 +64,11 @@ impl PreCalc {
 
         Self::pop_strictly_between(&mut me.strictly_between);
         Self::pop_king_moves(&mut me.king_moves);
-        Self::pop_knight_moves(&mut me.knight_moves);
+        Self::pop_piece_moves(
+            &mut me.knight_moves,
+            &mut me.bishop_moves,
+            &mut me.rook_moves,
+        );
         Self::pop_line(&mut me.line);
         Self::pop_surround(&mut me.surround);
         me.pop_pawn();
@@ -91,14 +99,20 @@ impl PreCalc {
         }
     }
 
-    fn pop_knight_moves(knight_moves: &mut [Bitboard; 64]) {
-        for (sq, mv) in knight_moves.iter_mut().enumerate() {
+    fn pop_piece_moves(
+        knight_moves: &mut [Bitboard; 64],
+        bishop_moves: &mut [Bitboard; 64],
+        rook_moves: &mut [Bitboard; 64],
+    ) {
+        for sq in Bitboard::all().squares() {
+            // knight
             for &dir in Dir::ALL.iter() {
-                let bb = Bitboard::from_sq(sq as u16);
                 // for example a night attack might be step N followed by step NE
                 let next_dir = dir.rotate_clockwise();
-                *mv |= bb.shift(dir).shift(next_dir);
+                knight_moves[sq] |= sq.as_bb().shift(dir).shift(next_dir);
             }
+            bishop_moves[sq] |= (sq.diag() | sq.anti_diag()) - sq.as_bb();
+            rook_moves[sq] |= (sq.file() | sq.rank()) - sq.as_bb();
         }
     }
 
@@ -187,6 +201,16 @@ impl PreCalc {
     #[inline]
     pub fn knight_attacks(&self, from: Square) -> Bitboard {
         self.knight_moves[from]
+    }
+
+    #[inline]
+    pub fn bishop_xray_attacks(&self, from: Square) -> Bitboard {
+        self.bishop_moves[from]
+    }
+
+    #[inline]
+    pub fn rook_xray_attacks(&self, from: Square) -> Bitboard {
+        self.rook_moves[from]
     }
 
     pub fn all_pawn_attacks_ext(&self, c: Color, pawns: Bitboard, them: Bitboard) -> Bitboard {
@@ -680,6 +704,16 @@ mod tests {
 
         let attacks = classical.knight_attacks(c6.square());
         assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
+    }
+
+    #[test]
+    fn test_xray_attacks() {
+        let bb = PreCalc::default();
+        let atts = bb.rook_xray_attacks(a1.square());
+        assert_eq!(atts, (FILE_A | RANK_1) - a1);
+
+        let atts = bb.bishop_xray_attacks(a1.square());
+        assert_eq!(atts, b2 | c3 | d4 | e5 | f6 | g7 | h8);
     }
 
     #[test]

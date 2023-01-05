@@ -160,6 +160,11 @@ impl Board {
     }
 
     #[inline]
+    pub fn bishops_or_queens(&self) -> Bitboard {
+        self.bishops() | self.queens()
+    }
+
+    #[inline]
     pub fn kings(&self) -> Bitboard {
         self.pieces(Piece::King)
     }
@@ -935,7 +940,7 @@ mod tests {
         let mut starting_pos = Board::starting_pos();
 
         let mut prof_clone = PerfProfiler::new("board.clone".into());
-        let mut prof_make_move = PerfProfiler::new("move: perft_make_move_new".into());
+        let mut prof_make_move = PerfProfiler::new("move: perft_make_move".into());
         let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
         let mut prof_is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());

@@ -28,11 +28,15 @@ impl<'a> Flamegraph<'a> {
             guard: None,
             name: None,
         };
-        if event_enabled!(target: "flamegraph", tracing::Level::INFO) || log::log_enabled!(target: "flamegraph", log::Level::Info){
+        if Self::is_requested() {
             prof.enable(name);
             eprintln!("Flamegraph enabled");
         }
         prof
+    }
+
+    pub fn is_requested() -> bool {
+        event_enabled!(target: "flamegraph", tracing::Level::INFO) || log::log_enabled!(target: "flamegraph", log::Level::Info)
     }
 
     pub fn enable(&mut self, name: String) {
@@ -41,7 +45,7 @@ impl<'a> Flamegraph<'a> {
             {
                 self.guard = Some(
                     pprof::ProfilerGuardBuilder::default()
-                        .frequency(1_000_000)
+                        .frequency(10921)
                         .blocklist(&["libc", "libgcc", "pthread", "vdso"])
                         .build()
                         .unwrap(),
@@ -74,7 +78,8 @@ impl<'a> Flamegraph<'a> {
         let Some(guard) = &self.guard else {
             return Ok(());
         };
-        let Ok(report) = guard.report().frames_post_processor(proc()).build() else {
+        let Ok(report) = guard.report().build() else {
+        // frames_post_processor(proc()).build() else {
             anyhow::bail!("Unable to build flamegraph report");
         };
 
@@ -113,7 +118,7 @@ impl<'a> Drop for Flamegraph<'a> {
 }
 
 pub struct PerfProfiler {
-    benchmark_iters: usize,
+    benchmark_iters: u64,
     group: Group,
     name: String,
     iters: u64,
@@ -147,8 +152,9 @@ impl PerfProfiler {
         } else {
             1
         };
-        if let Ok(_s) = std::env::var("RUST_FLAME") {
+        if Flamegraph::is_requested() {
             FLAMEGRAPH.lock().unwrap().enable(name.clone());
+            eprintln!("Flamegraph enabled with {benchmark_iters} iterations");
         };
         let mut group = Group::new().unwrap();
         // REF_CPU_CYCLES not supported on ZEN3
@@ -197,11 +203,17 @@ impl PerfProfiler {
     }
 
     pub fn benchmark<R>(&mut self, mut f: impl FnMut() -> R) -> R {
+        // let mut last = 0;
         self.start();
-        for _ in 1..self.benchmark_iters {
+        for _iter in 1..self.benchmark_iters {
             let _ret = black_box(f());
+            self.iters += 1;
+            // let ins = self.group.read().unwrap()[&self.ins];
+            // eprintln!("{iter} = {}", ins - last);
+            // last = ins;
         }
         let ret = black_box(f());
+        self.iters += 1;
         self.stop();
         ret
     }
@@ -214,7 +226,6 @@ impl PerfProfiler {
     #[inline]
     pub fn stop(&mut self) {
         self.group.disable().unwrap();
-        self.iters += 1
     }
 
     pub fn cycles(&mut self) -> u64 {
@@ -244,6 +255,7 @@ impl PerfProfiler {
     pub fn write<W: std::io::Write>(&mut self, mut w: W) -> anyhow::Result<()> {
         let counts = self.group.read().unwrap();
         self.iters = std::cmp::max(1, self.iters);
+        let iters = self.iters;
         writeln!(
             w,
             "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
@@ -259,20 +271,20 @@ impl PerfProfiler {
             "cache-hit-%",
         )?;
         writeln!(w,
-        "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
-        self.name,
-        ((counts[&self.ins]) / self.iters - NOOP_INSTRUCTION_OVERHEAD).human(),
-        self.iters,
+        "PROFD: {n:<25}\t{ins:>15}\t{it:>15}\t{cy:>15}\t{br:>15}\t{bm:>15}\t{cm:>15}\t{cr:>15}\t{cpi:>15.2}\t{ch:>15.2}\n",
+        n = self.name,
+        ins = ((counts[&self.ins]) / iters - NOOP_INSTRUCTION_OVERHEAD).human(),
+        it = iters,
         // Formatting::u128((0u32).into()),
-        (counts[&self.cycles] / self.iters).human(),
-        (counts[&self.branches] / self.iters - NOOP_BRANCH_OVERHEAD).human(),
-        (counts[&self.branch_misses] / self.iters).human(),
-        (counts[&self.cache_misses] / self.iters).human(),
-        (0u32).human(),
-        // (counts[&self.cache_refs] / self.iters).human()),
+        cy = (counts[&self.cycles] / iters).human(),
+        br = (counts[&self.branches] / iters).human(),  // ((counts[&self.branches] / iters).wrapping_sub(NOOP_BRANCH_OVERHEAD)).human(),
+        bm = (counts[&self.branch_misses] / iters).human(),
+        cm = (counts[&self.cache_misses] / iters).human(),
+        cr = (0u32).human(),
+        // (counts[&self.cache_refs] / iters).human()),
         // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
-        (0u32).human(),
-        (0u32).human(),
+        cpi = (0u32).human(),
+        ch = (0u32).human(),
         // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
     )?;
         Ok(())

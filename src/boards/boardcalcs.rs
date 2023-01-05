@@ -12,6 +12,9 @@ impl BoardCalcs {
         let us = bd.color(king_color);
         let them = bd.color(king_color.opposite());
         let our_king = bd.kings() & us;
+        if our_king.is_empty() {
+            return Bitboard::empty();
+        };
         // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
         let occ = us | them;
         Self::attacked_by(our_king, occ, bd) & them
@@ -27,14 +30,17 @@ impl BoardCalcs {
         let color_them = bd.color(king_color.opposite());
         let king_sq = kings.square();
 
-        let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, bd) & color_them;
+        let pc = PreCalc::default();
+        let xray_sliding_checkers = color_them
+            & (pc.bishop_xray_attacks(king_sq) & bd.bishops_or_queens()
+                | pc.rook_xray_attacks(king_sq) & bd.rooks_or_queens());
         let mut pinned = Bitboard::empty();
         let mut discoverers = Bitboard::empty();
-        for ch in xray_checkers.squares() {
-            let ray = PreCalc::default().strictly_between(ch, king_sq);
-            if ray.disjoint(color_them) && (ray & color_us).popcount() == 1 {
+        for checker in xray_sliding_checkers.squares() {
+            let ray = pc.strictly_between(checker, king_sq);
+            if ray.disjoint(color_them) && (ray & color_us).exactly_one() {
                 pinned |= ray & color_us;
-            } else if ray.disjoint(color_us) && (ray & color_them).popcount() == 1 {
+            } else if ray.disjoint(color_us) && (ray & color_them).exactly_one() {
                 discoverers |= ray & color_them;
             }
         }
@@ -105,31 +111,6 @@ impl BoardCalcs {
 
         attackers
     }
-
-    // fn attacked_by_colorX(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color) -> Bitboard {
-    //     let pawns = board.pawns() & board.color(opponent);
-    //     let knights = board.knights() & board.color(opponent);
-    //     let bishops = board.bishops() & board.color(opponent);
-    //     let rooks = board.rooks() & board.color(opponent);
-    //     let queens = board.queens() & board.color(opponent);
-    //     let kings = board.kings() & board.color(opponent);
-
-    //     let attack_gen = global_classical_bitboard();
-    //     let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
-    //     let mut attackers = (east | west) & targets;
-
-    //     for each in targets.iter() {
-    //         let sq = each.first_square();
-    //         attackers |= attack_gen.knight_attacks(sq) & knights
-    //             | attack_gen.king_attacks(sq) & kings
-    //             | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
-    //             | attack_gen.rook_attacks(occ, sq) & (rooks | queens);
-    //         // TODO: en passant!!
-    //     }
-    //     debug!("opponent:{}\n{}target\n{}attackers\n{}", opponent, board, targets, attackers);
-
-    //     attackers
-    // }
 }
 
 #[cfg(test)]
@@ -137,6 +118,9 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
+    use crate::infra::black_box;
+    use crate::infra::profiler::PerfProfiler;
+    use test_log::test;
 
     #[test]
     fn test_threats_to() {
@@ -173,6 +157,15 @@ mod tests {
             assert_eq!(discoverers, p.sq().unwrap(), "{}", p.board());
             let discoverers = BoardCalcs::pinned_and_discoverers(p.board(), p.board().color_us()).1;
             assert_eq!(discoverers, p.sq().unwrap(), "{}", p.board());
+        }
+    }
+
+    #[test]
+    fn bench_pins_and_disc() {
+        let mut prof = PerfProfiler::new("bench_pinned_and_disc".into());
+        for pos in Catalog::win_at_chess() {
+            let bd = pos.board();
+            prof.benchmark(|| BoardCalcs::pinned_and_discoverers(black_box(bd), bd.color_us()));
         }
     }
 }
