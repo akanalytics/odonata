@@ -10,59 +10,8 @@ use crate::variation::Variation;
 
 use std::cell::Cell;
 
-// pub trait MoveDelta {
-//     fn make_move(&mut self, mv: &Move);
-//     fn undo_move(&mut self, mv: &Move);
-// }
 
 impl Board {
-    // fn make_move_ext(&mut self, mv: &MoveExt) {
-    //     let them = self.turn.opposite();
-    //     self.pieces[mv.p1.index()] ^= mv.f1 ^ mv.t1;
-    //     self.pieces[mv.p2.index()] ^= mv.f2;
-    //     self.pieces[mv.p3.index()] ^= mv.t3;
-    //     self.pieces[mv.p4.index()] ^= mv.f4;
-    //     self.threats_to[0].set(Bitboard::niche());
-    //     self.threats_to[1].set(Bitboard::niche());
-    //     self.checkers_of[0].set(Bitboard::niche());
-    //     self.checkers_of[1].set(Bitboard::niche());
-    //     self.repetition_count.set(0);
-
-    //     self.fifty_clock += 1;
-    //     if mv.p1 == Piece::Pawn || mv.is_capture() {
-    //         self.fifty_clock = 0;
-    //     }
-    //     self.colors[self.turn] ^= mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
-    //     self.colors[them] ^= mv.f2;
-
-    //     // self.castling ^= mv.castle;
-    //     let squares_changing = mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
-    //     self.castling.adjust( squares_changing);
-
-    //     // self.castling -= Bitboard::ROOK_AND_KING_SQS & (mv.f1 | mv.t3);
-
-    //     self.en_passant = mv.ep_square;
-
-    //     self.fullmove_number += self.turn.chooser_wb(0, 1);
-    //     self.turn = them;
-
-    //     //self.hash ^= Hasher::default().hash_move(mv, self);
-    //     // debug_assert!(
-    //     //     self.hash == Hasher::default().hash_board(self),
-    //     //     "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
-    //     //     mv,
-    //     //     self.hash,
-    //     //     Hasher::default().hash_board(self),
-    //     // );
-
-    // }
-
-    // fn undo_move_ext(&mut self, _mv: &MoveExt) {
-    //     // *self.pieces_mut(mv.p1) ^= mv.f1 ^ mv.t1;
-    //     // *self.pieces_mut(mv.p2) ^= mv.f2;
-    //     // *self.pieces_mut(mv.p3) ^= mv.t3;
-    //     // self.turn = self.turn.opposite();
-    // }
 
     pub fn make_moves_old(&self, var: &Variation) -> Board {
         let mut b = self.clone();
@@ -89,159 +38,6 @@ impl Board {
     }
 
     pub fn make_move(&self, m: Move) -> Board {
-        self.make_move_new(m)
-    }
-
-    pub fn make_move_old(&self, m: Move) -> Board {
-        Metrics::incr(Counter::MakeMove);
-        let t = Metrics::timing_start();
-        // either we're moving to an empty square or its a capture
-        debug_assert!(
-            self.validate().is_ok(),
-            "Invalid board before move {m} (board {self:#})"
-        );
-        debug_assert!(
-            m.is_null()
-                || ((self.white() | self.black()) & m.to().as_bb()).is_empty()
-                || m.is_capture(),
-            "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
-            m,
-            self,
-            self.white(),
-            self.black()
-        );
-
-        debug_assert!(
-            m.is_null() || m.from().is_in(self.us()),
-            "from:{from} not our color, move {m} on board {self:L>}",
-            from = m.from()
-        );
-
-        debug_assert!(
-            m.is_null() || self.is_legal_move(m),
-            "Move {m} on board {self:#} is invalid"
-        );
-        let mut b = Board {
-            en_passant: Bitboard::EMPTY,
-            turn: self.turn.opposite(),
-            ply: self.ply,
-            fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
-            half_move_clock: self.half_move_clock + 1,
-            repetition_count: Cell::new(Repeats::default()),
-            threats_to: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            checkers_of: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            pinned: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            discoverer: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            // material: Cell::<_>::new(self.material()),
-            // moves: self.moves.clone(),
-            pieces: self.pieces.clone(),
-            colors: self.colors.clone(),
-            ..*self
-        };
-
-        // board.moves.push(*m);
-        if m.is_null() {
-            let move_hash = Hasher::default().hash_move(m, self);
-            b.hash = self.hash ^ move_hash;
-
-            Metrics::profile(t, Timing::TimingMakeMove);
-
-            debug_assert!(
-                b.hash == Hasher::default().hash_board(&b),
-                "\n{self}.make_move({m}) = {b};\ninconsistent incremental hash {:x} (should be {:x})\n{self:#}\n{m:?}",
-                b.hash,
-                Hasher::default().hash_board(&b),
-            );
-
-            return b;
-        }
-
-        if let Some(c) = m.capture_piece(self) {
-            b.half_move_clock = 0;
-            if m.is_ep_capture(self) {
-                // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.remove_piece(m.capture_square(self).as_bb(), c, b.turn);
-            } else {
-                // regular capture
-                debug_assert!(
-                    c != Piece::King,
-                    "king captured by move {} on board \n{}",
-                    m,
-                    self
-                );
-                b.remove_piece(m.to().as_bb(), c, b.turn);
-            }
-        }
-
-        // clear one bit and set another for the move using xor
-        if !m.is_null() {
-            // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.move_piece(
-                m.from().as_bb(),
-                m.to().as_bb(),
-                m.mover_piece(self),
-                self.turn,
-            );
-        }
-
-        if m.mover_piece(self) == Piece::Pawn {
-            b.half_move_clock = 0;
-            if m.is_pawn_double_push(self) {
-                b.en_passant = m.ep().as_bb();
-            }
-        }
-
-        if let Some(promo) = m.promo() {
-            // fifty clock handled by pawn move above;
-            b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
-            // pawn has already moved
-        }
-
-        // castling *moves*
-        if m.is_castle(self) {
-            // rules say no reset of fifty clock
-            // king move already handled, castling rights handled below, just the rook move
-
-            let (rook_from, rook_to) = m.rook_move_from_to();
-            // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, self.turn)
-        }
-
-        // castling *rights*
-        //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
-        //  if a piece moves FROM the kings squares, both castling rights are lost
-        //  possible with a rook x rook capture that both sides lose castling rights
-        b.castling -= m.castling_rights_lost();
-        // b.castling ^= m.castling_side();
-
-        let move_hash = Hasher::default().hash_move(m, self);
-        b.hash = self.hash ^ move_hash;
-
-        Metrics::profile(t, Timing::TimingMakeMove);
-
-        debug_assert!(
-            b.hash == Hasher::default().hash_board(&b),
-            "\n{self}.make_move({m}) = {b};\ninconsistent incremental hash {:x} (should be {:x})\n{self:#}\n{m:?}",
-            b.hash,
-            Hasher::default().hash_board(&b),
-        );
-
-        b
-    }
-
-    pub fn make_move_new(&self, m: Move) -> Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
@@ -317,10 +113,7 @@ impl Board {
 
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),
-            "\n{}.make_move({}) = \n{} inconsistent incremental hash {:x} (should be {:x})",
-            self,
-            m,
-            b,
+            "\n{self}.make_move({m}) = \n{b} inconsistent incremental hash {:x} (should be {:x})",
             b.hash,
             Hasher::default().hash_board(&b),
         );
@@ -357,19 +150,13 @@ impl Board {
                 b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
             } else {
                 // regular capture
-                debug_assert!(
-                    c != Piece::King,
-                    "king captured by move {} on board \n{}",
-                    m,
-                    b
-                );
+                debug_assert!(c != Piece::King, "king captured by move {m} on board \n{b}");
                 b.remove_piece(m.to().as_bb(), c, b.turn);
             }
         }
 
         // safely set e/p flag now that weve handled the capture
         b.en_passant = en_passant;
-
 
         // castling *moves*
         if m.is_castle(b) {
@@ -600,11 +387,6 @@ mod tests {
 
         let mut prof = PerfProfiler::new("move: perft_make_move".into());
         let mut func = |b: &Board, mv: Move| _ = prof.benchmark(|| b.make_move(mv));
-        let mut b = Catalog::starting_board();
-        Perft::perft_fn(&mut b, 3, &mut func);
-
-        let mut prof = PerfProfiler::new("move: perft_make_move_new".into());
-        let mut func = |b: &Board, mv: Move| _ = prof.benchmark(|| b.make_move_new(mv));
         let mut b = Catalog::starting_board();
         Perft::perft_fn(&mut b, 3, &mut func);
     }

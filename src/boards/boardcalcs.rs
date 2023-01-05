@@ -8,26 +8,26 @@ pub struct BoardCalcs {}
 impl BoardCalcs {
     // no king on board => no attackers
     #[inline]
-    pub fn checkers_of(board: &Board, king_color: Color) -> Bitboard {
-        let us = board.color(king_color);
-        let them = board.color(king_color.opposite());
-        let our_king = board.kings() & us;
+    pub fn checkers_of(bd: &Board, king_color: Color) -> Bitboard {
+        let us = bd.color(king_color);
+        let them = bd.color(king_color.opposite());
+        let our_king = bd.kings() & us;
         // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
         let occ = us | them;
-        Self::attacked_by(our_king, occ, board) & them
+        Self::attacked_by(our_king, occ, bd) & them
     }
 
     #[inline]
-    pub fn pinned_and_discoverers(b: &Board, king_color: Color) -> (Bitboard, Bitboard) {
-        let kings = b.kings() & b.color(king_color);
+    pub fn pinned_and_discoverers(bd: &Board, king_color: Color) -> (Bitboard, Bitboard) {
+        let kings = bd.kings() & bd.color(king_color);
         if kings.is_empty() {
             return Default::default();
         };
-        let color_us = b.color(king_color);
-        let color_them = b.color(king_color.opposite());
+        let color_us = bd.color(king_color);
+        let color_them = bd.color(king_color.opposite());
         let king_sq = kings.square();
 
-        let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, b) & color_them;
+        let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, bd) & color_them;
         let mut pinned = Bitboard::empty();
         let mut discoverers = Bitboard::empty();
         for ch in xray_checkers.squares() {
@@ -43,14 +43,14 @@ impl BoardCalcs {
 
     /// all attacks
     #[inline]
-    pub fn all_attacks_on(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
+    pub fn all_attacks_on(bd: &Board, us: Color, occ: Bitboard) -> Bitboard {
         let opponent = us.opposite();
-        let pawns = board.pawns() & board.color(opponent);
-        let knights = board.knights() & board.color(opponent);
-        let bishops = board.bishops() & board.color(opponent);
-        let rooks = board.rooks() & board.color(opponent);
-        let queens = board.queens() & board.color(opponent);
-        let kings = board.kings() & board.color(opponent);
+        let pawns = bd.pawns() & bd.color(opponent);
+        let knights = bd.knights() & bd.color(opponent);
+        let bishops = bd.bishops() & bd.color(opponent);
+        let rooks = bd.rooks() & bd.color(opponent);
+        let queens = bd.queens() & bd.color(opponent);
+        let kings = bd.kings() & bd.color(opponent);
 
         let attack_gen = PreCalc::default();
         let (east, west) = attack_gen.pawn_attacks_ew(pawns, opponent);
@@ -78,20 +78,20 @@ impl BoardCalcs {
     }
 
     #[inline]
-    pub fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
+    pub fn attacked_by(targets: Bitboard, occ: Bitboard, bd: &Board) -> Bitboard {
         if targets.is_empty() {
             return Bitboard::empty();
         }
-        let pawns = board.pawns();
-        let knights = board.knights();
-        let bishops = board.bishops();
-        let rooks = board.rooks();
-        let queens = board.queens();
-        let kings = board.kings();
+        let pawns = bd.pawns();
+        let knights = bd.knights();
+        let bishops = bd.bishops();
+        let rooks = bd.rooks();
+        let queens = bd.queens();
+        let kings = bd.kings();
 
         let attack_gen = PreCalc::default();
-        let white = attack_gen.pawn_attackers(targets, Color::White) & pawns & board.white();
-        let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & board.black();
+        let white = attack_gen.pawn_attackers(targets, Color::White) & pawns & bd.white();
+        let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & bd.black();
         let mut attackers = white | black;
 
         for each in targets.iter() {
@@ -143,28 +143,9 @@ mod tests {
         let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1").unwrap();
         let bb = BoardCalcs::all_attacks_on(&board, Color::White, board.occupied());
         println!("{}", !bb);
-        assert_eq!(
-            !bb,
-            a1 | b1
-                | d1
-                | e1
-                | f1
-                | h1
-                | c2
-                | d2
-                | e2
-                | g2
-                | h2
-                | e3
-                | a4
-                | e4
-                | a5
-                | e5
-                | a6
-                | b6
-                | h6
-                | g8
-        );
+        let ans = a1 | b1 | d1 | e1 | f1 | h1 | c2 | d2 | e2 | g2;
+        let ans = ans | h2 | e3 | a4 | e4 | a5 | e5 | a6 | b6 | h6 | g8;
+        assert_eq!(!bb, ans);
     }
 
     #[test]
@@ -187,13 +168,11 @@ mod tests {
     #[test]
     fn test_discovered_check() {
         let positions = Catalog::discovered_check();
-        for pos in positions {
-            let discoverers =
-                BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
-            assert_eq!(discoverers, pos.sq().unwrap(), "{}", pos.board());
-            let discoverers =
-                BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
-            assert_eq!(discoverers, pos.sq().unwrap(), "{}", pos.board());
+        for p in positions {
+            let discoverers = BoardCalcs::pinned_and_discoverers(p.board(), p.board().color_us()).1;
+            assert_eq!(discoverers, p.sq().unwrap(), "{}", p.board());
+            let discoverers = BoardCalcs::pinned_and_discoverers(p.board(), p.board().color_us()).1;
+            assert_eq!(discoverers, p.sq().unwrap(), "{}", p.board());
         }
     }
 }

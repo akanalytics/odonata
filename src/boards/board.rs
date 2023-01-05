@@ -935,7 +935,7 @@ mod tests {
         let mut starting_pos = Board::starting_pos();
 
         let mut prof_clone = PerfProfiler::new("board.clone".into());
-        let mut prof_make_move_new = PerfProfiler::new("move: perft_make_move_new".into());
+        let mut prof_make_move = PerfProfiler::new("move: perft_make_move_new".into());
         let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
         let mut prof_is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
@@ -946,7 +946,7 @@ mod tests {
 
         let mut func = |bd: &Board, mv: Move| {
             prof_clone.benchmark(|| black_box(black_box(bd).clone()));
-            prof_make_move_new.benchmark(|| black_box(bd).make_move_new(mv));
+            prof_make_move.benchmark(|| black_box(bd).make_move(mv));
             prof_is_pawn.benchmark(|| black_box(bd).piece(mv.from()) == Some(Piece::Pawn));
             prof_is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
             prof_piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
@@ -959,28 +959,5 @@ mod tests {
             });
         };
         Perft::perft_fn(&mut starting_pos, 3, &mut func);
-
-        //     let mut prof1 = PerfProfiler::new("board.piece".into());
-        // for sq in bd.occupied().squares() {
-        //     prof1.benchmark(|| bd.piece(black_box(sq)));
-        // }
-
-        // let mut prof3 = PerfProfiler::new("board: is_pawn.fast".into());
-        // let mut prof4 = PerfProfiler::new("board: is_pawn".into());
-        // for sq in bd.pawns().squares() {
-        //     prof3.benchmark(|| black_box(sq).is_in(black_box(&bd).pawns()));
-        //     prof4.benchmark(|| black_box(&bd).piece(black_box(sq)).unwrap() == Piece::Pawn);
-        // }
-
-        // piece.at 64, mv.piece_field 61
-        // let e1e2 = bd.parse_san_move("Ke2").unwrap();
-        // let e3e4 = bd.parse_san_move("e4").unwrap();
-        // let c1c3 = bd.parse_san_move("Nc3").unwrap();
-        // prof2.benchmark(|| black_box(e3e4.mover_piece(&bd)));
-        // prof2.benchmark(|| black_box(c1c3.mover_piece(&bd)));
-        // prof2.benchmark(|| black_box(e1e2.mover_piece(&bd)));
-        // for &mv in bd.legal_moves().iter() {
-        //     prof2.benchmark(|| black_box(mv.mover_piece(&bd)));
-        // }
     }
 }
