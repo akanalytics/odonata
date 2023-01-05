@@ -11,8 +11,11 @@ use crate::variation::Variation;
 use std::cell::Cell;
 
 
-impl Board {
 
+
+
+
+impl Board {
     pub fn make_moves_old(&self, var: &Variation) -> Board {
         let mut b = self.clone();
         for mv in var.moves() {
@@ -275,7 +278,6 @@ mod tests {
     use crate::catalog::*;
     use crate::globals::constants::*;
     use crate::infra::profiler::PerfProfiler;
-    use crate::other::Perft;
     use anyhow::Result;
 
     #[test]

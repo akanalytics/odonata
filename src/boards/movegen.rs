@@ -45,23 +45,43 @@ impl Board {
         // if m.mover_piece(self) != self.piece_unchecked(m.from()) {
         //     return false;
         // }
+
         if m.is_capture() {
             debug_assert!(
                 !m.capture_square(self).is_null(),
                 "Move {m} on board {self} has null capture square"
             );
             if !m.capture_square(self).is_in(self.them()) {
+                trace!("Capture sq not opponents piece");
                 return false;
             }
         } else {
             if m.to().is_in(self.occupied()) {
+                trace!("Quiet move has occupied to-sq");
                 return false;
             }
             // if its not a capture, it can't be an e/p capture
             if m.is_ep_capture(self) {
+                trace!("Quiet move is e/p capture");
                 return false;
             }
         }
+
+        let double_push = m.mover_piece(self) == Piece::Pawn
+            && (m.to().index() == m.from().index() + 16 || m.to().index() + 16 == m.from().index());
+        if double_push {
+            if !m.is_pawn_double_push(self) {
+                trace!("Looks like a double push but not flagged as one");
+                return false;
+            }
+        }
+        if m.is_pawn_double_push(self) {
+            if !double_push {
+                trace!("Double push not from a pawn square");
+                return false;
+            }
+        }
+
         // else {
         //     let cap = m.capture_square(self);
         //     if cap.is_null() {
@@ -76,10 +96,12 @@ impl Board {
         if let Some(c) = m.capture_piece(self) {
             if !m.is_ep_capture(self) {
                 if !m.to().is_in(self.them()) {
+                    trace!("Capture has to-sq thats not opponent occupied");
                     return false;
                 }
                 if c != self.piece_unchecked(m.to()) {
                     // FIXME! allow capture of another type of piece?
+                    trace!("Capture has wrong piece");
                     return false;
                 }
             }
@@ -255,6 +277,12 @@ impl Board {
         true
     }
 
+    // #[inline]
+    // pub fn legal_moves_for_each(&self, f: impl FnMut(Piece, Square, Bitboard))  {
+    //     Metrics::incr(Counter::MoveGen);
+    //     Rules::legals_for(self, f);
+    // }
+
     #[inline]
     pub fn legal_moves_into(&self, moves: &mut MoveList) {
         Metrics::incr(Counter::MoveGen);
@@ -278,11 +306,8 @@ mod tests {
     use crate::globals::constants::*;
     use crate::{catalog::*, Color};
     use anyhow::Result;
+    use test_log::test;
     // use crate::movelist::MoveValidator;
-
-    fn _init() {
-        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    }
 
     #[test]
     fn test_is_pseudo_legal_move() {
@@ -555,7 +580,7 @@ mod tests {
         // );
         for &mv in b.legal_moves().iter() {
             assert!(b.is_legal_move(mv));
-            assert!(b.is_pseudo_legal_move(mv));
+            assert!(b.is_pseudo_legal_move(mv), "{mv:#}");
         }
     }
 

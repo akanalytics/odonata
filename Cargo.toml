@@ -100,11 +100,12 @@ opt-level = 2
 split-debuginfo = "off" # for hotspot profiler disassembly
 
 [profile.release]
-codegen-units = 256 
+codegen-units = 256
 debug = 1 #true # allow profiling of the  main executable 
-incremental = false 
+incremental = false
 opt-level = 3 
 split-debuginfo = "unpacked" 
+# lto = true
 
 
 [lib]

@@ -270,12 +270,138 @@ impl fmt::Debug for Move {
 //
 // Promo/capture
 
+// 16 - less 2x6 for from/to = 4 bits = 16 things
+enum MoveFlag {
+    Quiet = 0,
+    RegularCapture,
+
+    PromoKnight,
+    PromoBishop,
+    PromoRook,
+    PromoQueen,
+
+    PromoCaptureKnight,
+    PromoCaptureBishop,
+    PromoCaptureRook,
+    PromoCaptureQueen,
+
+    PawnDoublePush,
+    EnPassantCapture,
+
+    Castle,
+    // 15, 16
+}
+
+impl MoveFlag {
+    const fn from_index(index: u16) -> MoveFlag {
+        use MoveFlag::*;
+        match index {
+            0 => Quiet,
+            1 => RegularCapture,
+
+            2 => PromoKnight,
+            3 => PromoBishop,
+            4 => PromoRook,
+            5 => PromoQueen,
+
+            6 => PromoCaptureKnight,
+            7 => PromoCaptureBishop,
+            8 => PromoCaptureRook,
+            9 => PromoCaptureQueen,
+
+            10 => PawnDoublePush,
+            11 => EnPassantCapture,
+
+            12 => Castle,
+            _ => unreachable!(),
+        }
+    }
+
+    const fn promo_piece(&self) -> Option<Piece> {
+        use MoveFlag::*;
+        match &self {
+            PromoQueen | PromoCaptureQueen => Some(Piece::Queen),
+            PromoKnight | PromoCaptureKnight => Some(Piece::Knight),
+            PromoBishop | PromoCaptureBishop => Some(Piece::Bishop),
+            PromoRook | PromoCaptureRook => Some(Piece::Rook),
+            _ => None,
+        }
+    }
+
+    const fn with_capture(&self) -> Self {
+        use MoveFlag::*;
+        match &self {
+            Quiet => RegularCapture,
+            EnPassantCapture => RegularCapture,
+            RegularCapture => RegularCapture,
+            PromoQueen => PromoCaptureQueen,
+            PromoKnight => PromoCaptureKnight,
+            PromoBishop => PromoCaptureBishop,
+            PromoRook => PromoCaptureRook,
+            _ => unreachable!(),
+        }
+    }
+
+    const fn with_promo(&self, p: Piece) -> Self {
+        use MoveFlag::*;
+        if self.is_capture() {
+            match p {
+                Piece::Queen => PromoCaptureQueen,
+                Piece::Rook => PromoCaptureRook,
+                Piece::Bishop => PromoCaptureBishop,
+                Piece::Knight => PromoCaptureKnight,
+                _ => unreachable!(),
+            }
+        } else {
+            match p {
+                Piece::Queen => PromoQueen,
+                Piece::Rook => PromoRook,
+                Piece::Bishop => PromoBishop,
+                Piece::Knight => PromoKnight,
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    const fn is_capture(&self) -> bool {
+        use MoveFlag::*;
+        match &self {
+            RegularCapture => true,
+            PromoCaptureQueen => true,
+            PromoCaptureKnight => true,
+            PromoCaptureBishop => true,
+            PromoCaptureRook => true,
+            EnPassantCapture => true,
+            _ => false,
+        }
+    }
+
+    const fn is_castling(&self) -> bool {
+        match &self {
+            Self::Castle => true,
+            _ => false,
+        }
+    }
+
+    const fn is_pawn_double_push(&self) -> bool {
+        match &self {
+            Self::PawnDoublePush => true,
+            _ => false,
+        }
+    }
+
+    const fn is_en_passant_capture(&self) -> bool {
+        match &self {
+            Self::EnPassantCapture => true,
+            _ => false,
+        }
+    }
+}
+
 impl Move {
     const OFFSET_FROM: i32 = 0;
     const OFFSET_TO: i32 = 6;
-    const OFFSET_IS_CAPTURE: i32 = 12; 
-    const OFFSET_PROMO: i32 = 13;      // 13, 14, 15
-    // const OFFSET_CASTLE: i32 = 28;
+    const OFFSET_FLAG: i32 = 12;
 
     // from = 6 bits
     // to = 6 bits
@@ -367,25 +493,45 @@ impl Move {
     }
 
     #[inline]
+    const fn flag(&self) -> MoveFlag {
+        MoveFlag::from_index(self.bits >> Self::OFFSET_FLAG)
+    }
+
+    #[inline]
+    fn set_flag(&mut self, flag: MoveFlag) {
+        self.bits &= !(15 << Self::OFFSET_FLAG);
+        self.bits |= (flag as u16) << Self::OFFSET_FLAG;
+    }
+
+    #[inline]
     pub fn set_capture(&mut self, _capture: Piece) {
-        self.bits |= 1 << Self::OFFSET_IS_CAPTURE;
+        self.set_flag(self.flag().with_capture());
         // self.bits &= !(7 << Self::OFFSET_CAPTURE);
         // self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
     }
 
     #[inline]
     pub fn set_promo(&mut self, promo: Piece) {
-        self.bits += (promo.index() as UMOVE) << Self::OFFSET_PROMO;
+        self.set_flag(self.flag().with_promo(promo));
     }
 
     #[inline]
     pub fn set_en_passant(&mut self, _ep_sq: Square) {
+        self.set_flag(MoveFlag::EnPassantCapture);
+        // self.bits &= !(127 << Self::OFFSET_EP);
+        // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
+    }
+
+    #[inline]
+    pub fn set_double_push(&mut self, _ep_sq: Square) {
+        self.set_flag(MoveFlag::PawnDoublePush);
         // self.bits &= !(127 << Self::OFFSET_EP);
         // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
     }
 
     #[inline]
     pub fn set_castling_side(&mut self, _castle_side: CastlingRights) {
+        self.set_flag(MoveFlag::Castle);
         // self.bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
     }
 
@@ -459,7 +605,7 @@ impl Move {
 
     #[inline]
     pub const fn is_promo(&self) -> bool {
-        (self.bits >> Self::OFFSET_PROMO) & 7 != 0
+        self.flag().promo_piece().is_some()
     }
 
     #[inline]
@@ -479,10 +625,7 @@ impl Move {
 
     #[inline]
     pub const fn promo(&self) -> Option<Piece> {
-        match (self.bits >> Self::OFFSET_PROMO) & 7 {
-            0 => None,
-            i => Some(Piece::from_index(i as usize)),
-        }
+        self.flag().promo_piece()
     }
 
     #[inline]
@@ -505,13 +648,13 @@ impl Move {
 
     #[inline]
     pub fn is_capture(&self) -> bool {
-        self.bits & (1 << Self::OFFSET_IS_CAPTURE) > 0
-        // self.capture_piece(b).is_some()
+        self.flag().is_capture()
     }
 
     #[inline]
-    pub fn is_castle(&self, b: &Board) -> bool {
-        !self.castling_side(b).is_empty()
+    pub fn is_castle(&self, _b: &Board) -> bool {
+        self.flag().is_castling()
+        // !self.castling_side(b).is_empty()
     }
 
     #[inline]
@@ -526,15 +669,17 @@ impl Move {
     }
 
     #[inline]
-    pub fn is_ep_capture(&self, b: &Board) -> bool {
-        !self.is_null() && self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
+    pub fn is_ep_capture(&self, _b: &Board) -> bool {
+        self.flag().is_en_passant_capture()
+        // !self.is_null() && self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
     }
 
     #[inline]
-    pub fn is_pawn_double_push(&self, b: &Board) -> bool {
-        self.mover_piece(b) == Piece::Pawn
-            && (self.to().index() == self.from().index() + 16
-                || self.to().index() + 16 == self.from().index())
+    pub fn is_pawn_double_push(&self, _b: &Board) -> bool {
+        self.flag().is_pawn_double_push()
+        // self.mover_piece(b) == Piece::Pawn
+        //     && (self.to().index() == self.from().index() + 16
+        //         || self.to().index() + 16 == self.from().index())
     }
 
     #[inline]
@@ -590,7 +735,7 @@ impl Move {
     #[inline]
     pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
         let mut m = Move::new_quiet(Piece::Pawn, from, to);
-        m.set_en_passant(ep);
+        m.set_double_push(ep);
         m
     }
 
@@ -674,6 +819,7 @@ impl fmt::Display for Move {
 mod tests {
     use super::*;
     use crate::{catalog::Catalog, other::Perft, Position};
+    use test_log::test;
     // use crate::movelist::MoveValidator;
 
     #[test]

@@ -99,6 +99,19 @@ impl FromStr for Board {
 }
 
 impl Board {
+    fn clone_from2(&mut self, src: &Board) {
+        *self = Self {
+            repetition_count: self.repetition_count.clone(),
+            threats_to: src.threats_to.clone(),
+            checkers_of: src.checkers_of.clone(),
+            pinned: src.pinned.clone(),
+            discoverer: src.discoverer.clone(),
+            ..*src
+        }
+    }
+}
+
+impl Board {
     /// white to move, no castling rights or en passant
     pub fn new_empty() -> Board {
         Default::default()
@@ -940,6 +953,7 @@ mod tests {
         let mut starting_pos = Board::starting_pos();
 
         let mut prof_clone = PerfProfiler::new("board.clone".into());
+        let mut prof_clone_from = PerfProfiler::new("board.clone_from".into());
         let mut prof_make_move = PerfProfiler::new("move: perft_make_move".into());
         let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
@@ -949,8 +963,10 @@ mod tests {
         let mut prof_piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
         let mut prof_mover_piece = PerfProfiler::new("move: mover_piece".into());
 
+        let mut dest = Board::starting_pos();
         let mut func = |bd: &Board, mv: Move| {
             prof_clone.benchmark(|| black_box(black_box(bd).clone()));
+            prof_clone_from.benchmark(|| dest.clone_from(black_box(&bd)));
             prof_make_move.benchmark(|| black_box(bd).make_move(mv));
             prof_is_pawn.benchmark(|| black_box(bd).piece(mv.from()) == Some(Piece::Pawn));
             prof_is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));

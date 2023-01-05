@@ -12,9 +12,9 @@ impl BoardCalcs {
         let us = bd.color(king_color);
         let them = bd.color(king_color.opposite());
         let our_king = bd.kings() & us;
-        if our_king.is_empty() {
-            return Bitboard::empty();
-        };
+        // if our_king.is_empty() {
+        //     return Bitboard::empty();
+        // };
         // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
         let occ = us | them;
         Self::attacked_by(our_king, occ, bd) & them
@@ -31,6 +31,8 @@ impl BoardCalcs {
         let king_sq = kings.square();
 
         let pc = PreCalc::default();
+        // let xray_sliding_checkers = Self::attacked_by(kings, Bitboard::EMPTY, bd) & color_them;
+
         let xray_sliding_checkers = color_them
             & (pc.bishop_xray_attacks(king_sq) & bd.bishops_or_queens()
                 | pc.rook_xray_attacks(king_sq) & bd.rooks_or_queens());
@@ -162,7 +164,7 @@ mod tests {
 
     #[test]
     fn bench_pins_and_disc() {
-        let mut prof = PerfProfiler::new("bench_pinned_and_disc".into());
+        let mut prof = PerfProfiler::new("bench_pins_and_disc".into());
         for pos in Catalog::win_at_chess() {
             let bd = pos.board();
             prof.benchmark(|| BoardCalcs::pinned_and_discoverers(black_box(bd), bd.color_us()));
