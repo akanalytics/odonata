@@ -202,19 +202,8 @@ impl Board {
             return Move::new_capture(mover, from, to, captured);
         }
         // diagonal pawn capture yet to-square is empty
-        if mover == Piece::Pawn && from.file() != to.file() {
-            let file_x = to.file_index() as u32;
-            let rank_y = from.rank_index() as u32;
-            return Move::new_ep_capture(from, to, Square::from_xy(file_x, rank_y));
-        }
-        if mover == Piece::Pawn
-            && (from.index() + 16 == to.index() || to.index() + 16 == from.index())
-        {
-            return Move::new_double_push(
-                from,
-                to,
-                Square::from_u32((from.index() as u32 + to.index() as u32) / 2),
-            );
+        if mover == Piece::Pawn {
+            return Move::new_pawn_move(from, to, self);
         }
         if from == to {
             return Move::new_null();
@@ -271,24 +260,25 @@ impl fmt::Debug for Move {
 // Promo/capture
 
 // 16 - less 2x6 for from/to = 4 bits = 16 things
+#[derive(Copy, Clone)]
 enum MoveFlag {
     Quiet = 0,
-    RegularCapture,
-
+    Castle,
     PromoKnight,
     PromoBishop,
     PromoRook,
     PromoQueen,
+    PawnDoublePush,
+    Unused1,
 
-    PromoCaptureKnight,
+    PromoCaptureKnight = 8,
     PromoCaptureBishop,
     PromoCaptureRook,
     PromoCaptureQueen,
-
-    PawnDoublePush,
+    RegularCapture,
     EnPassantCapture,
-
-    Castle,
+    Unused2,
+    Unused3,
     // 15, 16
 }
 
@@ -297,27 +287,32 @@ impl MoveFlag {
         use MoveFlag::*;
         match index {
             0 => Quiet,
-            1 => RegularCapture,
-
+            1 => Castle,
             2 => PromoKnight,
             3 => PromoBishop,
             4 => PromoRook,
             5 => PromoQueen,
+            6 => PawnDoublePush,
+            7 => Unused1,
 
-            6 => PromoCaptureKnight,
-            7 => PromoCaptureBishop,
-            8 => PromoCaptureRook,
-            9 => PromoCaptureQueen,
+            8 => PromoCaptureKnight,
+            9 => PromoCaptureBishop,
+            10 => PromoCaptureRook,
+            11 => PromoCaptureQueen,
+            12 => RegularCapture,
+            13 => EnPassantCapture,
+            14 => Unused2,
+            15 => Unused3,
 
-            10 => PawnDoublePush,
-            11 => EnPassantCapture,
-
-            12 => Castle,
             _ => unreachable!(),
         }
     }
 
-    const fn promo_piece(&self) -> Option<Piece> {
+    const fn index(self) -> u16 {
+        self as u16
+    }
+
+    const fn promo_piece(self) -> Option<Piece> {
         use MoveFlag::*;
         match &self {
             PromoQueen | PromoCaptureQueen => Some(Piece::Queen),
@@ -328,7 +323,7 @@ impl MoveFlag {
         }
     }
 
-    const fn with_capture(&self) -> Self {
+    const fn with_capture(self) -> Self {
         use MoveFlag::*;
         match &self {
             Quiet => RegularCapture,
@@ -342,7 +337,7 @@ impl MoveFlag {
         }
     }
 
-    const fn with_promo(&self, p: Piece) -> Self {
+    const fn with_promo(self, p: Piece) -> Self {
         use MoveFlag::*;
         if self.is_capture() {
             match p {
@@ -363,7 +358,7 @@ impl MoveFlag {
         }
     }
 
-    const fn is_capture(&self) -> bool {
+    const fn is_capture(self) -> bool {
         use MoveFlag::*;
         match &self {
             RegularCapture => true,
@@ -376,21 +371,21 @@ impl MoveFlag {
         }
     }
 
-    const fn is_castling(&self) -> bool {
+    const fn is_castling(self) -> bool {
         match &self {
             Self::Castle => true,
             _ => false,
         }
     }
 
-    const fn is_pawn_double_push(&self) -> bool {
+    const fn is_pawn_double_push(self) -> bool {
         match &self {
             Self::PawnDoublePush => true,
             _ => false,
         }
     }
 
-    const fn is_en_passant_capture(&self) -> bool {
+    const fn is_en_passant_capture(self) -> bool {
         match &self {
             Self::EnPassantCapture => true,
             _ => false,
@@ -500,7 +495,7 @@ impl Move {
     #[inline]
     fn set_flag(&mut self, flag: MoveFlag) {
         self.bits &= !(15 << Self::OFFSET_FLAG);
-        self.bits |= (flag as u16) << Self::OFFSET_FLAG;
+        self.bits |= flag.index() << Self::OFFSET_FLAG;
     }
 
     #[inline]
@@ -516,7 +511,7 @@ impl Move {
     }
 
     #[inline]
-    pub fn set_en_passant(&mut self, _ep_sq: Square) {
+    pub fn set_en_passant(&mut self) {
         self.set_flag(MoveFlag::EnPassantCapture);
         // self.bits &= !(127 << Self::OFFSET_EP);
         // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
@@ -648,7 +643,7 @@ impl Move {
 
     #[inline]
     pub fn is_capture(&self) -> bool {
-        self.flag().is_capture()
+        (self.flag().index() & 8) != 0
     }
 
     #[inline]
@@ -715,15 +710,25 @@ impl Move {
     }
 
     #[inline]
-    pub fn new_pawn_move(from: Square, to: Square, b: &Board) -> Move {
-        if to.is_in(b.them()) {
-            let cap = b.piece_unchecked(to);
-            Move::new_capture(Piece::Pawn, from, to, cap)
+    pub fn new_pawn_move(from: Square, to: Square, bd: &Board) -> Move {
+        if to.file() != from.file() {
+            if bd.is_en_passant_square(to) {
+                let mut m = Move::new_quiet(Piece::Pawn, from, to);
+                m.set_capture(Piece::Pawn);
+                m.set_en_passant();
+                m
+            } else {
+                // let cap = Piece::Pawn; //bd.piece_unchecked(to);
+                let cap = bd
+                    .piece(to)
+                    .unwrap_or_else(|| panic!("No piece on board {bd} for from:{from} to:{to}"));
+                Move::new_capture(Piece::Pawn, from, to, cap)
+            }
         } else {
             // its a push
-            let behind = to.shift(b.color_us().backward());
+            let behind = to.shift(bd.color_us().backward());
             let ep = behind;
-            if behind.as_bb().disjoint(b.pawns()) {
+            if behind.as_bb().disjoint(bd.pawns()) {
                 // no one behind us => double push
                 Move::new_double_push(from, to, ep)
             } else {
@@ -747,10 +752,10 @@ impl Move {
     }
 
     #[inline]
-    pub fn new_ep_capture(from: Square, to: Square, captured_sq: Square) -> Move {
+    pub fn new_ep_capture(from: Square, to: Square, _captured_sq: Square) -> Move {
         let mut m = Move::new_quiet(Piece::Pawn, from, to);
         m.set_capture(Piece::Pawn);
-        m.set_en_passant(captured_sq);
+        m.set_en_passant();
         m
     }
 
@@ -818,7 +823,12 @@ impl fmt::Display for Move {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{catalog::Catalog, other::Perft, Position};
+    use crate::{
+        catalog::Catalog,
+        infra::{black_box, profiler::PerfProfiler},
+        other::Perft,
+        Position,
+    };
     use test_log::test;
     // use crate::movelist::MoveValidator;
 
@@ -844,6 +854,45 @@ mod tests {
         .clone();
         assert_eq!(Move::parse_uci("a7a8q", &b)?.to_uci(), "a7a8q");
         Ok(())
+    }
+
+    #[test]
+    fn bench_move() {
+        let mut starting_pos = Catalog::perft_kiwipete().0;
+
+        let mut clone = PerfProfiler::new("move: clone".into());
+        let mut from = PerfProfiler::new("move: from".into());
+        let mut to = PerfProfiler::new("move: to".into());
+        let mut from_index = PerfProfiler::new("move: from_index".into());
+        let mut capture_sq = PerfProfiler::new("move: capture_sq".into());
+        let mut mover = PerfProfiler::new("move: mover".into());
+        let mut capture_piece = PerfProfiler::new("move: capture_piece".into());
+        let mut is_ep = PerfProfiler::new("move: is_ep".into());
+        let mut is_capture = PerfProfiler::new("move: is_capture".into());
+        let mut is_castle = PerfProfiler::new("move: is_castle".into());
+        let mut is_double_push = PerfProfiler::new("move: is_double_push".into());
+        let mut new_pawn_move = PerfProfiler::new("move: new_pawn_move".into());
+
+        let mut func = |bd: &Board, mv: Move| {
+            let index = mv.flag().index();
+            clone.benchmark(|| black_box(mv).clone());
+            from.benchmark(|| black_box(mv).from());
+            to.benchmark(|| black_box(mv).to());
+            from_index.benchmark(|| MoveFlag::from_index(black_box(index)));
+            capture_sq.benchmark(|| black_box(mv).capture_square(black_box(bd)));
+            mover.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
+            capture_piece.benchmark(|| black_box(mv).capture_piece(black_box(bd)));
+            is_ep.benchmark(|| black_box(mv).is_ep_capture(black_box(bd)));
+            is_capture.benchmark(|| black_box(mv).is_capture());
+            is_castle.benchmark(|| black_box(mv).is_castle(black_box(bd)));
+            is_double_push.benchmark(|| black_box(mv).is_pawn_double_push(black_box(bd)));
+            if mv.from().is_in(bd.pawns()) {
+                new_pawn_move.benchmark(|| {
+                    Move::new_pawn_move(black_box(mv).from(), black_box(mv).to(), black_box(bd))
+                });
+            }
+        };
+        Perft::perft_fn(&mut starting_pos, 2, &mut func);
     }
 
     #[test]

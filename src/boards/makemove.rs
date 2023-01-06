@@ -383,9 +383,9 @@ mod tests {
     fn bench_make_move() {
         let mut b = Catalog::starting_board();
         let mv = b.parse_san_move("e4").unwrap();
-        PerfProfiler::new("move: apply_move".to_string()).benchmark(|| _ = b.apply_move(mv));
+        PerfProfiler::new("movegen: apply_move".to_string()).benchmark(|| _ = b.apply_move(mv));
         let b = Catalog::starting_board();
-        PerfProfiler::new("move: make_move".to_string()).benchmark(|| b.make_move(mv));
+        PerfProfiler::new("movegen: make_move".to_string()).benchmark(|| b.make_move(mv));
     }
 
     #[test]

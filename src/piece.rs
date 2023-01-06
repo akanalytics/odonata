@@ -51,8 +51,9 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     [&choices.white, &choices.black][c as usize]
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
+    #[default]
     #[serde(rename = "w")]
     White = 0,
 
@@ -81,12 +82,6 @@ impl<T> std::ops::IndexMut<Color> for [T] {
     }
 }
 
-impl Default for Color {
-    #[inline]
-    fn default() -> Self {
-        Color::White
-    }
-}
 
 impl Color {
     pub const ALL: [Color; 2] = [Color::White, Color::Black];

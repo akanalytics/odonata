@@ -332,6 +332,11 @@ impl Board {
     }
 
     #[inline]
+    pub fn is_en_passant_square(&self, sq: Square) -> bool {
+        sq.is_in(self.en_passant)
+    }
+
+        #[inline]
     pub fn en_passant_square(&self) -> Option<Square> {
         if self.en_passant().is_empty() {
             None
@@ -954,14 +959,14 @@ mod tests {
 
         let mut prof_clone = PerfProfiler::new("board.clone".into());
         let mut prof_clone_from = PerfProfiler::new("board.clone_from".into());
-        let mut prof_make_move = PerfProfiler::new("move: perft_make_move".into());
+        let mut prof_make_move = PerfProfiler::new("movegen: perft_make_move".into());
         let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
         let mut prof_is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
         let mut prof_piece_is = PerfProfiler::new("board: is_occupied_by".into());
         let mut prof_piece_at = PerfProfiler::new("board: piece_at".into());
         let mut prof_piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
-        let mut prof_mover_piece = PerfProfiler::new("move: mover_piece".into());
+        let mut prof_mover_piece = PerfProfiler::new("move: mover_piece (board)".into());
 
         let mut dest = Board::starting_pos();
         let mut func = |bd: &Board, mv: Move| {
