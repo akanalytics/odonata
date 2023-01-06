@@ -142,7 +142,7 @@ impl Board {
         if mover == Piece::Pawn {
             b.half_move_clock = 0;
             if m.is_pawn_double_push(b) {
-                en_passant = m.ep().as_bb();
+                en_passant = m.double_push_en_passant_square().as_bb();
             }
         }
 
@@ -237,7 +237,7 @@ impl Board {
             if m.mover_piece(b) == Piece::Pawn {
                 b.half_move_clock = 0;
                 if m.is_pawn_double_push(b) {
-                    b.en_passant = m.ep().as_bb();
+                    b.en_passant = m.double_push_en_passant_square().as_bb();
                 }
             }
 

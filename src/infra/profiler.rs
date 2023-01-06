@@ -148,7 +148,7 @@ impl PerfProfiler {
     #[inline]
     pub fn new(name: String) -> Self {
         let benchmark_iters = if let Ok(s) = std::env::var("RUST_BENCH") {
-            s.parse().expect("RUST_BENCH not an integer")
+            s.parse().expect(&format!("RUST_BENCH not an integer: {s}"))
         } else {
             1
         };

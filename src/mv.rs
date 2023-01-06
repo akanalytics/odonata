@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 use std::str::FromStr;
 
-
 #[derive(Default, Copy, Clone, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub struct BareMove {
     pub from: Square,
@@ -65,7 +64,6 @@ impl BareMove {
         self.from.is_in(b.kings()) && CastlingRights::is_castling(self.from, self.to)
     }
 }
-
 
 impl FromStr for BareMove {
     type Err = anyhow::Error;
@@ -201,7 +199,6 @@ impl fmt::Debug for Move {
             .finish()
     }
 }
-
 
 // 16 - less 2x6 for from/to = 4 bits = 16 things
 #[derive(Copy, Clone)]
@@ -469,7 +466,6 @@ impl Move {
         }
     }
 
-
     pub fn parse_uci(s: &str, b: &Board) -> Result<Self> {
         if s.trim() == "0000" {
             return Ok(Self::new_null());
@@ -519,8 +515,15 @@ impl Move {
     }
 
     #[inline]
-    pub const fn ep(&self) -> Square {
+    pub const fn double_push_en_passant_square(&self) -> Square {
         Square::from_u32((self.from().index() + self.to().index()) as u32 / 2)
+    }
+
+
+    #[inline]
+    pub fn is_ep_capture(&self, _b: &Board) -> bool {
+        self.flag().is_en_passant_capture()
+        // !self.is_null() && self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
     }
 
     #[inline]
@@ -540,7 +543,7 @@ impl Move {
 
     #[inline]
     pub const fn is_null(&self) -> bool {
-        self.to().index() == self.from().index()
+        self.to().index() == self.from().index()  // partial.eq isn't const
     }
 
     #[inline]
@@ -609,12 +612,6 @@ impl Move {
     }
 
     #[inline]
-    pub fn is_ep_capture(&self, _b: &Board) -> bool {
-        self.flag().is_en_passant_capture()
-        // !self.is_null() && self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
-    }
-
-    #[inline]
     pub fn is_pawn_double_push(&self, _b: &Board) -> bool {
         self.flag().is_pawn_double_push()
         // self.mover_piece(b) == Piece::Pawn
@@ -675,8 +672,7 @@ impl Move {
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_uci())?;
-        if f.alternate() {
-        }
+        if f.alternate() {}
         Ok(())
     }
 }
@@ -733,6 +729,7 @@ mod tests {
         let mut is_castle = PerfProfiler::new("move: is_castle".into());
         let mut is_double_push = PerfProfiler::new("move: is_double_push".into());
         let mut new_pawn_move = PerfProfiler::new("move: new_pawn_move".into());
+        let mut ep_square = PerfProfiler::new("move: en_passant_square".into());
 
         let mut func = |bd: &Board, mv: Move| {
             let index = mv.flag().index();
@@ -747,6 +744,7 @@ mod tests {
             is_capture.benchmark(|| black_box(mv).is_capture());
             is_castle.benchmark(|| black_box(mv).is_castle(black_box(bd)));
             is_double_push.benchmark(|| black_box(mv).is_pawn_double_push(black_box(bd)));
+            ep_square.benchmark(|| black_box(mv).double_push_en_passant_square());
             if mv.from().is_in(bd.pawns()) {
                 new_pawn_move.benchmark(|| {
                     Move::new_pawn_move(black_box(mv).from(), black_box(mv).to(), black_box(bd))
@@ -784,8 +782,12 @@ mod tests {
         // assert_eq!(move_a1b2.mover_piece(), Piece::Bishop);
         assert_eq!(move_a1b2.is_promo(), false);
 
-        let capture_a1b2 =
-            Move::new_capture(Piece::Bishop, a1.square(), b2.square(), &Board::starting_pos());
+        let capture_a1b2 = Move::new_capture(
+            Piece::Bishop,
+            a1.square(),
+            b2.square(),
+            &Board::starting_pos(),
+        );
         assert_eq!(capture_a1b2.is_capture(), true);
 
         // ep cant be called on castling move
@@ -916,33 +918,31 @@ mod tests {
     }
 }
 
+// /// Ng1-f3 Nb8-c6
+// /// Bb5xNc6 d7xBc6
+// /// d2-d3 Bf8-b4+
+// /// 0-0 Bb4xNc3
+// pub fn parse_lan(mut s: &str) -> Result<Self> {
+//     if s == "0000" {
+//         return Ok(Move::new_null());
+//     }
+//     let gives_check = if let Some(t) = s.strip_suffix("+") {
+//         s = t;
+//         true
+//     } else {
+//         false
+//     };
+//     let mover = if let Some(t) = s.strip_prefix(['P', 'N', 'B', 'R', 'Q', 'K']) {
+//         s = t;
+//         Piece::from_char(s.chars().next().unwrap())?
+//     } else {
+//         Piece::Pawn
+//     };
 
-    // /// Ng1-f3 Nb8-c6
-    // /// Bb5xNc6 d7xBc6
-    // /// d2-d3 Bf8-b4+
-    // /// 0-0 Bb4xNc3
-    // pub fn parse_lan(mut s: &str) -> Result<Self> {
-    //     if s == "0000" {
-    //         return Ok(Move::new_null());
-    //     }
-    //     let gives_check = if let Some(t) = s.strip_suffix("+") {
-    //         s = t;
-    //         true
-    //     } else {
-    //         false
-    //     };
-    //     let mover = if let Some(t) = s.strip_prefix(['P', 'N', 'B', 'R', 'Q', 'K']) {
-    //         s = t;
-    //         Piece::from_char(s.chars().next().unwrap())?
-    //     } else {
-    //         Piece::Pawn
-    //     };
+//     Err("")
+// }
 
-    //     Err("")
-    // }
-
-
-    // #[enumflags2::bitflags]
+// #[enumflags2::bitflags]
 // #[repr(u32)]
 // #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
 // pub enum MoveType {

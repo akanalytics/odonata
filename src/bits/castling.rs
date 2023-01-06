@@ -57,6 +57,12 @@ impl CastlingRights {
 
     #[inline]
     pub const fn len() -> usize {
+        // TODO: Valgrind crashes with this as 4 ??
+        // vex amd64->IR: unhandled instruction bytes: 0xF2 0xF 0x78 0xC0 0x8 0x8 0xC5 0xF9 0xDB 0x5
+        // vex amd64->IR:   REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
+        // vex amd64->IR:   VEX=0 VEX.L=0 VEX.nVVVV=0x0 ESC=0F
+        // vex amd64->IR:   PFX.66=0 PFX.F2=1 PFX.F3=0
+        // ==1020316== valgrind: Unrecognised instruction at address 0x573e91.
         4
     }
 
@@ -66,13 +72,13 @@ impl CastlingRights {
     // }
 
     #[inline]
-    pub fn index(&self) -> usize {
-        match *self {
+    pub fn index(self) -> usize {
+        match self {
             Self::WHITE_KING => 0,
             Self::WHITE_QUEEN => 1,
             Self::BLACK_KING => 2,
             Self::BLACK_QUEEN => 3,
-            _ => panic!("Castling index called on {}", self),
+            _ => unreachable!("invalid castling index"),
         }
     }
 

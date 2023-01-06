@@ -106,6 +106,7 @@ incremental = false
 opt-level = 3 
 split-debuginfo = "unpacked" 
 # lto = true
+# debug-assertions = true
 
 
 [lib]
