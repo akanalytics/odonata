@@ -227,7 +227,7 @@ impl RunQs<'_> {
         let capture_only = |mv: &&Move| in_check || mv.is_capture();
         let incl_promo = |mv: &&Move| in_check || mv.is_capture() || mv.is_promo();
         let some_promos =
-            |mv: &&Move| in_check || mv.is_capture() || mv.promo() == self.config.promo_piece;
+            |mv: &&Move| in_check || mv.is_capture() || mv.promo_piece() == self.config.promo_piece;
 
         Metrics::incr_node(&n, Event::NodeQsInterior);
 

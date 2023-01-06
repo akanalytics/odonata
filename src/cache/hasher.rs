@@ -219,7 +219,7 @@ impl Hasher {
             // );
             hash ^= self.ep[m.ep().file_index()];
         }
-        if let Some(promo) = m.promo() {
+        if let Some(promo) = m.promo_piece() {
             hash ^= self.get(us, Piece::Pawn, m.to());
             hash ^= self.get(us, promo, m.to());
         }

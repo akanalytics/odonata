@@ -176,7 +176,7 @@ impl Board {
 
     pub fn augment_move(&self, mv: BareMove) -> Move {
         if mv.is_null() {
-            return Move::NULL_MOVE;
+            return Move::new_null();
         }
         let from = mv.from;
         let to = mv.to;
@@ -192,14 +192,14 @@ impl Board {
             return Move::new_castle(from, to, rights);
         }
         if let Some(promo) = mv.promo {
-            if let Some(capture) = capture_piece {
-                return Move::new_promo_capture(from, to, promo, capture);
+            if let Some(_capture) = capture_piece {
+                return Move::new_promo_capture(from, to, promo, self);
             } else {
                 return Move::new_promo(from, to, promo);
             }
         }
-        if let Some(captured) = capture_piece {
-            return Move::new_capture(mover, from, to, captured);
+        if let Some(_captured) = capture_piece {
+            return Move::new_capture(mover, from, to, self);
         }
         // diagonal pawn capture yet to-square is empty
         if mover == Piece::Pawn {
@@ -228,7 +228,7 @@ impl fmt::Debug for Move {
             .field("to", &self.to())
             .field("is_capture", &self.is_capture())
             // .field("castling", &self.castling_side())
-            .field("promo", &self.promo())
+            .field("promo", &self.promo_piece())
             // .field("ep", &self.ep())
             .field(
                 "bits",
@@ -314,7 +314,7 @@ impl MoveFlag {
 
     const fn promo_piece(self) -> Option<Piece> {
         use MoveFlag::*;
-        match &self {
+        match self {
             PromoQueen | PromoCaptureQueen => Some(Piece::Queen),
             PromoKnight | PromoCaptureKnight => Some(Piece::Knight),
             PromoBishop | PromoCaptureBishop => Some(Piece::Bishop),
@@ -325,7 +325,7 @@ impl MoveFlag {
 
     const fn with_capture(self) -> Self {
         use MoveFlag::*;
-        match &self {
+        match self {
             Quiet => RegularCapture,
             EnPassantCapture => RegularCapture,
             RegularCapture => RegularCapture,
@@ -339,22 +339,18 @@ impl MoveFlag {
 
     const fn with_promo(self, p: Piece) -> Self {
         use MoveFlag::*;
+
+        let flag = match p {
+            Piece::Queen => PromoQueen,
+            Piece::Rook => PromoRook,
+            Piece::Bishop => PromoBishop,
+            Piece::Knight => PromoKnight,
+            _ => unreachable!(),
+        };
         if self.is_capture() {
-            match p {
-                Piece::Queen => PromoCaptureQueen,
-                Piece::Rook => PromoCaptureRook,
-                Piece::Bishop => PromoCaptureBishop,
-                Piece::Knight => PromoCaptureKnight,
-                _ => unreachable!(),
-            }
+            flag.with_capture()
         } else {
-            match p {
-                Piece::Queen => PromoQueen,
-                Piece::Rook => PromoRook,
-                Piece::Bishop => PromoBishop,
-                Piece::Knight => PromoKnight,
-                _ => unreachable!(),
-            }
+            flag
         }
     }
 
@@ -394,21 +390,138 @@ impl MoveFlag {
 }
 
 impl Move {
+    #[inline]
+    pub const fn new_quiet(_mover: Piece, from: Square, to: Square) -> Move {
+        let mut bits = (from.index() as UMOVE & 63) << Move::OFFSET_FROM;
+        bits += (to.index() as UMOVE & 63) << Move::OFFSET_TO;
+        // bits += (mover.index() as u32) << Move::OFFSET_MOVER;
+        // bits += (Square::null().index() as u32 & 127) << Move::OFFSET_EP;
+        // bits += 7 << Move::OFFSET_CAPTURE;
+        Move { bits }
+    }
+
+    pub const NULL_MOVE: Move = Self::new_quiet(Piece::Pawn, Square::A1, Square::A1);
+
+    #[inline]
+    pub fn new_null() -> Move {
+        Self::NULL_MOVE
+    }
+
+    #[inline]
+    pub fn new_pawn_move(from: Square, to: Square, bd: &Board) -> Move {
+        if to.file() != from.file() {
+            if bd.is_en_passant_square(to) {
+                let mut m = Self::new_quiet(Piece::Pawn, from, to);
+                m.set_capture(bd);
+                m.set_en_passant();
+                m
+            } else {
+                // let cap = Piece::Pawn; //bd.piece_unchecked(to);
+                Self::new_capture(Piece::Pawn, from, to, bd)
+            }
+        } else {
+            // its a push
+            let behind = to.shift(bd.color_us().backward());
+            let ep = behind;
+            if behind.as_bb().disjoint(bd.pawns()) {
+                // no one behind us => double push
+                Self::new_double_push(from, to, ep)
+            } else {
+                Self::new_quiet(Piece::Pawn, from, to)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
+        let mut m = Self::new_quiet(Piece::Pawn, from, to);
+        m.set_double_push(ep);
+        m
+    }
+
+    #[inline]
+    pub fn new_capture(p: Piece, from: Square, to: Square, bd: &Board) -> Move {
+        let mut m = Self::new_quiet(p, from, to);
+        m.set_capture(bd);
+        m
+    }
+
+    #[inline]
+    pub fn new_ep_capture(from: Square, to: Square, bd: &Board) -> Move {
+        let mut m = Self::new_quiet(Piece::Pawn, from, to);
+        m.set_capture(bd);
+        m.set_en_passant();
+        m
+    }
+
+    #[inline]
+    pub fn new_promo(from: Square, to: Square, promo: Piece) -> Move {
+        let mut m = Self::new_quiet(Piece::Pawn, from, to);
+        m.set_promo(promo);
+        m
+    }
+
+    #[inline]
+    pub fn new_promo_capture(from: Square, to: Square, promo: Piece, bd: &Board) -> Move {
+        let mut m = Self::new_quiet(Piece::Pawn, from, to);
+        m.set_promo(promo);
+        m.set_capture(bd);
+        m
+    }
+
+    #[inline]
+    pub fn new_castle(king_from: Square, king_to: Square, castling_side: CastlingRights) -> Move {
+        let mut m = Self::new_quiet(Piece::King, king_from, king_to);
+        m.set_castling_side(castling_side);
+        m
+    }
+
+    #[inline]
+    fn set_flag(&mut self, flag: MoveFlag) {
+        self.bits &= !(15 << Move::OFFSET_FLAG);
+        self.bits |= flag.index() << Move::OFFSET_FLAG;
+    }
+
+    #[inline]
+    pub fn set_capture(&mut self, _bd: &Board) {
+        // let cap = bd
+        //     .piece(to)
+        //     .unwrap_or_else(|| panic!("No piece on board {bd} for from:{from} to:{to}"));
+        self.set_flag(self.flag().with_capture());
+    }
+
+    #[inline]
+    pub fn set_promo(&mut self, promo: Piece) {
+        self.set_flag(self.flag().with_promo(promo));
+    }
+
+    #[inline]
+    pub fn set_en_passant(&mut self) {
+        self.set_flag(MoveFlag::EnPassantCapture);
+    }
+
+    #[inline]
+    pub fn set_double_push(&mut self, _ep_sq: Square) {
+        self.set_flag(MoveFlag::PawnDoublePush);
+    }
+
+    #[inline]
+    pub fn set_castling_side(&mut self, _castle_side: CastlingRights) {
+        self.set_flag(MoveFlag::Castle);
+    }
+}
+
+impl Move {
     const OFFSET_FROM: i32 = 0;
     const OFFSET_TO: i32 = 6;
     const OFFSET_FLAG: i32 = 12;
-
-    // from = 6 bits
-    // to = 6 bits
-    // flags = 3 bits// 7 bits
-    //   castle
 
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.is_null() {
             write!(f, "0000")
         } else {
             write!(f, "{}{}", self.from().uci(), self.to().uci())?;
-            if let Some(p) = self.promo() {
+            if let Some(p) = self.promo_piece() {
                 write!(f, "{}", p.to_char(Color::Black))?
             }
             Ok(())
@@ -420,7 +533,7 @@ impl Move {
         BareMove {
             from: self.from(),
             to: self.to(),
-            promo: self.promo(),
+            promo: self.promo_piece(),
         }
     }
 
@@ -478,56 +591,8 @@ impl Move {
     }
 
     #[inline]
-    pub const fn new_quiet(_mover: Piece, from: Square, to: Square) -> Move {
-        let mut bits = (from.index() as UMOVE & 63) << Self::OFFSET_FROM;
-        bits += (to.index() as UMOVE & 63) << Self::OFFSET_TO;
-        // bits += (mover.index() as u32) << Self::OFFSET_MOVER;
-        // bits += (Square::null().index() as u32 & 127) << Self::OFFSET_EP;
-        // bits += 7 << Self::OFFSET_CAPTURE;
-        Move { bits }
-    }
-
-    #[inline]
     const fn flag(&self) -> MoveFlag {
-        MoveFlag::from_index(self.bits >> Self::OFFSET_FLAG)
-    }
-
-    #[inline]
-    fn set_flag(&mut self, flag: MoveFlag) {
-        self.bits &= !(15 << Self::OFFSET_FLAG);
-        self.bits |= flag.index() << Self::OFFSET_FLAG;
-    }
-
-    #[inline]
-    pub fn set_capture(&mut self, _capture: Piece) {
-        self.set_flag(self.flag().with_capture());
-        // self.bits &= !(7 << Self::OFFSET_CAPTURE);
-        // self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
-    }
-
-    #[inline]
-    pub fn set_promo(&mut self, promo: Piece) {
-        self.set_flag(self.flag().with_promo(promo));
-    }
-
-    #[inline]
-    pub fn set_en_passant(&mut self) {
-        self.set_flag(MoveFlag::EnPassantCapture);
-        // self.bits &= !(127 << Self::OFFSET_EP);
-        // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
-    }
-
-    #[inline]
-    pub fn set_double_push(&mut self, _ep_sq: Square) {
-        self.set_flag(MoveFlag::PawnDoublePush);
-        // self.bits &= !(127 << Self::OFFSET_EP);
-        // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
-    }
-
-    #[inline]
-    pub fn set_castling_side(&mut self, _castle_side: CastlingRights) {
-        self.set_flag(MoveFlag::Castle);
-        // self.bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
+        MoveFlag::from_index(self.bits >> Move::OFFSET_FLAG)
     }
 
     // #[inline]
@@ -551,13 +616,6 @@ impl Move {
     //     bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
     //     Move { bits }
     // }
-
-    pub const NULL_MOVE: Move = Move::new_quiet(Piece::Pawn, Square::A1, Square::A1);
-
-    #[inline]
-    pub fn new_null() -> Move {
-        Move::NULL_MOVE
-    }
 
     pub fn to_san(&self, b: &Board) -> String {
         b.to_san(*self)
@@ -619,7 +677,7 @@ impl Move {
     // }
 
     #[inline]
-    pub const fn promo(&self) -> Option<Piece> {
+    pub const fn promo_piece(&self) -> Option<Piece> {
         self.flag().promo_piece()
     }
 
@@ -710,85 +768,13 @@ impl Move {
     }
 
     #[inline]
-    pub fn new_pawn_move(from: Square, to: Square, bd: &Board) -> Move {
-        if to.file() != from.file() {
-            if bd.is_en_passant_square(to) {
-                let mut m = Move::new_quiet(Piece::Pawn, from, to);
-                m.set_capture(Piece::Pawn);
-                m.set_en_passant();
-                m
-            } else {
-                // let cap = Piece::Pawn; //bd.piece_unchecked(to);
-                let cap = bd
-                    .piece(to)
-                    .unwrap_or_else(|| panic!("No piece on board {bd} for from:{from} to:{to}"));
-                Move::new_capture(Piece::Pawn, from, to, cap)
-            }
-        } else {
-            // its a push
-            let behind = to.shift(bd.color_us().backward());
-            let ep = behind;
-            if behind.as_bb().disjoint(bd.pawns()) {
-                // no one behind us => double push
-                Move::new_double_push(from, to, ep)
-            } else {
-                Move::new_quiet(Piece::Pawn, from, to)
-            }
-        }
-    }
-
-    #[inline]
-    pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
-        let mut m = Move::new_quiet(Piece::Pawn, from, to);
-        m.set_double_push(ep);
-        m
-    }
-
-    #[inline]
-    pub fn new_capture(p: Piece, from: Square, to: Square, captured: Piece) -> Move {
-        let mut m = Move::new_quiet(p, from, to);
-        m.set_capture(captured);
-        m
-    }
-
-    #[inline]
-    pub fn new_ep_capture(from: Square, to: Square, _captured_sq: Square) -> Move {
-        let mut m = Move::new_quiet(Piece::Pawn, from, to);
-        m.set_capture(Piece::Pawn);
-        m.set_en_passant();
-        m
-    }
-
-    #[inline]
-    pub fn new_promo(from: Square, to: Square, promo: Piece) -> Move {
-        let mut m = Move::new_quiet(Piece::Pawn, from, to);
-        m.set_promo(promo);
-        m
-    }
-
-    #[inline]
-    pub fn new_promo_capture(from: Square, to: Square, promo: Piece, capture: Piece) -> Move {
-        let mut m = Move::new_quiet(Piece::Pawn, from, to);
-        m.set_promo(promo);
-        m.set_capture(capture);
-        m
-    }
-
-    #[inline]
-    pub fn new_castle(king_from: Square, king_to: Square, castling_side: CastlingRights) -> Move {
-        let mut m = Move::new_quiet(Piece::King, king_from, king_to);
-        m.set_castling_side(castling_side);
-        m
-    }
-
-    #[inline]
     pub fn mvv_lva_score(&self, bd: &Board) -> i32 {
         debug_assert!(bd.is_legal_move(*self), "{self} is illegal for board {bd}");
         let mut score = 0;
         if let Some(cap) = self.capture_piece(bd) {
             score += cap.centipawns() * 10 - self.mover_piece(bd).centipawns() / 10;
         }
-        if let Some(promo) = self.promo() {
+        if let Some(promo) = self.promo_piece() {
             score += promo.centipawns() * 10 - Piece::Pawn.centipawns() / 10;
         }
         score
@@ -908,7 +894,7 @@ mod tests {
         // ep cant be called on castling move
         // assert_eq!(move_castle.ep(), Square::null());
         // assert_eq!(move_castle.capture_piece(), None);
-        assert_eq!(move_castle.promo(), None);
+        assert_eq!(move_castle.promo_piece(), None);
         assert_eq!(move_castle.is_promo(), false);
         assert_eq!(move_castle.is_capture(), false);
         assert_eq!(move_castle.is_null(), false);
@@ -924,7 +910,7 @@ mod tests {
         assert_eq!(move_a1b2.is_promo(), false);
 
         let capture_a1b2 =
-            Move::new_capture(Piece::Bishop, a1.square(), b2.square(), Piece::Knight);
+            Move::new_capture(Piece::Bishop, a1.square(), b2.square(), &Board::starting_pos());
         assert_eq!(capture_a1b2.is_capture(), true);
 
         // ep cant be called on castling move

@@ -281,7 +281,7 @@ impl MaterialBalance {
         if let Some(cap) = mv.capture_piece(b) {
             score += self.piece_weights[cap];
         }
-        if let Some(promo) = mv.promo() {
+        if let Some(promo) = mv.promo_piece() {
             score += self.piece_weights[promo] - self.piece_weights[Piece::Pawn];
         }
         score

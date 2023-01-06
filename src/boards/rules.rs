@@ -20,7 +20,7 @@ fn capture_to_movelist<'a>(
         if p != Piece::Pawn {
             for to in bb.squares() {
                 if to.is_in(bd.them()) {
-                    moves.push(Move::new_capture(p, from, to, bd.piece_unchecked(to)));
+                    moves.push(Move::new_capture(p, from, to, bd));
                 } else {
                     moves.push(Move::new_quiet(p, from, to));
                 }
@@ -31,11 +31,11 @@ fn capture_to_movelist<'a>(
                 for to in bb.squares() {
                     if to.is_in(bd.them()) {
                         // try and pre-sort promos by likely usefulness
-                        let cap = bd.piece_unchecked(to);
-                        moves.push(Move::new_promo_capture(from, to, Piece::Queen, cap));
-                        moves.push(Move::new_promo_capture(from, to, Piece::Knight, cap));
-                        moves.push(Move::new_promo_capture(from, to, Piece::Rook, cap));
-                        moves.push(Move::new_promo_capture(from, to, Piece::Bishop, cap));
+                        // let cap = bd.piece_unchecked(to);
+                        moves.push(Move::new_promo_capture(from, to, Piece::Queen, bd));
+                        moves.push(Move::new_promo_capture(from, to, Piece::Knight, bd));
+                        moves.push(Move::new_promo_capture(from, to, Piece::Rook, bd));
+                        moves.push(Move::new_promo_capture(from, to, Piece::Bishop, bd));
                     } else {
                         moves.push(Move::new_promo(from, to, Piece::Queen));
                         moves.push(Move::new_promo(from, to, Piece::Knight));
@@ -67,29 +67,24 @@ impl Rules {
     //     Rules::castles(b, moves);
     // }
 
-    pub fn king_legal(b: &Board, moves: &mut MoveList) {
-        let us = b.us();
-        let our_kings = b.kings() & us;
+    pub fn king_legal(bd: &Board, moves: &mut MoveList) {
+        let us = bd.us();
+        let our_kings = bd.kings() & us;
         if our_kings.is_empty() {
             return;
         }
         let attack_gen = PreCalc::default();
-        let them = b.them();
-        let occ = b.occupied();
-        let king_sq = (b.kings() & us).square();
+        let them = bd.them();
+        let occ = bd.occupied();
+        let king_sq = (bd.kings() & us).square();
         let king_att = attack_gen.king_attacks(king_sq);
-        let king_danger = BoardCalcs::all_attacks_on(b, b.color_us(), occ - our_kings);
+        let king_danger = BoardCalcs::all_attacks_on(bd, bd.color_us(), occ - our_kings);
         let attacks = (king_att & !us) - king_danger;
 
         // DONE
         for to in attacks.squares() {
             if to.is_in(them) {
-                moves.push(Move::new_capture(
-                    Piece::King,
-                    king_sq,
-                    to,
-                    b.piece_unchecked(to),
-                ));
+                moves.push(Move::new_capture(Piece::King, king_sq, to, bd));
             } else {
                 moves.push(Move::new_quiet(Piece::King, king_sq, to));
             }
@@ -158,46 +153,38 @@ impl Rules {
         Metrics::profile(t, Timing::TimingMoveGen);
     }
 
-    pub fn add_moves_en_passant(b: &Board, moves: &mut MoveList) {
-        if b.en_passant().is_empty() {
+    pub fn add_moves_en_passant(bd: &Board, moves: &mut MoveList) {
+        if bd.en_passant().is_empty() {
             return;
         }
-        let them = b.color_them();
-        let to = b.en_passant();
+        let them = bd.color_them();
+        let to = bd.en_passant();
         let capture_sq = to.shift(them.forward());
-        let checkers = b.checkers_of(b.color_us());
+        let checkers = bd.checkers_of(bd.color_us());
         if checkers.popcount() == 1 {
             // any non-pinned pawn can capture the checker
             if capture_sq == checkers {
                 let fr_e = to.shift(them.pawn_capture_west());
-                if (fr_e & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
-                    moves.push(Move::new_ep_capture(
-                        fr_e.square(),
-                        to.square(),
-                        capture_sq.square(),
-                    ));
+                if (fr_e & bd.pawns() & bd.us() & !bd.pinned(bd.color_us())).any() {
+                    moves.push(Move::new_ep_capture(fr_e.square(), to.square(), bd));
                 }
                 let fr_w = to.shift(them.pawn_capture_east());
-                if (fr_w & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
-                    moves.push(Move::new_ep_capture(
-                        fr_w.square(),
-                        to.square(),
-                        capture_sq.square(),
-                    ));
+                if (fr_w & bd.pawns() & bd.us() & !bd.pinned(bd.color_us())).any() {
+                    moves.push(Move::new_ep_capture(fr_w.square(), to.square(), bd));
                 }
             }
         } else if checkers.popcount() == 0 {
             let fr_e = to.shift(them.pawn_capture_west());
             let fr_w = to.shift(them.pawn_capture_east());
-            for fr in ((fr_e | fr_w) & b.pawns() & b.us()).squares() {
+            for fr in ((fr_e | fr_w) & bd.pawns() & bd.us()).squares() {
                 // this optimization is not valid, as a bishop can pin a pawn in the direction of capture
                 // which allows the pawn to capture
                 // if fr.is_in(b.pinned()) {
                 //     continue;
                 // }
                 // special case: will removing the capture piece AND moving the pawn result in check
-                let m = Move::new_ep_capture(fr, to.square(), capture_sq.square());
-                if b.is_legal_move(m) {
+                let m = Move::new_ep_capture(fr, to.square(), bd);
+                if bd.is_legal_move(m) {
                     moves.push(m);
                 }
             }
@@ -206,11 +193,11 @@ impl Rules {
 
     #[inline]
     // DONE
-    fn add_moves(dests: Bitboard, p: Piece, fr: Square, b: &Board, moves: &mut MoveList) {
+    fn add_moves(dests: Bitboard, p: Piece, fr: Square, bd: &Board, moves: &mut MoveList) {
         if p != Piece::Pawn {
             for to in dests.squares() {
-                if to.is_in(b.them()) {
-                    moves.push(Move::new_capture(p, fr, to, b.piece_unchecked(to)))
+                if to.is_in(bd.them()) {
+                    moves.push(Move::new_capture(p, fr, to, bd))
                 } else {
                     moves.push(Move::new_quiet(p, fr, to))
                 }
@@ -218,10 +205,10 @@ impl Rules {
         } else {
             #[allow(clippy::collapsible_else_if)]
             if Bitboard::RANKS_18.contains(dests) {
-                Self::add_moves_pawn_promo(dests, fr, b, moves);
+                Self::add_moves_pawn_promo(dests, fr, bd, moves);
             } else {
                 for to in dests.squares() {
-                    moves.push(Move::new_pawn_move(fr, to, b));
+                    moves.push(Move::new_pawn_move(fr, to, bd));
                 }
             }
         }
@@ -229,15 +216,15 @@ impl Rules {
 
     #[inline]
     // DONE
-    fn add_moves_pawn_promo(dests: Bitboard, fr: Square, b: &Board, moves: &mut MoveList) {
+    fn add_moves_pawn_promo(dests: Bitboard, fr: Square, bd: &Board, moves: &mut MoveList) {
         for to in dests.squares() {
-            if to.is_in(b.them()) {
+            if to.is_in(bd.them()) {
                 // try and pre-sort promos by likely usefulness
-                let cap = b.piece_unchecked(to);
-                moves.push(Move::new_promo_capture(fr, to, Piece::Queen, cap));
-                moves.push(Move::new_promo_capture(fr, to, Piece::Knight, cap));
-                moves.push(Move::new_promo_capture(fr, to, Piece::Rook, cap));
-                moves.push(Move::new_promo_capture(fr, to, Piece::Bishop, cap));
+                let _cap = bd.piece_unchecked(to);
+                moves.push(Move::new_promo_capture(fr, to, Piece::Queen, bd));
+                moves.push(Move::new_promo_capture(fr, to, Piece::Knight, bd));
+                moves.push(Move::new_promo_capture(fr, to, Piece::Rook, bd));
+                moves.push(Move::new_promo_capture(fr, to, Piece::Bishop, bd));
             } else {
                 moves.push(Move::new_promo(fr, to, Piece::Queen));
                 moves.push(Move::new_promo(fr, to, Piece::Knight));

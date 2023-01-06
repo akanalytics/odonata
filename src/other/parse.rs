@@ -132,7 +132,7 @@ impl Parse {
                 }
             }
             // SAN promos are upper case eg "=Q" "=B"
-            if let Some(pp) = lm.promo() {
+            if let Some(pp) = lm.promo_piece() {
                 if !promo.is_empty()
                     && "=".to_string() + &pp.to_char(Color::White).to_string() != promo
                 {

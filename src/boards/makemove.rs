@@ -182,7 +182,7 @@ impl Board {
             b.move_piece(m.from().as_bb(), m.to().as_bb(), mover, b.turn.opposite());
         }
 
-        if let Some(promo) = m.promo() {
+        if let Some(promo) = m.promo_piece() {
             // fifty clock handled by pawn move above;
             b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
             // pawn has already moved
@@ -241,7 +241,7 @@ impl Board {
                 }
             }
 
-            if let Some(promo) = m.promo() {
+            if let Some(promo) = m.promo_piece() {
                 // fifty clock handled by pawn move above;
                 b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
                 // pawn has already moved
