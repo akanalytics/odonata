@@ -11,39 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 use std::str::FromStr;
 
-// #[enumflags2::bitflags]
-// #[repr(u32)]
-// #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
-// pub enum MoveType {
-//     EnPassant,
-//     CastleQueen,
-//     CastleKing,
-//     DoublePush,
-//     PromoBishop,
-//     PromoKnight,
-//     PromoRook,
-//     PromoQueen,
-
-//     PromoBishop,
-//     Unsorted,
-//     Capture,
-//     GoodCapture,
-//     GoodCaptureUpfrontSorted,
-//     Killer,
-//     CounterMove,
-//     Promo,
-//     QueenPromo,
-//     Evasion,
-//     Quiet,
-//     QuietOrPromo,
-//     QuietUnsorted,
-//     BadCapture,
-//     Remaining,
-//     End,
-// }
-
-// pub type MoveTypes = BitFlags<MoveType>;
-//lean  / bare
 
 #[derive(Default, Copy, Clone, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub struct BareMove {
@@ -99,14 +66,6 @@ impl BareMove {
     }
 }
 
-// impl TryFrom<&str> for BareMove {
-//     type Error = anyhow::Error;
-
-//     fn try_from(s: &str) -> Result<Self, Self::Error> {
-//         Self::from_str(s)
-//     }
-
-// }
 
 impl FromStr for BareMove {
     type Err = anyhow::Error;
@@ -214,7 +173,6 @@ impl Board {
 
 type UMOVE = u16;
 
-// FIXME: public methods
 #[derive(Default, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Move {
     bits: UMOVE,
@@ -244,20 +202,6 @@ impl fmt::Debug for Move {
     }
 }
 
-// piece
-// from
-// to
-// pice2
-// from2
-// to2
-//
-// promo/capture
-//
-// P from
-// Q-to
-// cap-from
-//
-// Promo/capture
 
 // 16 - less 2x6 for from/to = 4 bits = 16 things
 #[derive(Copy, Clone)]
@@ -421,7 +365,7 @@ impl Move {
     }
 
     #[inline]
-    pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
+    fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
         let mut m = Self::new_quiet(Piece::Pawn, from, to);
         m.set_double_push(ep);
         m
@@ -471,7 +415,7 @@ impl Move {
     }
 
     #[inline]
-    pub fn set_capture(&mut self, _bd: &Board) {
+    fn set_capture(&mut self, _bd: &Board) {
         // let cap = bd
         //     .piece(to)
         //     .unwrap_or_else(|| panic!("No piece on board {bd} for from:{from} to:{to}"));
@@ -479,22 +423,22 @@ impl Move {
     }
 
     #[inline]
-    pub fn set_promo(&mut self, promo: Piece) {
+    fn set_promo(&mut self, promo: Piece) {
         self.set_flag(self.flag().with_promo(promo));
     }
 
     #[inline]
-    pub fn set_en_passant(&mut self) {
+    fn set_en_passant(&mut self) {
         self.set_flag(MoveFlag::EnPassantCapture);
     }
 
     #[inline]
-    pub fn set_double_push(&mut self, _ep_sq: Square) {
+    fn set_double_push(&mut self, _ep_sq: Square) {
         self.set_flag(MoveFlag::PawnDoublePush);
     }
 
     #[inline]
-    pub fn set_castling_side(&mut self, _castle_side: CastlingRights) {
+    fn set_castling_side(&mut self, _castle_side: CastlingRights) {
         self.set_flag(MoveFlag::Castle);
     }
 }
@@ -525,29 +469,6 @@ impl Move {
         }
     }
 
-    // /// Ng1-f3 Nb8-c6
-    // /// Bb5xNc6 d7xBc6
-    // /// d2-d3 Bf8-b4+
-    // /// 0-0 Bb4xNc3
-    // pub fn parse_lan(mut s: &str) -> Result<Self> {
-    //     if s == "0000" {
-    //         return Ok(Move::new_null());
-    //     }
-    //     let gives_check = if let Some(t) = s.strip_suffix("+") {
-    //         s = t;
-    //         true
-    //     } else {
-    //         false
-    //     };
-    //     let mover = if let Some(t) = s.strip_prefix(['P', 'N', 'B', 'R', 'Q', 'K']) {
-    //         s = t;
-    //         Piece::from_char(s.chars().next().unwrap())?
-    //     } else {
-    //         Piece::Pawn
-    //     };
-
-    //     Err("")
-    // }
 
     pub fn parse_uci(s: &str, b: &Board) -> Result<Self> {
         if s.trim() == "0000" {
@@ -582,28 +503,6 @@ impl Move {
     const fn flag(&self) -> MoveFlag {
         MoveFlag::from_index(self.bits >> Move::OFFSET_FLAG)
     }
-
-    // #[inline]
-    // pub const fn new(
-    //     from: Square,
-    //     to: Square,
-    //     ep: Square,
-    //     mover: Piece,
-    //     capture: Piece,
-    //     promo: Piece,
-    //     castle_side: CastlingRights,
-    // ) -> Move {
-    //     // debug_assert!(!from.is_null());
-    //     // debug_assert!(!to.is_null());
-    //     let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
-    //     bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
-    //     bits += (ep.index() as u32 & 127) << Self::OFFSET_EP;
-    //     bits += (mover.index() as u32) << Self::OFFSET_MOVER;
-    //     bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
-    //     bits += (promo.index() as u32) << Self::OFFSET_PROMO;
-    //     bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
-    //     Move { bits }
-    // }
 
     pub fn to_san(&self, b: &Board) -> String {
         b.to_san(*self)
@@ -777,18 +676,6 @@ impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_uci())?;
         if f.alternate() {
-            if !self.ep().is_null() {
-                write!(f, " ep:{}", self.ep().uci())?;
-            }
-            // if let Some(c) = self.capture_piece() {
-            //     write!(f, " c:{}", c)?;
-            // }
-            // if self.is_castle() {
-            //     write!(f, " cs:{}", self.castling_side())?;
-            // }
-            // if self.is_ep_capture() {
-            //     write!(f, " e/p cap")?;
-            // }
         }
         Ok(())
     }
@@ -1028,3 +915,63 @@ mod tests {
         assert_eq!(board.to_san(castle_q), "O-O-O");
     }
 }
+
+
+    // /// Ng1-f3 Nb8-c6
+    // /// Bb5xNc6 d7xBc6
+    // /// d2-d3 Bf8-b4+
+    // /// 0-0 Bb4xNc3
+    // pub fn parse_lan(mut s: &str) -> Result<Self> {
+    //     if s == "0000" {
+    //         return Ok(Move::new_null());
+    //     }
+    //     let gives_check = if let Some(t) = s.strip_suffix("+") {
+    //         s = t;
+    //         true
+    //     } else {
+    //         false
+    //     };
+    //     let mover = if let Some(t) = s.strip_prefix(['P', 'N', 'B', 'R', 'Q', 'K']) {
+    //         s = t;
+    //         Piece::from_char(s.chars().next().unwrap())?
+    //     } else {
+    //         Piece::Pawn
+    //     };
+
+    //     Err("")
+    // }
+
+
+    // #[enumflags2::bitflags]
+// #[repr(u32)]
+// #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
+// pub enum MoveType {
+//     EnPassant,
+//     CastleQueen,
+//     CastleKing,
+//     DoublePush,
+//     PromoBishop,
+//     PromoKnight,
+//     PromoRook,
+//     PromoQueen,
+
+//     PromoBishop,
+//     Unsorted,
+//     Capture,
+//     GoodCapture,
+//     GoodCaptureUpfrontSorted,
+//     Killer,
+//     CounterMove,
+//     Promo,
+//     QueenPromo,
+//     Evasion,
+//     Quiet,
+//     QuietOrPromo,
+//     QuietUnsorted,
+//     BadCapture,
+//     Remaining,
+//     End,
+// }
+
+// pub type MoveTypes = BitFlags<MoveType>;
+//lean  / bare

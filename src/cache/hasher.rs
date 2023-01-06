@@ -270,7 +270,12 @@ impl Hasher {
 mod tests {
     use super::*;
 
-    use crate::{catalog::Catalog, Bitboard};
+    use crate::{
+        catalog::Catalog,
+        infra::{black_box, profiler::PerfProfiler},
+        other::Perft,
+        Bitboard,
+    };
 
     #[test]
     #[ignore]
@@ -342,17 +347,37 @@ mod tests {
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
-        assert_eq!(bd2, bd1_plus_nulls, "double null move {bd2:#} {bd1_plus_nulls:#}");
+        assert_eq!(
+            bd2, bd1_plus_nulls,
+            "double null move {bd2:#} {bd1_plus_nulls:#}"
+        );
 
         let bd1 = bd1.make_move(bd1.parse_san_move("e4").unwrap());
-        assert_eq!(bd1.halfmove_clock(), 0);  // coz pawn move
+        assert_eq!(bd1.halfmove_clock(), 0); // coz pawn move
         let mut bd1_plus_nulls = bd1.clone();
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
-        assert_eq!(bd2, bd1_plus_nulls, "e4 + double null move {bd2:#} {bd1_plus_nulls:#}");
+        assert_eq!(
+            bd2, bd1_plus_nulls,
+            "e4 + double null move {bd2:#} {bd1_plus_nulls:#}"
+        );
+    }
 
+    #[test]
+    fn bench_hash() {
+        let mut starting_pos = Catalog::perft_kiwipete().0;
+
+        let mut hash_move = PerfProfiler::new("hash: move".into());
+        let mut hash_board = PerfProfiler::new("hash: board".into());
+
+        let hasher = Hasher::default();
+        let mut func = |bd: &Board, mv: Move| {
+            hash_move.benchmark(|| hasher.hash_move(black_box(mv), black_box(bd)));
+            hash_board.benchmark(|| hasher.hash_board(black_box(bd)));
+        };
+        Perft::perft_fn(&mut starting_pos, 2, &mut func);
     }
 
     #[test]
