@@ -60,7 +60,7 @@ const ROOT: TreeNode = TreeNode {
     index: 0,
     id: NodeId(0),
     parent: NodeId(-1),
-    mv: Move::NULL_MOVE,
+    mv: Move::new_null(),
 };
 
 impl Tree {

@@ -946,13 +946,13 @@ mod tests {
     fn test_ordered_movelist() {
         let orderer = MoveOrderer::new();
         let mut algo = Algo::new();
-        const TT_MOVE: Move = Move::NULL_MOVE;
+        const TT_MOVE: Move = Move::new_null();
         let n = Node::root(3);
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
             let mut sorted_moves =
-                orderer.create_sorted_moves(n, pos.board(), TT_MOVE, Move::NULL_MOVE);
+                orderer.create_sorted_moves(n, pos.board(), TT_MOVE, Move::new_null());
             let mut moves = MoveList::new();
             while let Some((_stage, mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);

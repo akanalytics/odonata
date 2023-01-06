@@ -63,7 +63,7 @@ impl Parse {
 
         // https://chess.stackexchange.com/questions/14072/san-for-nullmove
         if ["--", "@@@@", "<>", "null"].contains(&s.as_str()) {
-            return Ok(Move::NULL_MOVE);
+            return Ok(Move::new_null());
         }
 
         let caps = REGEX_SAN
@@ -177,10 +177,10 @@ mod tests {
     #[test]
     fn test_parse_null_move() {
         let bd = Catalog::starting_board();
-        assert_eq!(Parse::move_san("--", &bd).unwrap(), Move::NULL_MOVE);
-        assert_eq!(Parse::move_san("null", &bd).unwrap(), Move::NULL_MOVE);
-        assert_eq!(Parse::move_san("@@@@", &bd).unwrap(), Move::NULL_MOVE);
-        assert_eq!(Parse::move_san("<>", &bd).unwrap(), Move::NULL_MOVE);
+        assert_eq!(Parse::move_san("--", &bd).unwrap(), Move::new_null());
+        assert_eq!(Parse::move_san("null", &bd).unwrap(), Move::new_null());
+        assert_eq!(Parse::move_san("@@@@", &bd).unwrap(), Move::new_null());
+        assert_eq!(Parse::move_san("<>", &bd).unwrap(), Move::new_null());
     }
 
     #[test]

@@ -151,14 +151,14 @@ impl TtNode {
 
     pub fn validate_move(&self, bd: &Board) -> Move {
         if self.bm.is_null() {
-            Move::NULL_MOVE
+            Move::new_null()
         } else {
             if bd.is_pseudo_legal_baremove(&self.bm) && bd.is_legal_baremove(&self.bm) {
                 let mv = bd.augment_move(self.bm);
                 mv
             } else {
                 Metrics::incr(Counter::TtIllegalMove);
-                Move::NULL_MOVE
+                Move::new_null()
             }
         }
     }

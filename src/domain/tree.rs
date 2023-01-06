@@ -256,7 +256,7 @@ impl SearchTree {
             self.get_or_insert(&stem);
             if let Some(n) = self.find(&stem) {
                 let w = TreeNode {
-                    mv: var.last().unwrap_or(Move::NULL_MOVE),
+                    mv: var.last().unwrap_or(Move::new_null()),
                     ..TreeNode::default()
                 };
                 let new = self.tree.add_child(n, w);

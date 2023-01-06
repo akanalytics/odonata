@@ -46,7 +46,7 @@ impl Algo {
             self.max_depth,
             n.alpha,
             n.beta,
-            Move::NULL_MOVE,
+            Move::new_null(),
         ) {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category),
@@ -188,7 +188,7 @@ impl Algo {
             return Ok((b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw)); // will return a draw score
         }
 
-        let mut tt_mv = Move::NULL_MOVE;
+        let mut tt_mv = Move::new_null();
         match self.lookup(trail, b, &mut n) {
             (Some(ab), None) => {
                 debug_assert!(ab.is_finite(), "lookup returned {}", ab);

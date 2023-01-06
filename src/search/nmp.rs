@@ -132,7 +132,7 @@ impl NullMovePruning {
 
     #[inline]
     pub fn last_move_is_null_move(var: &Variation) -> bool {
-        var.last() == Some(Move::NULL_MOVE)
+        var.last() == Some(Move::new_null())
     }
 
     #[inline]
@@ -190,7 +190,7 @@ impl Algo {
         // let lifetime = span.enter();
 
         let r = self.nmp.depth_reduction(eval, b, n);
-        let mv = Move::NULL_MOVE;
+        let mv = Move::new_null();
         let mut child_board = b.make_move(mv);
         self.current_variation.push(mv);
         trail.push_move(n, mv);
@@ -229,7 +229,7 @@ impl Algo {
                     score: TtScore::new(child_score.clamp_score(), n.ply),
                     depth: reduced_depth + 1,
                     nt: NodeType::LowerCut,
-                    bm: Move::NULL_MOVE.to_inner(),
+                    bm: Move::new_null().to_inner(),
                 };
                 // remember this is the child board hash with child score,
                 // but we store it as parent board and negative score and bound,

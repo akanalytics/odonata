@@ -303,7 +303,7 @@ impl RunQs<'_> {
 
     fn probe_tt(&mut self, n: &mut Node, bd: &Board, pat: &mut Score) -> Result<Move, Score> {
         if !self.config.probe_tt {
-            return Ok(Move::NULL_MOVE);
+            return Ok(Move::new_null());
         };
         Metrics::incr_node(&n, Event::QsTtProbe);
         if let Some(ttn) = self.tt.probe_by_hash(bd.hash()) {
@@ -338,7 +338,7 @@ impl RunQs<'_> {
                 return Ok(ttn.validate_move(bd));
             }
         }
-        Ok(Move::NULL_MOVE)
+        Ok(Move::new_null())
     }
 
     fn child_move(

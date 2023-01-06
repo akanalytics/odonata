@@ -368,24 +368,15 @@ impl MoveFlag {
     }
 
     const fn is_castling(self) -> bool {
-        match &self {
-            Self::Castle => true,
-            _ => false,
-        }
+        matches!(self, Self::Castle)
     }
 
     const fn is_pawn_double_push(self) -> bool {
-        match &self {
-            Self::PawnDoublePush => true,
-            _ => false,
-        }
+        matches!(self, Self::PawnDoublePush)
     }
 
     const fn is_en_passant_capture(self) -> bool {
-        match &self {
-            Self::EnPassantCapture => true,
-            _ => false,
-        }
+        matches!(self, Self::EnPassantCapture)
     }
 }
 
@@ -394,16 +385,13 @@ impl Move {
     pub const fn new_quiet(_mover: Piece, from: Square, to: Square) -> Move {
         let mut bits = (from.index() as UMOVE & 63) << Move::OFFSET_FROM;
         bits += (to.index() as UMOVE & 63) << Move::OFFSET_TO;
-        // bits += (mover.index() as u32) << Move::OFFSET_MOVER;
-        // bits += (Square::null().index() as u32 & 127) << Move::OFFSET_EP;
-        // bits += 7 << Move::OFFSET_CAPTURE;
         Move { bits }
     }
 
-    pub const NULL_MOVE: Move = Self::new_quiet(Piece::Pawn, Square::A1, Square::A1);
+    const NULL_MOVE: Move = Self::new_quiet(Piece::Pawn, Square::A1, Square::A1);
 
     #[inline]
-    pub fn new_null() -> Move {
+    pub const fn new_null() -> Move {
         Self::NULL_MOVE
     }
 
@@ -741,7 +729,7 @@ impl Move {
             let (from, to) = self.rook_move_from_to();
             Move::new_quiet(Piece::Rook, from, to)
         } else {
-            Move::NULL_MOVE
+            Move::new_null()
         }
     }
 

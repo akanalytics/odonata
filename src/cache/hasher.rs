@@ -329,7 +329,7 @@ mod tests {
         let hasher = Hasher::new(1);
         let bd1 = Catalog::starting_board();
         let mut moves = bd1.legal_moves();
-        moves.push(Move::NULL_MOVE);
+        moves.push(Move::new_null());
         let hash_bd1 = hasher.hash_board(&bd1);
         for &mv in moves.iter() {
             let hash_mv = hasher.hash_move(mv, &bd1);
@@ -341,7 +341,7 @@ mod tests {
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
-        let bd2 = bd1.make_move(Move::NULL_MOVE).make_move(Move::NULL_MOVE);
+        let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
         assert_eq!(bd2, bd1_plus_nulls, "double null move {bd2:#} {bd1_plus_nulls:#}");
 
         let bd1 = bd1.make_move(bd1.parse_san_move("e4").unwrap());
@@ -350,7 +350,7 @@ mod tests {
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
-        let bd2 = bd1.make_move(Move::NULL_MOVE).make_move(Move::NULL_MOVE);
+        let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
         assert_eq!(bd2, bd1_plus_nulls, "e4 + double null move {bd2:#} {bd1_plus_nulls:#}");
 
     }

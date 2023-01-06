@@ -199,7 +199,7 @@ impl Algo {
                         score: TtScore::new(score.clamp_score(), n.ply),
                         depth: 1,
                         nt: NodeType::UpperAll,
-                        bm: Move::NULL_MOVE.to_inner(),
+                        bm: Move::new_null().to_inner(),
                     };
                     self.tt.store(b.hash(), entry);
                 }
