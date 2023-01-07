@@ -16,34 +16,6 @@ bitflags! {
     }
 }
 
-// impl Default for CastlingRights {
-//     #[inline]
-//     fn default() -> Self {
-//         Self::NONE
-//     }
-// }
-
-// impl<T> std::ops::Index<CastlingRights> for [T] {
-//     type Output = T;
-//     #[inline]
-//     fn index(&self, i: CastlingRights) -> &Self::Output {
-//         #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
-//         unsafe {
-//             &self.get_unchecked(i.index())
-//         }
-
-//         #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
-//         &self[(i.index())]
-//     }
-// }
-
-// impl<T> std::ops::IndexMut<CastlingRights> for [T] {
-//     #[inline]
-//     fn index_mut(&mut self, cr: CastlingRights) -> &mut Self::Output {
-//         &mut self[cr.index()]
-//     }
-// }
-
 impl CastlingRights {
     #[inline]
     pub fn iter() -> &'static [Self] {
@@ -54,33 +26,6 @@ impl CastlingRights {
             Self::BLACK_QUEEN,
         ]
     }
-
-    // #[inline]
-    // pub const fn len() -> usize {
-    //     // TODO: Valgrind crashes with this as 4 ??
-    //     // vex amd64->IR: unhandled instruction bytes: 0xF2 0xF 0x78 0xC0 0x8 0x8 0xC5 0xF9 0xDB 0x5
-    //     // vex amd64->IR:   REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
-    //     // vex amd64->IR:   VEX=0 VEX.L=0 VEX.nVVVV=0x0 ESC=0F
-    //     // vex amd64->IR:   PFX.66=0 PFX.F2=1 PFX.F3=0
-    //     // ==1020316== valgrind: Unrecognised instruction at address 0x573e91.
-    //     4
-    // }
-
-    // #[inline]
-    // pub fn index(&self) -> usize {
-    //     self.bits() as usize
-    // }
-
-    // #[inline]
-    // pub fn index(self) -> usize {
-    //     match self {
-    //         Self::WHITE_KING => 0,
-    //         Self::WHITE_QUEEN => 1,
-    //         Self::BLACK_KING => 2,
-    //         Self::BLACK_QUEEN => 3,
-    //         _ => unreachable!("invalid castling index"),
-    //     }
-    // }
 
     pub fn parse(s: &str) -> Result<CastlingRights> {
         let mut castling = CastlingRights::NONE;
@@ -96,11 +41,6 @@ impl CastlingRights {
         }
         Ok(castling)
     }
-
-    // #[inline]
-    // pub fn has_rights(&self, cr: CastlingRights) -> bool {
-    //     self.contains(cr)
-    // }
 
     #[inline]
     pub fn king_side_right(c: Color) -> Self {
