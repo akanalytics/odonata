@@ -519,7 +519,6 @@ impl Move {
         Square::from_u32((self.from().index() + self.to().index()) as u32 / 2)
     }
 
-
     #[inline]
     pub fn is_ep_capture(&self, _b: &Board) -> bool {
         self.flag().is_en_passant_capture()
@@ -543,7 +542,7 @@ impl Move {
 
     #[inline]
     pub const fn is_null(&self) -> bool {
-        self.to().index() == self.from().index()  // partial.eq isn't const
+        self.to().index() == self.from().index() // partial.eq isn't const
     }
 
     #[inline]
@@ -603,8 +602,7 @@ impl Move {
     #[inline]
     pub fn castling_side(&self, b: &Board) -> CastlingRights {
         // CastlingRights::from_bits_truncate((self.bits >> Self::OFFSET_CASTLE) as u8)
-        if self.mover_piece(b) == Piece::King && CastlingRights::is_castling(self.from(), self.to())
-        {
+        if self.is_castle(b) {
             CastlingRights::from_king_move(self.to())
         } else {
             CastlingRights::NONE
@@ -646,8 +644,8 @@ impl Move {
         if self.is_null() {
             CastlingRights::NONE
         } else {
-            let squares_changing = self.to().as_bb() | self.from().as_bb();
-            CastlingRights::rights_lost(squares_changing)
+            // let squares_changing = self.to().as_bb() | self.from().as_bb();
+            CastlingRights::rights_lost(self.from(), self.to())
         }
     }
 

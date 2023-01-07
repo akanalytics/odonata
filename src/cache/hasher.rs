@@ -1,7 +1,6 @@
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::boards::Board;
-use crate::globals::constants::*;
 use crate::infra::metric::*;
 use crate::mv::Move;
 use crate::piece::{Color, Hash, Piece};
@@ -27,7 +26,7 @@ pub struct Hasher {
     seed: u64,
     squares: [[[u64; Square::len()]; Piece::len()]; Color::len()], // [colour][piece][square]
     ep: [u64; 8],
-    castling: [u64; CastlingRights::len()],
+    castling_by_bitflag: [u64; 16],
     side: u64,
 }
 
@@ -45,7 +44,12 @@ impl fmt::Display for Hasher {
             }
             writeln!(f, "side = {:x}", self.side)?;
             for cr in CastlingRights::iter() {
-                writeln!(f, "castling[{}] = {:x}", cr, self.castling[cr.index()])?;
+                writeln!(
+                    f,
+                    "castling[{}] = {:x}",
+                    cr,
+                    self.castling_by_bitflag[cr.bits() as usize]
+                )?;
             }
             for sq in 0..self.ep.len() {
                 writeln!(f, "ep[{}] = {:x}", sq, self.ep[sq])?;
@@ -109,7 +113,7 @@ impl Hasher {
             seed,
             squares: [[[0; Square::len()]; Piece::len()]; Color::len()],
             side: 0,
-            castling: [0; CastlingRights::len()],
+            castling_by_bitflag: [0; 16],
             ep: [0; 8],
         };
         // let i = rng.gen::<u64>();
@@ -122,7 +126,17 @@ impl Hasher {
             }
         }
         h.side = rng.gen();
-        rng.fill(&mut h.castling);
+        let mut castling_by_flag = [0u64; 4];
+        rng.fill(&mut castling_by_flag);
+
+        // fill out the castling by bitflag using castling by flag
+        for bits in 0..16 {
+            for bit in 0..4 {
+                if (1 << bit) & bits > 0 {
+                    h.castling_by_bitflag[bits] ^= castling_by_flag[bit];
+                }
+            }
+        }
         // h.castling[CastlingRights::NONE] = 0;
         rng.fill(&mut h.ep);
         Box::new(h)
@@ -159,11 +173,7 @@ impl Hasher {
 
         let mut hash = b.color_us().chooser_wb(0, self.side);
 
-        for &cr in CastlingRights::iter() {
-            if b.castling().contains(cr) {
-                hash ^= self.castling[cr.index()];
-            }
-        }
+        hash ^= self.castling_by_bitflag[b.castling().bits() as usize];
 
         if !b.en_passant().is_empty() {
             hash ^= self.ep[b.en_passant().first_square().index() & 7];
@@ -199,24 +209,31 @@ impl Hasher {
         hash ^= self.get(us, mover, m.from());
         hash ^= self.get(us, mover, m.to());
 
+        let castling_rights_change =
+            pre_move.castling() & CastlingRights::rights_lost(m.from(), m.to());
+        hash ^= self.castling_by_bitflag[castling_rights_change.bits() as usize];
+
+        if let Some(promo) = m.promo_piece() {
+            hash ^= self.get(us, Piece::Pawn, m.to());
+            hash ^= self.get(us, promo, m.to());
+        }
+
+        // we return early if a capture as double_push and castle are non-captures
         if let Some(cap) = m.capture_piece(pre_move) {
             let them = pre_move.color_them();
             if m.is_ep_capture(pre_move) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 hash ^= self.get(them, cap, m.capture_square(pre_move));
+                return hash;
             } else {
                 // regular capture
                 hash ^= self.get(them, cap, m.to());
+                return hash;
             }
         }
 
         if m.is_pawn_double_push(pre_move) {
             hash ^= self.ep[m.double_push_en_passant_square().file_index()];
-        }
-
-        if let Some(promo) = m.promo_piece() {
-            hash ^= self.get(us, Piece::Pawn, m.to());
-            hash ^= self.get(us, promo, m.to());
         }
 
         // castling *moves*
@@ -225,73 +242,6 @@ impl Hasher {
             hash ^= self.get(us, Piece::Rook, rook_from);
             hash ^= self.get(us, Piece::Rook, rook_to);
         }
-
-        // castling *rights*
-        //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
-        //  if a piece moves FROM the kings squares, both castling rights are lost
-        //  possible with a rook x rook capture that both sides lose castling rights
-        // hash ^= self.castling[m.castling_side()];
-        if (m.from().as_bb() | m.to().as_bb()).intersects(CastlingRights::rook_and_king_squares()) {
-            if pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
-                && (m.from() == e1.square() || m.from() == a1.square() || m.to() == a1.square())
-            {
-                hash ^= self.castling[CastlingRights::WHITE_QUEEN];
-            }
-            if pre_move.castling().contains(CastlingRights::WHITE_KING)
-                && (m.from() == e1.square() || m.from() == h1.square() || m.to() == h1.square())
-            {
-                hash ^= self.castling[CastlingRights::WHITE_KING];
-            }
-
-            if (m.from() == e8.square() || m.from() == a8.square() || m.to() == a8.square())
-                && pre_move.castling().contains(CastlingRights::BLACK_QUEEN)
-            {
-                hash ^= self.castling[CastlingRights::BLACK_QUEEN];
-            }
-            if (m.from() == e8.square() || m.from() == h8.square() || m.to() == h8.square())
-                && pre_move.castling().contains(CastlingRights::BLACK_KING)
-            {
-                hash ^= self.castling[CastlingRights::BLACK_KING];
-            }
-        }
-
-
-        // let squares_changed = m.from().as_bb() | m.to().as_bb();
-        // if squares_changed.intersects(CastlingRights::rook_and_king_squares()) {
-        //     if squares_changed.intersects(Bitboard::FILE_E) {
-        //         if squares_changed.intersects(Bitboard::E1) {
-        //             hash ^= self.castling[CastlingRights::WHITE_QUEEN];
-        //             hash ^= self.castling[CastlingRights::WHITE_KING];
-        //             // loss |= CastlingRights::WHITE_KING.or(CastlingRights::WHITE_QUEEN);
-        //         }
-        //         if squares_changed.intersects(Bitboard::E8) {
-        //             hash ^= self.castling[CastlingRights::BLACK_QUEEN];
-        //             hash ^= self.castling[CastlingRights::BLACK_KING];
-        //             // loss |= CastlingRights::BLACK_KING.or(CastlingRights::BLACK_QUEEN);
-        //         }
-        //     }
-        //     if squares_changed.intersects(Bitboard::FILE_A) {
-        //         if squares_changed.intersects(Bitboard::A1) {
-        //             hash ^= self.castling[CastlingRights::WHITE_QUEEN];
-        //             // loss |= CastlingRights::WHITE_QUEEN;
-        //         }
-        //         if squares_changed.intersects(Bitboard::A8) {
-        //             hash ^= self.castling[CastlingRights::BLACK_QUEEN];
-        //             // loss |= CastlingRights::BLACK_QUEEN;
-        //         }
-        //     }
-        //     if squares_changed.intersects(Bitboard::FILE_H) {
-        //         if squares_changed.intersects(Bitboard::H1) {
-        //             hash ^= self.castling[CastlingRights::WHITE_KING];
-        //             // loss |= CastlingRights::WHITE_KING;
-        //         }
-        //         if squares_changed.intersects(Bitboard::H8) {
-        //             // loss |= CastlingRights::BLACK_KING;
-        //             hash ^= self.castling[CastlingRights::BLACK_KING]
-        //         }
-        //     }
-        // }
-
         hash
     }
 }
@@ -304,7 +254,7 @@ mod tests {
         catalog::Catalog,
         infra::{black_box, profiler::PerfProfiler},
         other::Perft,
-        Bitboard,
+        Bitboard, globals::constants::*,
     };
 
     #[test]

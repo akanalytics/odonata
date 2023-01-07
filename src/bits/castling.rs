@@ -16,33 +16,33 @@ bitflags! {
     }
 }
 
-impl Default for CastlingRights {
-    #[inline]
-    fn default() -> Self {
-        Self::NONE
-    }
-}
+// impl Default for CastlingRights {
+//     #[inline]
+//     fn default() -> Self {
+//         Self::NONE
+//     }
+// }
 
-impl<T> std::ops::Index<CastlingRights> for [T] {
-    type Output = T;
-    #[inline]
-    fn index(&self, i: CastlingRights) -> &Self::Output {
-        #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
-        unsafe {
-            &self.get_unchecked(i.index())
-        }
+// impl<T> std::ops::Index<CastlingRights> for [T] {
+//     type Output = T;
+//     #[inline]
+//     fn index(&self, i: CastlingRights) -> &Self::Output {
+//         #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
+//         unsafe {
+//             &self.get_unchecked(i.index())
+//         }
 
-        #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
-        &self[(i.index())]
-    }
-}
+//         #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
+//         &self[(i.index())]
+//     }
+// }
 
-impl<T> std::ops::IndexMut<CastlingRights> for [T] {
-    #[inline]
-    fn index_mut(&mut self, cr: CastlingRights) -> &mut Self::Output {
-        &mut self[cr.index()]
-    }
-}
+// impl<T> std::ops::IndexMut<CastlingRights> for [T] {
+//     #[inline]
+//     fn index_mut(&mut self, cr: CastlingRights) -> &mut Self::Output {
+//         &mut self[cr.index()]
+//     }
+// }
 
 impl CastlingRights {
     #[inline]
@@ -55,32 +55,32 @@ impl CastlingRights {
         ]
     }
 
-    #[inline]
-    pub const fn len() -> usize {
-        // TODO: Valgrind crashes with this as 4 ??
-        // vex amd64->IR: unhandled instruction bytes: 0xF2 0xF 0x78 0xC0 0x8 0x8 0xC5 0xF9 0xDB 0x5
-        // vex amd64->IR:   REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
-        // vex amd64->IR:   VEX=0 VEX.L=0 VEX.nVVVV=0x0 ESC=0F
-        // vex amd64->IR:   PFX.66=0 PFX.F2=1 PFX.F3=0
-        // ==1020316== valgrind: Unrecognised instruction at address 0x573e91.
-        4
-    }
+    // #[inline]
+    // pub const fn len() -> usize {
+    //     // TODO: Valgrind crashes with this as 4 ??
+    //     // vex amd64->IR: unhandled instruction bytes: 0xF2 0xF 0x78 0xC0 0x8 0x8 0xC5 0xF9 0xDB 0x5
+    //     // vex amd64->IR:   REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
+    //     // vex amd64->IR:   VEX=0 VEX.L=0 VEX.nVVVV=0x0 ESC=0F
+    //     // vex amd64->IR:   PFX.66=0 PFX.F2=1 PFX.F3=0
+    //     // ==1020316== valgrind: Unrecognised instruction at address 0x573e91.
+    //     4
+    // }
 
     // #[inline]
     // pub fn index(&self) -> usize {
     //     self.bits() as usize
     // }
 
-    #[inline]
-    pub fn index(self) -> usize {
-        match self {
-            Self::WHITE_KING => 0,
-            Self::WHITE_QUEEN => 1,
-            Self::BLACK_KING => 2,
-            Self::BLACK_QUEEN => 3,
-            _ => unreachable!("invalid castling index"),
-        }
-    }
+    // #[inline]
+    // pub fn index(self) -> usize {
+    //     match self {
+    //         Self::WHITE_KING => 0,
+    //         Self::WHITE_QUEEN => 1,
+    //         Self::BLACK_KING => 2,
+    //         Self::BLACK_QUEEN => 3,
+    //         _ => unreachable!("invalid castling index"),
+    //     }
+    // }
 
     pub fn parse(s: &str) -> Result<CastlingRights> {
         let mut castling = CastlingRights::NONE;
@@ -142,12 +142,6 @@ impl CastlingRights {
     }
 
     #[inline]
-    pub const fn rook_and_king_squares() -> Bitboard {
-        Bitboard::A1
-            .or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
-    }
-
-    #[inline]
     pub fn is_castling(from: Square, to: Square) -> bool {
         from == Square::E1 && (to == Square::C1 || to == Square::G1)
             || from == Square::E8 && (to == Square::C8 || to == Square::G8)
@@ -164,38 +158,22 @@ impl CastlingRights {
         }
     }
 
-    #[inline]
-    pub fn rights_lost(squares_changed: Bitboard) -> CastlingRights {
-        // TODO! Optimization: rightsLost = precalc[from] | precalc[to];
-        let mut loss = CastlingRights::NONE;
-        if squares_changed.intersects(Self::rook_and_king_squares()) {
-            if squares_changed.intersects(Bitboard::FILE_E) {
-                if squares_changed.intersects(Bitboard::E1) {
-                    loss |= Self::WHITE_KING.or(Self::WHITE_QUEEN);
-                }
-                if squares_changed.intersects(Bitboard::E8) {
-                    loss |= Self::BLACK_KING.or(Self::BLACK_QUEEN);
-                }
-            }
-            if squares_changed.intersects(Bitboard::FILE_A) {
-                if squares_changed.intersects(Bitboard::A1) {
-                    loss |= Self::WHITE_QUEEN;
-                }
-                if squares_changed.intersects(Bitboard::A8) {
-                    loss |= Self::BLACK_QUEEN;
-                }
-            }
-            if squares_changed.intersects(Bitboard::FILE_H) {
-                if squares_changed.intersects(Bitboard::H1) {
-                    loss |= Self::WHITE_KING;
-                }
-                if squares_changed.intersects(Bitboard::H8) {
-                    loss |= Self::BLACK_KING;
-                }
-            }
+    pub fn rights_lost(from: Square, to: Square) -> CastlingRights {
+        const fn pop_castling_rights() -> [CastlingRights; 64] {
+            let mut cr = [CastlingRights::NONE; 64];
+            cr[Square::A1.index()] = CastlingRights::WHITE_QUEEN;
+            cr[Square::A8.index()] = CastlingRights::BLACK_QUEEN;
+            cr[Square::H1.index()] = CastlingRights::WHITE_KING;
+            cr[Square::H8.index()] = CastlingRights::BLACK_KING;
+            cr[Square::E1.index()] = CastlingRights::WHITE_KING.or(CastlingRights::WHITE_QUEEN);
+            cr[Square::E8.index()] = CastlingRights::BLACK_KING.or(CastlingRights::BLACK_QUEEN);
+            cr
         }
-        loss
+
+        const RIGHTS_LOST: [CastlingRights; Square::len()] = pop_castling_rights();
+        RIGHTS_LOST[from] ^ RIGHTS_LOST[to]
     }
+
 
     #[inline]
     pub fn color_flip(&self) -> CastlingRights {
