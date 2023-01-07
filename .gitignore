@@ -64,4 +64,5 @@ vcs.xml
 workspace.*
 perf.out
 callgrind.out.*
+log.txt
 
