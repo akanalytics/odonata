@@ -749,7 +749,7 @@ mod tests {
                 });
             }
         };
-        Perft::perft_fn(&mut starting_pos, 2, &mut func);
+        Perft::perft_with(&mut starting_pos, 2, &mut func);
     }
 
     #[test]
@@ -821,7 +821,7 @@ mod tests {
                 assert_eq!(bd.augment_move(mv.to_inner()), mv);
                 *&mut count += 1
             };
-            Perft::perft_fn(&mut pos.board().clone(), 3, &mut func);
+            Perft::perft_with(&mut pos.board().clone(), 3, &mut func);
         }
         println!("Count = {count}");
     }

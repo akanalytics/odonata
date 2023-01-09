@@ -560,6 +560,7 @@ impl fmt::Display for Board {
             write!(f, "\nfen: {} \n", self.to_fen())?;
             // write!(fmt, "Moves: {}", self.moves)?;
             writeln!(f, "Hash: {:x}", self.hash())?;
+            writeln!(f, "Ply: {}", self.ply())?;
             writeln!(f, "Rep count: {:x}", self.repetition_count().in_game())?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL.iter() {
@@ -613,13 +614,11 @@ impl Board {
     //     BoardBuf { board: Board::new_empty() }
     // }
 
-    #[inline]
     pub fn set_turn(&mut self, c: Color) {
         self.turn = c;
         self.calculate_internals();
     }
 
-    #[inline]
     pub fn set_castling(&mut self, cr: CastlingRights) {
         self.castling = cr;
         self.calculate_internals();
@@ -631,13 +630,16 @@ impl Board {
         self.calculate_internals();
     }
 
-    #[inline]
     pub fn set_halfmove_clock(&mut self, hmvc: i32) {
         self.half_move_clock = hmvc as u16;
         self.calculate_internals();
     }
 
-    #[inline]
+    pub fn set_ply(&mut self, ply: i32) {
+        self.ply = ply;
+        self.calculate_internals();
+    }
+
     pub fn set_fullmove_number(&mut self, fmvc: i32) {
         self.fullmove_number = fmvc as u16;
         self.calculate_internals();
@@ -984,6 +986,6 @@ mod tests {
                     || black_box(bd).piece(Square::A3) == Some(Piece::Knight)
             });
         };
-        Perft::perft_fn(&mut starting_pos, 3, &mut func);
+        Perft::perft_with(&mut starting_pos, 3, &mut func);
     }
 }

@@ -1,5 +1,4 @@
 use crate::boards::Board;
-use crate::movelist::MoveList;
 use crate::mv::Move;
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
@@ -15,120 +14,47 @@ pub struct Perft {
 }
 
 impl Perft {
-    pub fn perft_fn(board: &mut Board, depth: u32, f: &mut dyn FnMut(&Board, Move)) {
+    pub fn perft_with(board: &mut Board, depth: u32, f: &mut impl FnMut(&Board, Move)) {
         if depth == 0 {
             return;
         }
-        let mut moves = MoveList::new();
-        board.legal_moves_into(&mut moves);
+        let moves = board.legal_moves();
         if depth == 1 {
             moves.iter().for_each(|&mv| f(board, mv));
         } else {
             for &m in moves.iter() {
-                Self::perft_fn(&mut board.make_move(m), depth - 1, f);
+                Self::perft_with(&mut board.make_move(m), depth - 1, f);
             }
         }
     }
 
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
-        if depth == 0 {
-            return 1;
-        }
-        let mut moves = MoveList::new();
-        board.legal_moves_into(&mut moves);
-        if depth == 1 {
-            moves.len() as u64
-        } else {
-            let mut count = 0u64;
-            for &m in moves.iter() {
-                count += Self::perft(&mut board.make_move(m), depth - 1);
-            }
-            count
-        }
+        let mut count = 0;
+        Self::perft_with(board, depth, &mut |_b, _mv| count += 1);
+        count.max(1)  // we count perft(0) as 1
     }
 
     pub fn perft_cat(&mut self, board: &mut Board, depth: u32) -> u64 {
-        if depth == 0 {
-            return 1;
-        }
-        let mut moves = MoveList::new();
-        board.legal_moves_into(&mut moves);
-        if depth == 1 {
-            self.count_types(&moves, board);
-            moves.len() as u64
-        } else {
-            let mut count = 0u64;
-            for &m in moves.iter() {
-                count += self.perft_cat(&mut board.make_move(m), depth - 1);
-            }
-            count
-        }
-    }
+        let mut count = 0;
 
-    #[inline]
-    fn count_types(&mut self, moves: &MoveList, board: &Board) {
-        for mv in moves.iter() {
+        Self::perft_with(board, depth, &mut |bd, mv| {
             if mv.is_capture() {
                 self.captures += 1
             }
-            if mv.is_ep_capture(board) {
+            if mv.is_ep_capture(bd) {
                 self.en_passant += 1
             }
-            if mv.is_castle(board) {
+            if mv.is_castle(bd) {
                 self.castles += 1;
             }
             if mv.is_promo() {
                 self.promos += 1;
             }
-            // to do
-            // checks
-            // discovery_checks
-            // double_checks
-            // checkmates
-        }
+            count += 1;
+        });
+        count
     }
 }
-
-// pub fn perft_ext(board: &mut Board, depth: u32) -> u64 {
-//     if depth == 0 {
-//         1
-//     } else {
-//         let moves = board.legal_moves_ext();
-//         let mut count = 0u64;
-//         for m in moves.iter() {
-//             let res = Self::perft_ext(&mut board.make_move(m), depth - 1);
-//             count += res;
-//         }
-//         count
-//     }
-// }
-
-//     pub fn perft_compare(board: &mut Board, depth: u32) -> u64 {
-//         if depth == 0 {
-//             1
-//         } else {
-//             let mut moves = board.legal_moves();
-//             let mut moves_ext = board.legal_moves_ext();
-//             moves.sort();
-//             moves_ext.sort();
-//             assert_eq!(moves.to_string(), moves_ext.to_string());
-//             if moves.len() == moves_ext.len() {
-//                 print!("+");
-//             } else {
-//                 print!("-");
-//             }
-
-//             let mut count = 0u64;
-//             for (m1, m2) in moves.iter().zip(moves_ext.iter()) {
-//                 let b2 = board.make_move(m2);
-//                 assert_eq!(board.make_move(m1).to_fen(), b2.to_fen(), "for m1 {} m2 (ext) {} from {}", m1, m2, board.to_fen());
-//                 let res = Self::perft_compare(&mut board.make_move(m1), depth - 1);
-//                 count += res;
-//             }
-//             count
-//         }
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
@@ -145,7 +71,7 @@ mod tests {
                     let now = Instant::now();
                     let mut count = 0;
                     let mut func = |_: &Board, _: Move| *&mut count += 1;
-                    Perft::perft_fn(&mut board, depth as u32, &mut func);
+                    Perft::perft_with(&mut board, depth as u32, &mut func);
                     println!(
                         "perft({depth})={count} in {time} millis (expected {expected})",
                         depth = depth,

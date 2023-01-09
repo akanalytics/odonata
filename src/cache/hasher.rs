@@ -324,6 +324,7 @@ mod tests {
         }
         let mut bd1_plus_nulls = bd1.clone();
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
+        bd1_plus_nulls.set_ply(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
@@ -338,6 +339,7 @@ mod tests {
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
+        bd1_plus_nulls.set_ply(3);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
         assert_eq!(
             bd2, bd1_plus_nulls,
@@ -357,7 +359,7 @@ mod tests {
             hash_move.benchmark(|| hasher.hash_move(black_box(mv), black_box(bd)));
             hash_board.benchmark(|| hasher.hash_board(black_box(bd)));
         };
-        Perft::perft_fn(&mut starting_pos, 2, &mut func);
+        Perft::perft_with(&mut starting_pos, 2, &mut func);
     }
 
     #[test]

@@ -10,11 +10,6 @@ use crate::variation::Variation;
 
 use std::cell::Cell;
 
-
-
-
-
-
 impl Board {
     pub fn make_moves_old(&self, var: &Variation) -> Board {
         let mut b = self.clone();
@@ -42,7 +37,6 @@ impl Board {
 
     pub fn make_move(&self, m: Move) -> Board {
         Metrics::incr(Counter::MakeMove);
-        let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
         debug_assert!(
             m.is_null()
@@ -83,8 +77,15 @@ impl Board {
             colors: self.colors.clone(),
             castling: self.castling,
             hash: self.hash,
-            ply: self.ply,
+            ply: self.ply + 1,
         };
+    
+        self.make_move_into(m, &mut b);
+        b
+    }
+    
+    fn make_move_into(&self, m: Move, b: &mut Board) {
+        let t = Metrics::timing_start();
         debug_assert!(
             self.validate().is_ok(),
             "board {self} failed validation before move {m} with '{}'\n{self:#}",
@@ -120,8 +121,6 @@ impl Board {
             b.hash,
             Hasher::default().hash_board(&b),
         );
-
-        b
     }
 
     #[inline]
