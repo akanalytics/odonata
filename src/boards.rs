@@ -1,5 +1,3 @@
-
-
 pub mod boardcalcs;
 pub mod makemove;
 pub mod movegen;

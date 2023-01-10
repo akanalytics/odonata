@@ -52,8 +52,8 @@ impl Board {
         let mut b = Board {
             en_passant: self.en_passant(),
             turn: self.turn,
-            fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
-            half_move_clock: self.half_move_clock + 1,
+            fullmove_number: self.fullmove_number,
+            half_move_clock: self.half_move_clock,
             repetition_count: Cell::new(Repeats::default()),
             threats_to: [
                 Cell::<_>::new(Bitboard::niche()),
@@ -77,14 +77,44 @@ impl Board {
             colors: self.colors.clone(),
             castling: self.castling,
             hash: self.hash,
-            ply: self.ply + 1,
+            ply: self.ply,
         };
-    
         self.make_move_into(m, &mut b);
         b
     }
-    
-    fn make_move_into(&self, m: Move, b: &mut Board) {
+
+    pub fn copy_from(&mut self, bd: &Board) {
+        self.en_passant = bd.en_passant();
+        self.turn = bd.turn;
+        self.fullmove_number = bd.fullmove_number;
+        self.half_move_clock = bd.half_move_clock;
+        self.repetition_count = Cell::new(Repeats::default());
+        self.threats_to = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        self.checkers_of = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        self.pinned = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        self.discoverer = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        // material: Cell::<_>::new(bd.material()),
+        // moves= bd.moves.clone(),
+        self.pieces = bd.pieces.clone();
+        self.colors = bd.colors.clone();
+        self.castling = bd.castling;
+        self.hash = bd.hash;
+        self.ply = bd.ply;
+    }
+
+    pub fn make_move_into(&self, m: Move, b: &mut Board) {
         let t = Metrics::timing_start();
         debug_assert!(
             self.validate().is_ok(),
@@ -105,7 +135,10 @@ impl Board {
             ep = m.is_ep_capture(&b)
         );
 
+
         b.apply_move(m);
+
+
         #[cfg(debug_assertions)]
         debug_assert!(
             b.validate().is_ok(),
@@ -126,6 +159,9 @@ impl Board {
     #[inline]
     pub fn apply_move(&mut self, m: Move) {
         let mut b = self;
+        b.fullmove_number += b.turn.chooser_wb(0, 1);
+        b.half_move_clock += 1;
+        b.ply += 1;
         let move_hash = Hasher::default().hash_move(m, b);
         b.hash = b.hash ^ move_hash;
         // now hash calculated - we can adjust these

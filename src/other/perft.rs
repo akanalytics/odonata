@@ -1,16 +1,18 @@
-use crate::boards::Board;
-use crate::mv::Move;
+use crate::{
+    boards::{board::Var, Board},
+    mv::Move,
+};
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Perft {
-    pub captures: u64,
-    pub en_passant: u64,
-    pub castles: u64,
-    pub promos: u64,
-    pub checks: u64,
+    pub captures:         u64,
+    pub en_passant:       u64,
+    pub castles:          u64,
+    pub promos:           u64,
+    pub checks:           u64,
     pub discovery_checks: u64,
-    pub double_checks: u64,
-    pub checkmates: u64,
+    pub double_checks:    u64,
+    pub checkmates:       u64,
 }
 
 impl Perft {
@@ -28,10 +30,29 @@ impl Perft {
         }
     }
 
+    pub fn perft_with2(var: &mut Var, depth: u32, f: &mut impl FnMut(&Board, Move)) {
+        if depth == 0 {
+            return;
+        }
+        let board = var.board();
+        let moves = board.legal_moves();
+        if depth == 1 {
+            moves.iter().for_each(|&mv| f(board, mv));
+        } else {
+            for &m in moves.iter() {
+                var.push_move(m);
+                Self::perft_with2(var, depth - 1, f);
+                var.pop_move();
+            }
+        }
+    }
+
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
         let mut count = 0;
-        Self::perft_with(board, depth, &mut |_b, _mv| count += 1);
-        count.max(1)  // we count perft(0) as 1
+        Self::perft_with2(&mut Var::new(board.clone()), depth, &mut |_b, _mv| {
+            count += 1
+        });
+        count.max(1) // we count perft(0) as 1
     }
 
     pub fn perft_cat(&mut self, board: &mut Board, depth: u32) -> u64 {

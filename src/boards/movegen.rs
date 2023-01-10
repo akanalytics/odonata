@@ -304,6 +304,9 @@ mod tests {
 
     use super::*;
     use crate::globals::constants::*;
+    use crate::infra::black_box;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::other::Perft;
     use crate::{catalog::*, Color};
     use anyhow::Result;
     use test_log::test;
@@ -621,4 +624,22 @@ mod tests {
             assert_eq!(lm, expected, "{} {:#}", pos, pos.board());
         }
     }
+
+
+
+    #[test]
+    fn bench_movegen() {
+        let mut starting_pos = Board::starting_pos();
+
+        let mut legal_moves = PerfProfiler::new("board.legal_moves".into());
+        let mut legal_moves_into = PerfProfiler::new("board.legal_moves_into".into());
+
+        let mut func = |bd: &Board, _mv: Move| {
+            legal_moves.benchmark(|| black_box(bd).legal_moves());
+            let mut dest = MoveList::new();
+            legal_moves_into.benchmark(|| black_box(bd).legal_moves_into(&mut dest));
+        };
+        Perft::perft_with(&mut starting_pos, 3, &mut func);
+    }
+
 }

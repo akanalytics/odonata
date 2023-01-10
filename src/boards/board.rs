@@ -1,21 +1,71 @@
-use crate::bits::bitboard::Bitboard;
-use crate::bits::castling::CastlingRights;
-use crate::bits::square::Square;
-use crate::cache::hasher::Hasher;
-use crate::catalog::Catalog;
-use crate::domain::Material;
-use crate::mv::Move;
-use crate::piece::{Color, Hash, Piece, Ply, Repeats};
-use anyhow::Result;
-use anyhow::{bail, Context};
+use crate::{
+    bits::{bitboard::Bitboard, castling::CastlingRights, square::Square},
+    cache::hasher::Hasher,
+    catalog::Catalog,
+    domain::Material,
+    mv::Move,
+    piece::{Color, Hash, Piece, Ply, Repeats},
+};
+use anyhow::{bail, Context, Result};
 use serde::{Serialize, Serializer};
 use serde_with::DeserializeFromStr;
-use std::cell::Cell;
-use std::fmt::{self, Write};
-use std::iter::*;
-use std::str::FromStr;
+use std::{
+    cell::Cell,
+    fmt::{self, Write},
+    iter::*,
+    str::FromStr,
+};
 
 use super::BoardCalcs;
+
+pub struct Var {
+    // start: Board,
+    moves: Vec<Move>,
+    boards: Vec<Board>, // board before
+    ply: usize,
+}
+
+impl Var {
+    pub fn new(b: Board) -> Self {
+        let mut me = Self {
+            boards: Vec::new(),
+            moves: Vec::new(),
+            ply: 0,
+        };
+        me.boards.resize(128, Board::default());
+        me.boards[0] = b;
+        me
+    }
+
+    pub fn board(&self) -> &Board {
+        &self.boards[self.ply()]
+    }
+
+    pub fn ply(&self) -> usize {
+        self.ply
+        // self.moves.len()
+    }
+
+    pub fn board_mut(&mut self) -> &mut Board {
+        let i = self.ply();
+        &mut self.boards[i]
+    }
+
+    pub fn push_move(&mut self, mv: Move) -> &mut Var {
+        let i = self.ply();
+        self.ply += 1;
+        // self.moves.push(mv);
+        let (start, end) = self.boards.split_at_mut(i + 1);
+        end[0].copy_from(&start[i]);
+        end[0].apply_move(mv);
+        self
+    }
+    pub fn pop_move(&mut self) -> &mut Var {
+        self.ply -= 1;
+        // self.moves.pop();
+        self
+    }
+}
 
 // unsafe impl Send for Board {}
 // unsafe impl Sync for Board {}
@@ -28,7 +78,6 @@ pub struct Board {
     pub(super) turn: Color,
     pub(super) hash: Hash,
     pub(super) ply: Ply,
-
     pub(super) castling: CastlingRights,
     pub(super) en_passant: Bitboard,
     pub(super) half_move_clock: u16,
@@ -336,7 +385,7 @@ impl Board {
         sq.is_in(self.en_passant)
     }
 
-        #[inline]
+    #[inline]
     pub fn en_passant_square(&self) -> Option<Square> {
         if self.en_passant().is_empty() {
             None
@@ -658,8 +707,8 @@ impl Board {
     // #[inline]
     // fn color_of_unchecked(&self, sq: Square) -> Color {
     //     self.color_of(sq)
-    //         .unwrap_or_else(|| panic!("No coloured piece at {} of {}", sq, self.to_fen()))
-    // }
+    //         .unwrap_or_else(|| panic!("No coloured piece at {} of {}", sq,
+    // self.to_fen())) }
 
     pub fn get(&self, bb: Bitboard) -> String {
         let mut res = String::new();
@@ -729,8 +778,8 @@ impl Board {
             bail!("Piece bitboards and occupied squares do not match {self:#}");
         }
         // if self.fullmove_counter() < self.fifty_halfmove_clock() * 2 {
-        //     bail!("Fullmove number (fmvn: {}) < twice half move clock (hmvc: {})", self.fullmove_counter(), self.fifty_halfmove_clock() );
-        // }
+        //     bail!("Fullmove number (fmvn: {}) < twice half move clock (hmvc: {})",
+        // self.fullmove_counter(), self.fifty_halfmove_clock() ); }
         let ep = self.en_passant();
         if !ep.is_empty() {
             if !ep.intersects(Bitboard::RANK_3 | Bitboard::RANK_6) {
@@ -806,10 +855,11 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::globals::constants::*;
-    use crate::infra::black_box;
-    use crate::infra::profiler::PerfProfiler;
-    use crate::other::Perft;
+    use crate::{
+        globals::constants::*,
+        infra::{black_box, profiler::PerfProfiler},
+        other::Perft,
+    };
 
     #[test]
     fn test_serde() {
@@ -959,29 +1009,39 @@ mod tests {
     fn bench_board() {
         let mut starting_pos = Board::starting_pos();
 
-        let mut prof_clone = PerfProfiler::new("board.clone".into());
-        let mut prof_clone_from = PerfProfiler::new("board.clone_from".into());
-        let mut prof_make_move = PerfProfiler::new("movegen: perft_make_move".into());
-        let mut prof_is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
-        let mut prof_is_pawn = PerfProfiler::new("board: is_pawn".into());
-        let mut prof_is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
-        let mut prof_piece_is = PerfProfiler::new("board: is_occupied_by".into());
-        let mut prof_piece_at = PerfProfiler::new("board: piece_at".into());
-        let mut prof_piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
-        let mut prof_mover_piece = PerfProfiler::new("move: mover_piece (board)".into());
+        let mut clone = PerfProfiler::new("board.clone".into());
+        let mut clone_from = PerfProfiler::new("board.clone_from".into());
+        let mut copy_from = PerfProfiler::new("movegen.copy_from".into());
+        let mut apply_move = PerfProfiler::new("movegen.apply_move".into());
+        let mut make_move = PerfProfiler::new("movegen: perft_make_move".into());
+        let mut var_make_move = PerfProfiler::new("movegen: perft_var_make_move".into());
+        let mut is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
+        let mut is_pawn = PerfProfiler::new("board: is_pawn".into());
+        let mut is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
+        let mut piece_is = PerfProfiler::new("board: is_occupied_by".into());
+        let mut piece_at = PerfProfiler::new("board: piece_at".into());
+        let mut piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
+        let mut mover_piece = PerfProfiler::new("move: mover_piece (board)".into());
 
         let mut dest = Board::starting_pos();
         let mut func = |bd: &Board, mv: Move| {
-            prof_clone.benchmark(|| black_box(black_box(bd).clone()));
-            prof_clone_from.benchmark(|| dest.clone_from(black_box(&bd)));
-            prof_make_move.benchmark(|| black_box(bd).make_move(mv));
-            prof_is_pawn.benchmark(|| black_box(bd).piece(mv.from()) == Some(Piece::Pawn));
-            prof_is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
-            prof_piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
-            prof_piece_at.benchmark(|| black_box(bd).piece(mv.from()));
-            prof_piece_is.benchmark(|| black_box(bd).is_occupied_by(mv.from(), Piece::Knight));
-            prof_mover_piece.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
-            prof_is_b_or_n.benchmark(|| {
+            clone.benchmark(|| black_box(black_box(bd).clone()));
+            clone_from.benchmark(|| dest.clone_from(black_box(&bd)));
+            copy_from.benchmark(|| dest.copy_from(black_box(&bd)));
+            make_move.benchmark(|| black_box(bd).make_move(mv));
+            let mut bd2 = bd.clone();
+            apply_move.benchmark(|| black_box(&mut bd2).apply_move(mv));
+            let mut var = Var::new(bd.clone());
+            var_make_move.benchmark(|| {
+                black_box(&mut var).push_move(mv);
+            });
+            is_pawn.benchmark(|| black_box(bd).piece(mv.from()) == Some(Piece::Pawn));
+            is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
+            piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
+            piece_at.benchmark(|| black_box(bd).piece(mv.from()));
+            piece_is.benchmark(|| black_box(bd).is_occupied_by(mv.from(), Piece::Knight));
+            mover_piece.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
+            is_b_or_n.benchmark(|| {
                 black_box(bd).piece(Square::A3) == Some(Piece::Bishop)
                     || black_box(bd).piece(Square::A3) == Some(Piece::Knight)
             });
