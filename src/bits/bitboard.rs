@@ -1,12 +1,13 @@
-use crate::bits::square::Square;
-use crate::piece::Color;
+use crate::{bits::square::Square, piece::Color};
 use anyhow::{anyhow, bail, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::cell::Cell;
-use std::fmt::{self, Write};
-use std::ops;
-use std::str::FromStr;
+use std::{
+    cell::Cell,
+    fmt::{self, Write},
+    ops,
+    str::FromStr,
+};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 
@@ -178,8 +179,6 @@ impl<T> std::ops::IndexMut<Dir> for [T] {
 #[derive(Copy, Clone, Default, PartialOrd, PartialEq, Ord, Eq, Hash, Serialize, Deserialize)]
 pub struct Bitboard(u64);
 
-
-
 // #[derive(Clone, Copy, PartialEq, Eq)]
 // pub struct NonZeroBitboard(pub NonZeroU64);
 // impl NonZeroBitboard {
@@ -229,7 +228,6 @@ impl<const NICHE: u64> LazyBitboard<NICHE> {
 //         bb
 //     }
 // }
-
 
 impl Bitboard {
     pub const EMPTY: Bitboard = Bitboard(0);
@@ -362,7 +360,6 @@ impl Bitboard {
 
     pub const ALL: Bitboard = Self::WHITE_SQUARES.or(Self::BLACK_SQUARES);
 
-
     pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
 
     pub const QUEENS_SIDE: Bitboard = Bitboard::FILE_A
@@ -375,11 +372,11 @@ impl Bitboard {
         .or(Bitboard::FILE_H);
 
     /// All of RANK 1 plus RANK 8
-    ///```
+    /// ```
     /// use odonata::bits::Bitboard;
     /// assert!(Bitboard::RANKS_18.contains(Bitboard::A1));
     /// assert!(Bitboard::RANKS_18.contains(Bitboard::H8));
-    ///```
+    /// ```
     pub const RANKS_18: Bitboard = Bitboard::RANK_1.or(Bitboard::RANK_8);
     pub const RANKS_27: Bitboard = Bitboard::RANK_2.or(Bitboard::RANK_7);
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
@@ -983,8 +980,8 @@ impl FromStr for Bitboard {
 // https://www.chessprogramming.org/Traversing_Subsets_of_a_Set
 #[derive(Copy, Clone, Debug)]
 pub struct PowerSetIterator {
-    d: Bitboard, // we're iterating subsets of d
-    n: Bitboard, // next subset
+    d:         Bitboard, // we're iterating subsets of d
+    n:         Bitboard, // next subset
     completed: bool,
 }
 
