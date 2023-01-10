@@ -55,14 +55,16 @@ impl Board {
             fullmove_number: self.fullmove_number,
             half_move_clock: self.half_move_clock,
             repetition_count: Cell::new(Repeats::default()),
-            threats_to: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            checkers_of: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
+            threats_to: Default::default(),
+            // [
+            //     Cell::<_>::new(Bitboard::niche()),
+            //     Cell::<_>::new(Bitboard::niche()),
+            // ],
+            checkers_of: Default::default(),
+            // checkers_of: [
+            //     Cell::<_>::new(Bitboard::niche()),
+            //     Cell::<_>::new(Bitboard::niche()),
+            // ],
             pinned: [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
@@ -89,14 +91,15 @@ impl Board {
         self.fullmove_number = b.fullmove_number;
         self.half_move_clock = b.half_move_clock;
         self.repetition_count = Cell::new(Repeats::default());
-        self.threats_to = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
-        self.checkers_of = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
+        self.threats_to =  Default::default();
+        //     Cell::<_>::new(Bitboard::niche()),
+        //     Cell::<_>::new(Bitboard::niche()),
+        // ];
+        self.checkers_of =  Default::default();
+        // self.checkers_of = [
+        //     Cell::<_>::new(Bitboard::niche()),
+        //     Cell::<_>::new(Bitboard::niche()),
+        // ];
         self.pinned = [
             Cell::<_>::new(Bitboard::niche()),
             Cell::<_>::new(Bitboard::niche()),
@@ -120,14 +123,15 @@ impl Board {
         bds[i].fullmove_number = bds[j].fullmove_number;
         bds[i].half_move_clock = bds[j].half_move_clock;
         bds[i].repetition_count = Cell::new(Repeats::default());
-        bds[i].threats_to = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
-        bds[i].checkers_of = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
+        bds[i].threats_to =  Default::default();
+        //     Cell::<_>::new(Bitboard::niche()),
+        //     Cell::<_>::new(Bitboard::niche()),
+        // ];
+        bds[i].checkers_of = Default::default();
+        // [
+        //     Cell::<_>::new(Bitboard::niche()),
+        //     Cell::<_>::new(Bitboard::niche()),
+        // ];
         bds[i].pinned = [
             Cell::<_>::new(Bitboard::niche()),
             Cell::<_>::new(Bitboard::niche()),

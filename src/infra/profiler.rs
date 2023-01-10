@@ -258,7 +258,7 @@ impl PerfProfiler {
         let iters = self.iters;
         writeln!(
             w,
-            "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
+            "PROFH: {:<30}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name",
             "instructions",
             "iters",
@@ -271,7 +271,7 @@ impl PerfProfiler {
             "cache-hit-%",
         )?;
         writeln!(w,
-        "PROFD: {n:<25}\t{ins:>15}\t{it:>15}\t{cy:>15}\t{br:>15}\t{bm:>15}\t{cm:>15}\t{cr:>15}\t{cpi:>15.2}\t{ch:>15.2}\n",
+        "PROFD: {n:<30}\t{ins:>15}\t{it:>15}\t{cy:>15}\t{br:>15}\t{bm:>15}\t{cm:>15}\t{cr:>15}\t{cpi:>15.2}\t{ch:>15.2}\n",
         n = self.name,
         ins = ((counts[&self.ins]) / iters - NOOP_INSTRUCTION_OVERHEAD).human(),
         it = iters,

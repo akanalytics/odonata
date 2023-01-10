@@ -3,6 +3,7 @@ use crate::piece::Color;
 use anyhow::{anyhow, bail, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::cell::Cell;
 use std::fmt::{self, Write};
 use std::ops;
 use std::str::FromStr;
@@ -177,6 +178,59 @@ impl<T> std::ops::IndexMut<Dir> for [T] {
 #[derive(Copy, Clone, Default, PartialOrd, PartialEq, Ord, Eq, Hash, Serialize, Deserialize)]
 pub struct Bitboard(u64);
 
+
+
+// #[derive(Clone, Copy, PartialEq, Eq)]
+// pub struct NonZeroBitboard(pub NonZeroU64);
+// impl NonZeroBitboard {
+//     #[inline(always)]
+//     pub fn new(b: Bitboard) -> Self {
+//         NonZeroBitboard(unsafe { NonZeroU64::new_unchecked(b.bits()) })
+//     }
+// }
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct LazyBitboard<const NICHE: u64> {
+    cell: Cell<Bitboard>,
+}
+
+impl<const NICHE: u64> Default for LazyBitboard<NICHE> {
+    fn default() -> Self {
+        Self {
+            cell: Cell::new(Bitboard::from_u64(NICHE)),
+        }
+    }
+}
+
+impl<const NICHE: u64> LazyBitboard<NICHE> {
+    #[inline(always)]
+    pub fn get_or_init(&self, f: impl FnOnce() -> Bitboard) -> Bitboard {
+        let mut bb = self.cell.get();
+        if bb.bits() == NICHE {
+            bb = f();
+            debug_assert!(bb.bits() == NICHE, "Lazy bitboard evaluated to niche value");
+            self.cell.set(bb);
+        }
+        bb
+    }
+    pub fn get(&self) -> Bitboard {
+        self.cell.get()
+    }
+}
+
+// impl<const NICHE: Bitboard> LazyBitboard<NICHE> {
+//     pub fn get_or_init(&self, f: impl FnOnce() -> Bitboard) -> Bitboard {
+//         let nzbb = self.cell.get();
+//         if  let Some(nzbb) = nzbb {
+//             return Bitboard(nzbb.0.get())
+//         }
+//         let bb = f();
+//         self.cell.set(Some(NonZeroBitboard::new(bb)));
+//         bb
+//     }
+// }
+
+
 impl Bitboard {
     pub const EMPTY: Bitboard = Bitboard(0);
     pub const A1: Bitboard = Bitboard(1 << 0);
@@ -305,6 +359,10 @@ impl Bitboard {
     // https://gekomad.github.io/Cinnamon/BitboardCalculator/
     pub const WHITE_SQUARES: Bitboard = Bitboard(0x55aa55aa55aa55aa_u64);
     pub const BLACK_SQUARES: Bitboard = Bitboard(0xaa55aa55aa55aa55_u64);
+
+    pub const ALL: Bitboard = Self::WHITE_SQUARES.or(Self::BLACK_SQUARES);
+
+
     pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
 
     pub const QUEENS_SIDE: Bitboard = Bitboard::FILE_A

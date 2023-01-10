@@ -1,5 +1,9 @@
 use crate::{
-    bits::{bitboard::Bitboard, castling::CastlingRights, square::Square},
+    bits::{
+        bitboard::{Bitboard, LazyBitboard},
+        castling::CastlingRights,
+        square::Square,
+    },
     cache::hasher::Hasher,
     catalog::Catalog,
     domain::Material,
@@ -13,7 +17,8 @@ use std::{
     cell::Cell,
     fmt::{self, Write},
     iter::*,
-    str::FromStr, mem,
+    mem,
+    str::FromStr,
 };
 
 use super::BoardCalcs;
@@ -22,17 +27,17 @@ pub struct Var {
     // start: Board,
     current: Board,
     // moves:  Vec<Move>,
-    boards: [Board;31], // board before
-    ply:    usize,
+    boards:  [Board; 31], // board before
+    ply:     usize,
 }
 
 impl Var {
     pub fn new(b: Board) -> Self {
         let me = Self {
             current: b,
-            boards: Default::default(),
+            boards:  Default::default(),
             // moves:  Vec::new(),
-            ply:    0,
+            ply:     0,
         };
         // me.boards.resize(128, Board::default());
         me
@@ -59,7 +64,7 @@ impl Var {
         let i = self.ply();
         self.ply += 1;
         // self.moves.push(mv);
-        mem::swap(&mut self.current, &mut self.boards[i]);  // board in [i]
+        mem::swap(&mut self.current, &mut self.boards[i]); // board in [i]
         self.current.copy_from(&self.boards[i]);
         self.current.apply_move(mv);
 
@@ -72,8 +77,8 @@ impl Var {
     pub fn pop_move(&mut self) {
         self.ply -= 1;
         let i = self.ply();
-        mem::swap(&mut self.current, &mut self.boards[i]);  // board in [i]
-        // self.moves.pop();
+        mem::swap(&mut self.current, &mut self.boards[i]); // board in [i]
+                                                           // self.moves.pop();
     }
 }
 
@@ -91,8 +96,8 @@ pub struct Board {
     pub(super) castling:         CastlingRights,
     pub(super) en_passant:       Bitboard,
     pub(super) half_move_clock:  u16,
-    pub(super) threats_to:       [Cell<Bitboard>; Color::len()],
-    pub(super) checkers_of:      [Cell<Bitboard>; Color::len()],
+    pub(super) threats_to:       [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
+    pub(super) checkers_of:      [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) pinned:           [Cell<Bitboard>; Color::len()],
     pub(super) discoverer:       [Cell<Bitboard>; Color::len()],
     pub(super) repetition_count: Cell<Repeats>,
@@ -117,14 +122,12 @@ impl Default for Board {
             half_move_clock:  Default::default(),
             fullmove_number:  1,
             repetition_count: Cell::<_>::new(Repeats::default()),
-            threats_to:       [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            checkers_of:      [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
+            threats_to:       Default::default(),
+            checkers_of:      Default::default(),
+            // checkers_of:      [
+            //     Cell::<_>::new(Bitboard::niche()),
+            //     Cell::<_>::new(Bitboard::niche()),
+            // ],
             pinned:           [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
@@ -345,14 +348,15 @@ impl Board {
             Cell::<_>::new(Bitboard::niche()),
             Cell::<_>::new(Bitboard::niche()),
         ];
-        self.threats_to = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
-        self.checkers_of = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
+        self.threats_to = Default::default();
+        //     Cell::<_>::new(Bitboard::niche()),
+        //     Cell::<_>::new(Bitboard::niche()),
+        // ];
+        self.checkers_of = Default::default();
+        // self.checkers_of = [
+        //     Cell::<_>::new(Bitboard::niche()),
+        //     Cell::<_>::new(Bitboard::niche()),
+        // ];
     }
 
     #[inline]
@@ -571,22 +575,21 @@ impl Board {
 
     #[inline]
     pub fn checkers_of(&self, king_color: Color) -> Bitboard {
-        let mut ch = self.checkers_of[king_color].get();
-        if ch == Bitboard::niche() {
-            ch = BoardCalcs::checkers_of(self, king_color);
-            self.checkers_of[king_color].set(ch);
-        }
-        ch
+        self.checkers_of[king_color].get_or_init(|| BoardCalcs::checkers_of(self, king_color))
     }
+
+    //     let mut ch = self.checkers_of[king_color].get();
+    //     if ch == Bitboard::niche() {
+    //         ch = BoardCalcs::checkers_of(self, king_color);
+    //         self.checkers_of[king_color].set(ch);
+    //     }
+    //     ch
+    // }
 
     #[inline]
     pub fn all_attacks_on(&self, defender: Color) -> Bitboard {
-        let mut th = self.threats_to[defender].get();
-        if th == Bitboard::niche() {
-            th = BoardCalcs::all_attacks_on(self, defender, self.occupied());
-            self.threats_to[defender].set(th);
-        }
-        th
+        self.threats_to[defender]
+            .get_or_init(|| BoardCalcs::all_attacks_on(self, defender, self.occupied()))
     }
 
     pub fn has_legal_moves(&self) -> bool {
@@ -1030,7 +1033,7 @@ mod tests {
         let mut is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut is_pawn = PerfProfiler::new("board: is_pawn".into());
         let mut is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
-        let mut piece_is = PerfProfiler::new("board: is_occupied_by".into());   
+        let mut piece_is = PerfProfiler::new("board: is_occupied_by".into());
         let mut piece_at = PerfProfiler::new("board: piece_at".into());
         let mut piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
         let mut mover_piece = PerfProfiler::new("move: mover_piece (board)".into());
@@ -1060,7 +1063,8 @@ mod tests {
             is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
             piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
             piece_at.benchmark(|| black_box(bd).piece(mv.from()));
-            piece_is.benchmark(|| black_box(bd).is_occupied_by(black_box(mv).from(), Piece::Knight));
+            piece_is
+                .benchmark(|| black_box(bd).is_occupied_by(black_box(mv).from(), Piece::Knight));
             mover_piece.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
             is_b_or_n.benchmark(|| {
                 black_box(bd).piece(Square::A3) == Some(Piece::Bishop)
@@ -1070,6 +1074,5 @@ mod tests {
         Perft::perft_with(&mut starting_pos, 3, &mut func);
         perft.benchmark(|| Perft::perft(black_box(&mut starting_pos), 5));
         perft_v2.benchmark(|| Perft::perft_v2(black_box(&mut starting_pos), 5));
-
     }
 }
