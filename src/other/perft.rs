@@ -55,6 +55,14 @@ impl Perft {
         count.max(1) // we count perft(0) as 1
     }
 
+    pub fn perft_v2(board: &mut Board, depth: u32) -> u64 {
+        let mut count = 0;
+        Self::perft_with(board, depth, &mut |_b, _mv| {
+            count += 1
+        });
+        count.max(1) // we count perft(0) as 1
+    }
+
     pub fn perft_cat(&mut self, board: &mut Board, depth: u32) -> u64 {
         let mut count = 0;
 

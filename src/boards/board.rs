@@ -13,34 +13,37 @@ use std::{
     cell::Cell,
     fmt::{self, Write},
     iter::*,
-    str::FromStr,
+    str::FromStr, mem,
 };
 
 use super::BoardCalcs;
 
 pub struct Var {
     // start: Board,
-    moves: Vec<Move>,
-    boards: Vec<Board>, // board before
-    ply: usize,
+    current: Board,
+    // moves:  Vec<Move>,
+    boards: [Board;31], // board before
+    ply:    usize,
 }
 
 impl Var {
     pub fn new(b: Board) -> Self {
-        let mut me = Self {
-            boards: Vec::new(),
-            moves: Vec::new(),
-            ply: 0,
+        let me = Self {
+            current: b,
+            boards: Default::default(),
+            // moves:  Vec::new(),
+            ply:    0,
         };
-        me.boards.resize(128, Board::default());
-        me.boards[0] = b;
+        // me.boards.resize(128, Board::default());
         me
     }
 
+    #[inline]
     pub fn board(&self) -> &Board {
-        &self.boards[self.ply()]
+        &self.current
     }
 
+    #[inline]
     pub fn ply(&self) -> usize {
         self.ply
         // self.moves.len()
@@ -51,19 +54,26 @@ impl Var {
         &mut self.boards[i]
     }
 
-    pub fn push_move(&mut self, mv: Move) -> &mut Var {
+    #[inline]
+    pub fn push_move(&mut self, mv: Move) {
         let i = self.ply();
         self.ply += 1;
         // self.moves.push(mv);
-        let (start, end) = self.boards.split_at_mut(i + 1);
-        end[0].copy_from(&start[i]);
-        end[0].apply_move(mv);
-        self
+        mem::swap(&mut self.current, &mut self.boards[i]);  // board in [i]
+        self.current.copy_from(&self.boards[i]);
+        self.current.apply_move(mv);
+
+        // let (start, end) = self.boards.split_at_mut(i + 1);
+        // end[0].copy_from(&start[i]);
+        // end[0].apply_move(mv);
     }
-    pub fn pop_move(&mut self) -> &mut Var {
+
+    #[inline]
+    pub fn pop_move(&mut self) {
         self.ply -= 1;
+        let i = self.ply();
+        mem::swap(&mut self.current, &mut self.boards[i]);  // board in [i]
         // self.moves.pop();
-        self
     }
 }
 
@@ -72,19 +82,19 @@ impl Var {
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
-    pub(super) pieces: [Bitboard; Piece::len()],
-    pub(super) colors: [Bitboard; Color::len()],
-    pub(super) fullmove_number: u16,
-    pub(super) turn: Color,
-    pub(super) hash: Hash,
-    pub(super) ply: Ply,
-    pub(super) castling: CastlingRights,
-    pub(super) en_passant: Bitboard,
-    pub(super) half_move_clock: u16,
-    pub(super) threats_to: [Cell<Bitboard>; Color::len()],
-    pub(super) checkers_of: [Cell<Bitboard>; Color::len()],
-    pub(super) pinned: [Cell<Bitboard>; Color::len()],
-    pub(super) discoverer: [Cell<Bitboard>; Color::len()],
+    pub(super) pieces:           [Bitboard; Piece::len()],
+    pub(super) colors:           [Bitboard; Color::len()],
+    pub(super) fullmove_number:  u16,
+    pub(super) turn:             Color,
+    pub(super) hash:             Hash,
+    pub(super) ply:              Ply,
+    pub(super) castling:         CastlingRights,
+    pub(super) en_passant:       Bitboard,
+    pub(super) half_move_clock:  u16,
+    pub(super) threats_to:       [Cell<Bitboard>; Color::len()],
+    pub(super) checkers_of:      [Cell<Bitboard>; Color::len()],
+    pub(super) pinned:           [Cell<Bitboard>; Color::len()],
+    pub(super) discoverer:       [Cell<Bitboard>; Color::len()],
     pub(super) repetition_count: Cell<Repeats>,
 }
 
@@ -98,33 +108,33 @@ impl Default for Board {
     #[inline]
     fn default() -> Self {
         Board {
-            pieces: Default::default(),
-            colors: Default::default(),
-            castling: CastlingRights::NONE,
-            en_passant: Default::default(),
-            turn: Default::default(),
-            ply: 0,
-            half_move_clock: Default::default(),
-            fullmove_number: 1,
+            pieces:           Default::default(),
+            colors:           Default::default(),
+            castling:         CastlingRights::NONE,
+            en_passant:       Default::default(),
+            turn:             Default::default(),
+            ply:              0,
+            half_move_clock:  Default::default(),
+            fullmove_number:  1,
             repetition_count: Cell::<_>::new(Repeats::default()),
-            threats_to: [
+            threats_to:       [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
             ],
-            checkers_of: [
+            checkers_of:      [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
             ],
-            pinned: [
+            pinned:           [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
             ],
-            discoverer: [
+            discoverer:       [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
             ],
             // material: Cell::<_>::new(Material::niche()),
-            hash: 0,
+            hash:             0,
             // moves: MoveList,
         }
         // b.hash = Hasher::default().hash_board(&b);
@@ -1010,36 +1020,47 @@ mod tests {
         let mut starting_pos = Board::starting_pos();
 
         let mut clone = PerfProfiler::new("board.clone".into());
-        let mut clone_from = PerfProfiler::new("board.clone_from".into());
-        let mut copy_from = PerfProfiler::new("movegen.copy_from".into());
-        let mut apply_move = PerfProfiler::new("movegen.apply_move".into());
-        let mut make_move = PerfProfiler::new("movegen: perft_make_move".into());
-        let mut var_make_move = PerfProfiler::new("movegen: perft_var_make_move".into());
+        let mut clone_from = PerfProfiler::new("board: clone_from".into());
+        let mut mem_swap = PerfProfiler::new("board: mem_swap".into());
+        let mut copy_from = PerfProfiler::new("makemove: copy_from".into());
+        let mut apply_move = PerfProfiler::new("makemove: apply_move".into());
+        let mut make_move = PerfProfiler::new("makemove: perft_make_move".into());
+        let mut var_push_move = PerfProfiler::new("makemove: perft_var_push_move".into());
+        let mut var_pop_move = PerfProfiler::new("makemove: perft_var_pop_move".into());
         let mut is_b_or_n = PerfProfiler::new("board: is_b_or_n".into());
         let mut is_pawn = PerfProfiler::new("board: is_pawn".into());
         let mut is_pawn_fast = PerfProfiler::new("board: is_pawn.fast".into());
-        let mut piece_is = PerfProfiler::new("board: is_occupied_by".into());
+        let mut piece_is = PerfProfiler::new("board: is_occupied_by".into());   
         let mut piece_at = PerfProfiler::new("board: piece_at".into());
         let mut piece_unchecked = PerfProfiler::new("board: piece_unchecked".into());
         let mut mover_piece = PerfProfiler::new("move: mover_piece (board)".into());
+        let mut perft = PerfProfiler::new("perft: perft".into());
+        let mut perft_v2 = PerfProfiler::new("perft: perft_v2".into());
 
         let mut dest = Board::starting_pos();
+        // let mut boards = [dest.clone(), dest.clone()];
         let mut func = |bd: &Board, mv: Move| {
-            clone.benchmark(|| black_box(black_box(bd).clone()));
+            let mut dest2 = bd.clone();
+            mem_swap.benchmark(|| std::mem::swap(black_box(&mut dest), black_box(&mut dest2)));
+            clone.benchmark(|| black_box(bd).clone());
             clone_from.benchmark(|| dest.clone_from(black_box(&bd)));
-            copy_from.benchmark(|| dest.copy_from(black_box(&bd)));
+            // copy_from.benchmark(|| Board::copy_from(black_box(&mut boards), 1, 0));
+            copy_from.benchmark(|| black_box(&mut dest).copy_from(black_box(bd)));
             make_move.benchmark(|| black_box(bd).make_move(mv));
             let mut bd2 = bd.clone();
             apply_move.benchmark(|| black_box(&mut bd2).apply_move(mv));
             let mut var = Var::new(bd.clone());
-            var_make_move.benchmark(|| {
-                black_box(&mut var).push_move(mv);
+            var_push_move.benchmark(|| {
+                black_box(black_box(&mut var)).push_move(black_box(mv));
+            });
+            var_pop_move.benchmark(|| {
+                black_box(black_box(&mut var)).pop_move();
             });
             is_pawn.benchmark(|| black_box(bd).piece(mv.from()) == Some(Piece::Pawn));
             is_pawn_fast.benchmark(|| mv.from().is_in(black_box(bd).pawns()));
             piece_unchecked.benchmark(|| black_box(bd).piece_unchecked(mv.from()));
             piece_at.benchmark(|| black_box(bd).piece(mv.from()));
-            piece_is.benchmark(|| black_box(bd).is_occupied_by(mv.from(), Piece::Knight));
+            piece_is.benchmark(|| black_box(bd).is_occupied_by(black_box(mv).from(), Piece::Knight));
             mover_piece.benchmark(|| black_box(mv).mover_piece(black_box(bd)));
             is_b_or_n.benchmark(|| {
                 black_box(bd).piece(Square::A3) == Some(Piece::Bishop)
@@ -1047,5 +1068,8 @@ mod tests {
             });
         };
         Perft::perft_with(&mut starting_pos, 3, &mut func);
+        perft.benchmark(|| Perft::perft(black_box(&mut starting_pos), 5));
+        perft_v2.benchmark(|| Perft::perft_v2(black_box(&mut starting_pos), 5));
+
     }
 }

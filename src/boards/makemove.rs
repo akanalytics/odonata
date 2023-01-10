@@ -83,11 +83,11 @@ impl Board {
         b
     }
 
-    pub fn copy_from(&mut self, bd: &Board) {
-        self.en_passant = bd.en_passant();
-        self.turn = bd.turn;
-        self.fullmove_number = bd.fullmove_number;
-        self.half_move_clock = bd.half_move_clock;
+    pub fn copy_from(&mut self, b: &Board) {
+        self.en_passant = b.en_passant();
+        self.turn = b.turn;
+        self.fullmove_number = b.fullmove_number;
+        self.half_move_clock = b.half_move_clock;
         self.repetition_count = Cell::new(Repeats::default());
         self.threats_to = [
             Cell::<_>::new(Bitboard::niche()),
@@ -105,13 +105,44 @@ impl Board {
             Cell::<_>::new(Bitboard::niche()),
             Cell::<_>::new(Bitboard::niche()),
         ];
-        // material: Cell::<_>::new(bd.material()),
-        // moves= bd.moves.clone(),
-        self.pieces = bd.pieces.clone();
-        self.colors = bd.colors.clone();
-        self.castling = bd.castling;
-        self.hash = bd.hash;
-        self.ply = bd.ply;
+        // material: Cell::<_>::new(b.material()),
+        // moves= b.moves.clone(),
+        self.pieces = b.pieces.clone();
+        self.colors = b.colors.clone();
+        self.castling = b.castling;
+        self.hash = b.hash;
+        self.ply = b.ply;
+    }
+
+    pub fn copy_from_v2(bds: &mut [Board], i: usize, j: usize) {
+        bds[i].en_passant = bds[j].en_passant();
+        bds[i].turn = bds[j].turn;
+        bds[i].fullmove_number = bds[j].fullmove_number;
+        bds[i].half_move_clock = bds[j].half_move_clock;
+        bds[i].repetition_count = Cell::new(Repeats::default());
+        bds[i].threats_to = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        bds[i].checkers_of = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        bds[i].pinned = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        bds[i].discoverer = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        // material: Cell::<_>::new(bds[j].material()),
+        // moves= bds[j].moves.clone(),
+        bds[i].pieces = bds[j].pieces.clone();
+        bds[i].colors = bds[j].colors.clone();
+        bds[i].castling = bds[j].castling;
+        bds[i].hash = bds[j].hash;
+        bds[i].ply = bds[j].ply;
     }
 
     pub fn make_move_into(&self, m: Move, b: &mut Board) {

@@ -1,7 +1,8 @@
-use crate::bits::bitboard::Bitboard;
-use crate::bits::precalc::PreCalc;
-use crate::boards::Board;
-use crate::piece::Color;
+use crate::{
+    bits::{bitboard::Bitboard, precalc::PreCalc},
+    boards::Board,
+    piece::Color,
+};
 
 pub struct BoardCalcs {}
 
@@ -15,7 +16,8 @@ impl BoardCalcs {
         // if our_king.is_empty() {
         //     return Bitboard::empty();
         // };
-        // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
+        // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color,
+        // board);
         let occ = us | them;
         Self::attacked_by(our_king, occ, bd) & them
     }
@@ -31,7 +33,8 @@ impl BoardCalcs {
         let king_sq = kings.square();
 
         let pc = PreCalc::default();
-        // let xray_sliding_checkers = Self::attacked_by(kings, Bitboard::EMPTY, bd) & color_them;
+        // let xray_sliding_checkers = Self::attacked_by(kings, Bitboard::EMPTY, bd) &
+        // color_them;
 
         let xray_sliding_checkers = color_them
             & (pc.bishop_xray_attacks(king_sq) & bd.bishops_or_queens()
@@ -118,10 +121,11 @@ impl BoardCalcs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
-    use crate::globals::constants::*;
-    use crate::infra::black_box;
-    use crate::infra::profiler::PerfProfiler;
+    use crate::{
+        catalog::*,
+        globals::constants::*,
+        infra::{black_box, profiler::PerfProfiler}, other::Perft, mv::Move,
+    };
     use test_log::test;
 
     #[test]
@@ -169,5 +173,34 @@ mod tests {
             let bd = pos.board();
             prof.benchmark(|| BoardCalcs::pinned_and_discoverers(black_box(bd), bd.color_us()));
         }
+    }
+
+    #[test]
+    fn bench_calcs() {
+        let mut starting_pos = Catalog::perft_kiwipete().0;
+        let mut pinned_calc = PerfProfiler::new("boardcalcs: pinned calc".into());
+        let mut pinned_cached = PerfProfiler::new("boardcalcs: pinned cached".into());
+        let mut discoverer_calc = PerfProfiler::new("boardcalcs: discoverer calc".into());
+        let mut discoverer_cached = PerfProfiler::new("boardcalcs: discoverer cached".into());
+        let mut checkers_of_calc = PerfProfiler::new("boardcalcs: checkers_of calc".into());
+        let mut checkers_of_cached = PerfProfiler::new("boardcalcs: checkers_of cached".into());
+        let mut threats_to_calc = PerfProfiler::new("boardcalcs: threats_to calc".into());
+        let mut threats_to_cached = PerfProfiler::new("boardcalcs: threats_to cached".into());
+
+        let mut func = |bd: &Board, mv: Move| {
+            let bd = black_box(bd.make_move(mv));
+            pinned_calc.benchmark(|| bd.pinned(Color::White));
+            pinned_cached.benchmark(|| bd.pinned(Color::White));
+
+            discoverer_calc.benchmark(|| bd.discoverer(Color::White));
+            discoverer_cached.benchmark(|| bd.discoverer(Color::White));
+
+            checkers_of_calc.benchmark(|| bd.checkers_of(Color::White));
+            checkers_of_cached.benchmark(|| bd.checkers_of(Color::White));
+
+            threats_to_calc.benchmark(|| bd.all_attacks_on(Color::White));
+            threats_to_cached.benchmark(|| bd.all_attacks_on(Color::White));
+        };
+        Perft::perft_with(&mut starting_pos, 2, &mut func);
     }
 }
