@@ -168,10 +168,10 @@ impl Position {
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
         if words[3] == "-" {
-            pos.board.set_en_passant(Bitboard::EMPTY)
+            pos.board.set_en_passant(None)
         } else {
             pos.board
-                .set_en_passant(Bitboard::parse_square(words[3])?.as_bb())
+                .set_en_passant(Some(Bitboard::parse_square(words[3])?))
         };
 
         let mut remaining = StringUtils::trim_first_n_words(epd, 4);

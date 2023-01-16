@@ -1,4 +1,3 @@
-use crate::bits::bitboard::Bitboard;
 use crate::boards::Board;
 use crate::cache::hasher::Hasher;
 use crate::infra::black_box;
@@ -50,7 +49,7 @@ impl Board {
         );
 
         let mut b = Board {
-            en_passant: self.en_passant(),
+            en_passant: self.en_passant_square(),
             turn: self.turn,
             fullmove_number: self.fullmove_number,
             half_move_clock: self.half_move_clock,
@@ -72,7 +71,7 @@ impl Board {
     }
 
     pub fn copy_from(&mut self, b: &Board) {
-        self.en_passant = b.en_passant();
+        self.en_passant = b.en_passant_square();
         self.turn = b.turn;
         self.fullmove_number = b.fullmove_number;
         self.half_move_clock = b.half_move_clock;
@@ -91,7 +90,7 @@ impl Board {
     }
 
     pub fn copy_from_v2(bds: &mut [Board], i: usize, j: usize) {
-        bds[i].en_passant = bds[j].en_passant();
+        bds[i].en_passant = bds[j].en_passant_square();
         bds[i].turn = bds[j].turn;
         bds[i].fullmove_number = bds[j].fullmove_number;
         bds[i].half_move_clock = bds[j].half_move_clock;
@@ -162,17 +161,17 @@ impl Board {
         // now hash calculated - we can adjust these
         b.turn = b.turn.opposite();
         if m.is_null() {
-            b.en_passant = Bitboard::EMPTY;
+            b.en_passant = None;
             return;
         }
 
         let mover = m.mover_piece(b);
 
-        let mut en_passant = Bitboard::EMPTY;
+        let mut en_passant = None;
         if mover == Piece::Pawn {
             b.half_move_clock = 0;
             if m.is_pawn_double_push(b) {
-                en_passant = m.double_push_en_passant_square().as_bb();
+                en_passant = Some(m.double_push_en_passant_square());
             }
         }
 
@@ -234,7 +233,7 @@ impl Board {
 
             // now hash calculated - we can adjust these
             b.turn = b.turn.opposite();
-            b.en_passant = Bitboard::EMPTY;
+            b.en_passant = None;
 
             if let Some(c) = m.capture_piece(b) {
                 b.half_move_clock = 0;
@@ -267,7 +266,7 @@ impl Board {
             if m.mover_piece(b) == Piece::Pawn {
                 b.half_move_clock = 0;
                 if m.is_pawn_double_push(b) {
-                    b.en_passant = m.double_push_en_passant_square().as_bb();
+                    b.en_passant = Some(m.double_push_en_passant_square());
                 }
             }
 
@@ -305,7 +304,7 @@ impl Board {
 
 mod tests {
     use super::*;
-    use crate::catalog::*;
+    use crate::{catalog::*, Bitboard};
     use crate::globals::constants::*;
     use crate::infra::profiler::PerfProfiler;
     use anyhow::Result;

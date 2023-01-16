@@ -149,7 +149,7 @@ impl Board {
             if (precalc.strictly_between(m.from(), m.to()) & self.occupied()).any() {
                 return false;
             }
-            if m.to().is_in(self.en_passant())
+            if self.is_en_passant_square(m.to())
                 && m.to()
                     .is_in(precalc.pawn_attacks_from_sq(self.color_us(), m.from()))
             {
@@ -241,7 +241,7 @@ impl Board {
             let sq = Square::from_xy(mv.to().file_index() as u32, mv.from().rank_index() as u32);
             debug_assert!(
                 sq.is_in(self.them()),
-                "ep capture square not occupied {mv} {self}"
+                "ep capture square not occupied for move {mv} on board {self}"
             );
             them.remove(sq.as_bb());
         }
@@ -325,7 +325,7 @@ mod tests {
         let mover = mv.mover_piece(&bd);
         let destinations = precalc.attacks(bd.color_us(), mover, bd.us(), bd.them(), mv.from());
 
-        if !mv.to().is_in(destinations | bd.en_passant()) && !mv.to_inner().is_castle(&bd) {
+        if !mv.to().is_in(destinations) && !bd.is_en_passant_square(mv.to()) && !mv.to_inner().is_castle(&bd) {
             println!("bad attack");
         }
         println!(
@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn pawn_en_passant() {
         let bd = Board::parse_fen("8/8/8/pP6/8/8/8/8 w - a6 0 0 id en-passant-#1").unwrap();
-        assert_eq!(bd.en_passant(), a6);
+        assert_eq!(bd.en_passant_square(), Some(a6.square()));
         assert_eq!(bd.legal_moves().sort().to_string(), "b5a6, b5b6");
         let bd = Board::parse_fen("8/8/8/PpP5/8/8/8/8 w - b6 0 0 id 'en passant #2'").unwrap();
         assert_eq!(
@@ -457,7 +457,7 @@ mod tests {
     fn moves_in_check() {
         let bd = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2")
             .unwrap();
-        assert!(bd.en_passant().is_empty());
+        assert!(bd.en_passant_square().is_none());
         // FIXME! assert b1.validate_move(Move.parse('e8e7'))
         // assert!(bd.pseudo_legal_moves().contains(Move.parse("e8e7")));
     }

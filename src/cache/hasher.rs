@@ -1,10 +1,11 @@
-use crate::bits::castling::CastlingRights;
-use crate::bits::square::Square;
-use crate::boards::Board;
-use crate::infra::metric::*;
-use crate::mv::Move;
-use crate::piece::{Color, Hash, Piece};
-use crate::search::node::Counter;
+use crate::{
+    bits::{castling::CastlingRights, square::Square},
+    boards::Board,
+    infra::metric::*,
+    mv::Move,
+    piece::{Color, Hash, Piece},
+    search::node::Counter,
+};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use static_init::dynamic;
@@ -23,11 +24,11 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(align(64))]
 pub struct Hasher {
-    seed: u64,
-    squares: [[[u64; Square::len()]; Piece::len()]; Color::len()], // [colour][piece][square]
-    ep: [u64; 8],
+    seed:                u64,
+    squares:             [[[u64; Square::len()]; Piece::len()]; Color::len()], /* [colour][piece][square] */
+    ep:                  [u64; 8],
     castling_by_bitflag: [u64; 16],
-    side: u64,
+    side:                u64,
 }
 
 impl fmt::Display for Hasher {
@@ -175,8 +176,8 @@ impl Hasher {
 
         hash ^= self.castling_by_bitflag[b.castling().bits() as usize];
 
-        if !b.en_passant().is_empty() {
-            hash ^= self.ep[b.en_passant().first_square().index() & 7];
+        if let Some(ep) = b.en_passant_square() {
+            hash ^= self.ep[ep.index() & 7];
         }
         for &p in &Piece::ALL {
             for sq in (b.pieces(p) & b.white()).squares() {
@@ -194,8 +195,8 @@ impl Hasher {
         let mut hash = self.side;
 
         // for null move we still need to remove the e/p square
-        if !pre_move.en_passant().is_empty() {
-            hash ^= self.ep[pre_move.en_passant().first_square().file_index()];
+        if let Some(ep) = pre_move.en_passant_square() {
+            hash ^= self.ep[ep.file_index()];
         }
 
         if m.is_null() {
@@ -252,9 +253,9 @@ mod tests {
 
     use crate::{
         catalog::Catalog,
+        globals::constants::*,
         infra::{black_box, profiler::PerfProfiler},
         other::Perft,
-        Bitboard, globals::constants::*,
     };
 
     #[test]
@@ -325,7 +326,7 @@ mod tests {
         let mut bd1_plus_nulls = bd1.clone();
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_ply(0 + 2);
-        bd1_plus_nulls.set_en_passant(Bitboard::empty());
+        bd1_plus_nulls.set_en_passant(None);
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
         assert_eq!(
@@ -337,7 +338,7 @@ mod tests {
         assert_eq!(bd1.halfmove_clock(), 0); // coz pawn move
         let mut bd1_plus_nulls = bd1.clone();
         bd1_plus_nulls.set_halfmove_clock(0 + 2);
-        bd1_plus_nulls.set_en_passant(Bitboard::empty());
+        bd1_plus_nulls.set_en_passant(None);
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         bd1_plus_nulls.set_ply(3);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());

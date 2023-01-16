@@ -7,6 +7,7 @@ use crate::{
     cache::hasher::Hasher,
     catalog::Catalog,
     domain::Material,
+    infra::utils::ToStringOr,
     mv::Move,
     piece::{Color, Hash, Piece, Ply, Repeats},
 };
@@ -94,7 +95,7 @@ pub struct Board {
     pub(super) hash:             Hash,
     pub(super) ply:              Ply,
     pub(super) castling:         CastlingRights,
-    pub(super) en_passant:       Bitboard,
+    pub(super) en_passant:       Option<Square>,
     pub(super) half_move_clock:  u16,
     pub(super) threats_to:       [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) checkers_of:      [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
@@ -116,7 +117,7 @@ impl Default for Board {
             pieces:           Default::default(),
             colors:           Default::default(),
             castling:         CastlingRights::NONE,
-            en_passant:       Default::default(),
+            en_passant:       None,
             turn:             Default::default(),
             ply:              0,
             half_move_clock:  Default::default(),
@@ -124,8 +125,8 @@ impl Default for Board {
             repetition_count: Cell::<_>::new(Repeats::default()),
             threats_to:       Default::default(),
             checkers_of:      Default::default(),
-            pinned:      Default::default(),
-            discoverer:   Default::default(),
+            pinned:           Default::default(),
+            discoverer:       Default::default(),
             hash:             0,
             // moves: MoveList,
         }
@@ -366,22 +367,13 @@ impl Board {
     }
 
     #[inline]
-    pub fn en_passant(&self) -> Bitboard {
-        self.en_passant
-    }
-
-    #[inline]
     pub fn is_en_passant_square(&self, sq: Square) -> bool {
-        sq.is_in(self.en_passant)
+        Some(sq) == self.en_passant
     }
 
     #[inline]
     pub fn en_passant_square(&self) -> Option<Square> {
-        if self.en_passant().is_empty() {
-            None
-        } else {
-            Some(self.en_passant.first_square())
-        }
+        self.en_passant
     }
 
     #[inline]
@@ -468,7 +460,9 @@ impl Board {
         ];
         b.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical());
         b.turn = self.turn.opposite();
-        b.en_passant = self.en_passant().flip_vertical();
+        if let Some(sq) = b.en_passant {
+            b.en_passant = Some(sq.flip_vertical());
+        }
         b.castling = self.castling.color_flip();
         b.calculate_internals();
         debug_assert!(b.validate().is_ok());
@@ -494,10 +488,10 @@ impl Board {
             fen = fen,
             turn = self.color_us(),
             castle = self.castling(),
-            ep = if self.en_passant().is_empty() {
-                "-".to_string()
+            ep = if let Some(sq) = self.en_passant_square() {
+                sq.uci().to_string()
             } else {
-                self.en_passant().uci()
+                "-".to_string()
             },
             fifty = self.halfmove_clock(),
             count = self.fullmove_number()
@@ -554,14 +548,6 @@ impl Board {
         self.checkers_of[king_color].get_or_init(|| BoardCalcs::checkers_of(self, king_color))
     }
 
-    //     let mut ch = self.checkers_of[king_color].get();
-    //     if ch == Bitboard::niche() {
-    //         ch = BoardCalcs::checkers_of(self, king_color);
-    //         self.checkers_of[king_color].set(ch);
-    //     }
-    //     ch
-    // }
-
     #[inline]
     pub fn all_attacks_on(&self, defender: Color) -> Bitboard {
         self.threats_to[defender]
@@ -610,7 +596,7 @@ impl fmt::Display for Board {
                     self.pieces(p)
                 )?;
             }
-            writeln!(f, "En passant:\n{}\n", self.en_passant)?;
+            writeln!(f, "En passant: {}\n", self.en_passant.to_string_or("-"))?;
             writeln!(
                 f,
                 "Pinned on white king:\n{}\n",
@@ -663,7 +649,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn set_en_passant(&mut self, sq: Bitboard) {
+    pub fn set_en_passant(&mut self, sq: Option<Square>) {
         self.en_passant = sq;
         self.calculate_internals();
     }
@@ -769,21 +755,13 @@ impl Board {
         // if self.fullmove_counter() < self.fifty_halfmove_clock() * 2 {
         //     bail!("Fullmove number (fmvn: {}) < twice half move clock (hmvc: {})",
         // self.fullmove_counter(), self.fifty_halfmove_clock() ); }
-        let ep = self.en_passant();
-        if !ep.is_empty() {
-            if !ep.intersects(Bitboard::RANK_3 | Bitboard::RANK_6) {
-                bail!(
-                    "en passant square must be rank 3 or 6 not {}",
-                    ep.sq_as_uci()
-                );
+        if let Some(ep) = self.en_passant_square() {
+            if !ep.is_in(Bitboard::RANK_3 | Bitboard::RANK_6) {
+                bail!("en passant square must be rank 3 or 6 not {}", ep.uci());
             }
             let capture_square = ep.shift(self.color_them().forward());
-            if !(self.pawns() & self.them()).contains(capture_square) {
-                bail!(
-                    "en passant square of {} entails a pawn on square {}",
-                    ep.sq_as_uci(),
-                    capture_square.sq_as_uci()
-                );
+            if !capture_square.is_in(self.pawns() & self.them()) {
+                bail!("en passant square of {ep} entails a pawn on square {capture_square}",);
             }
         }
         if self.hash() != Hasher::default().hash_board(self) {
@@ -825,9 +803,9 @@ impl Board {
         bb.turn = Color::parse(words[1])?;
         bb.castling = CastlingRights::parse(words[2])?;
         bb.en_passant = if words[3] == "-" {
-            Bitboard::EMPTY
+            None
         } else {
-            Bitboard::parse_square(words[3])?.as_bb()
+            Some(Bitboard::parse_square(words[3])?)
         };
         bb.half_move_clock = words[4]
             .parse()

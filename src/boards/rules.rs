@@ -154,22 +154,26 @@ impl Rules {
     }
 
     pub fn add_moves_en_passant(bd: &Board, moves: &mut MoveList) {
-        if bd.en_passant().is_empty() {
+        let Some(to) = bd.en_passant_square() else {
             return;
-        }
+        };
+        // if (bd.us() & bd.pawns() & Bitboard::RANKS_45).is_empty() {
+        //     return;
+        // }
+        let us = bd.color_us();
         let them = bd.color_them();
-        let to = bd.en_passant();
+        let to = to.as_bb();
         let capture_sq = to.shift(them.forward());
-        let checkers = bd.checkers_of(bd.color_us());
+        let checkers = bd.checkers_of(us);
         if checkers.popcount() == 1 {
             // any non-pinned pawn can capture the checker
             if capture_sq == checkers {
                 let fr_e = to.shift(them.pawn_capture_west());
-                if (fr_e & bd.pawns() & bd.us() & !bd.pinned(bd.color_us())).any() {
+                if (fr_e & bd.pawns() & bd.us() & !bd.pinned(us)).any() {
                     moves.push(Move::new_ep_capture(fr_e.square(), to.square(), bd));
                 }
                 let fr_w = to.shift(them.pawn_capture_east());
-                if (fr_w & bd.pawns() & bd.us() & !bd.pinned(bd.color_us())).any() {
+                if (fr_w & bd.pawns() & bd.us() & !bd.pinned(us)).any() {
                     moves.push(Move::new_ep_capture(fr_w.square(), to.square(), bd));
                 }
             }
