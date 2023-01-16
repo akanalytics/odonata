@@ -113,6 +113,7 @@ pub mod constants {
 
 #[cfg(test)]
 mod tests {
+    use test_log::test;
     use crate::bits::bitboard::*;
     use crate::bits::castling::*;
     use crate::bits::precalc::*;
@@ -155,12 +156,14 @@ mod tests {
 
     fn compare(s1: usize, s2: usize, s: &str) {
         if s1 != s2 {
-            warn!("{s}");
+            warn!("{s} actual {s1} != expected {s2}");
         }
     }
 
+    // RUST_LOG=warn cargo t test_sizes --nocapture
     #[test]
     fn test_sizes() {
+        warn!("Testing sizes...");
         compare(size_of::<Piece>(), 1, "Piece");
         compare(size_of::<Option<Piece>>(), 1, "Piece");
         compare(size_of::<Color>(), 1, "Color");
@@ -168,8 +171,9 @@ mod tests {
         compare(size_of::<CastlingRights>(), 1, "CastlingRights");
         compare(size_of::<Square>(), 2, "Square");
         compare(size_of::<Score>(), 2, "Score");
-        compare(size_of::<Move>(), 4, "Move");
+        compare(size_of::<Move>(), 2, "Move");
         compare(size_of::<Bitboard>(), 8, "Bitboard");
+        compare(size_of::<LazyBitboard<1u64>>(), 8, "LazyBitboard");
         compare(size_of::<Board>(), 160, "Board");
         compare(size_of::<Option<Bitboard>>(), 16, "Bitboard");
         compare(size_of::<String>(), 24, "String");
@@ -177,29 +181,29 @@ mod tests {
         compare(size_of::<Node>(), 12, "Node");
         compare(size_of::<NodeType>(), 1, "NodeType");
         compare(size_of::<TtNode>(), 16, "TtNode");
-        compare(size_of::<Tag>(), 880, "Tag");
+        compare(size_of::<Tag>(), 448, "Tag");
         compare(size_of::<Variation>(), 24, "Variation");
-        compare(size_of::<MoveList>(), 876, "MoveList");
+        compare(size_of::<MoveList>(), 440, "MoveList");
         compare(size_of::<Position>(), 208, "Position");
-        compare(size_of::<PreCalc>(), 76808, "PreCalc");
-        compare(size_of::<Hasher>(), 6272, "Hasher");
-        compare(size_of::<Algo>(), 7968, "Algo");
+        compare(size_of::<PreCalc>(), 77832, "PreCalc");
+        compare(size_of::<Hasher>(), 6400, "Hasher");
+        compare(size_of::<Algo>(), 7432, "Algo");
         compare(size_of::<Clock>(), 112, "Clock");
         compare(size_of::<NullMovePruning>(), 32, "NullMovePruning");
-        compare(size_of::<Futility>(), 48, "Futility");
+        compare(size_of::<Futility>(), 56, "Futility");
         compare(size_of::<IterativeDeepening>(), 16, "IterativeDeepening");
         compare(size_of::<Eval>(), 3400, "SimpleScorer");
         compare(size_of::<Pvs>(), 12, "Pvs");
         compare(size_of::<Extensions>(), 40, "Extensions");
         compare(size_of::<Lmr>(), 64, "Lmr");
-        compare(size_of::<MoveTimeEstimator>(), 384, "MoveTimeEstimator");
+        compare(size_of::<MoveTimeEstimator>(), 376, "MoveTimeEstimator");
         compare(size_of::<MoveOrderer>(), 296, "MoveOrderer");
         compare(size_of::<Repetition>(), 40, "Repetition");
         compare(size_of::<TranspositionTable2>(), 64, "TranspositionTable2");
         compare(size_of::<Killers>(), 32, "Killers");
         compare(size_of::<HistoryHeuristic>(), 56, "HistoryHeuristic");
-        compare(size_of::<Explainer>(), 472, "SearchExplainer");
-        compare(size_of::<Restrictions>(), 1768, "Restrictions");
+        compare(size_of::<Explainer>(), 504, "SearchExplainer");
+        compare(size_of::<Restrictions>(), 896, "Restrictions");
         compare(size_of::<Razor>(), 36, "Razor");
         compare(size_of::<Recognizer>(), 12, "Recognizer");
         compare(size_of::<Aspiration>(), 24, "Aspiration");
