@@ -52,6 +52,7 @@ impl BoardCalcs {
         (pinned, discoverers)
     }
 
+
     /// all attacks
     #[inline]
     pub fn all_attacks_on(bd: &Board, us: Color, occ: Bitboard) -> Bitboard {
@@ -124,7 +125,9 @@ mod tests {
     use crate::{
         catalog::*,
         globals::constants::*,
-        infra::{black_box, profiler::PerfProfiler}, other::Perft, mv::Move,
+        infra::{black_box, profiler::PerfProfiler},
+        mv::Move,
+        other::Perft,
     };
     use test_log::test;
 

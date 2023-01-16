@@ -56,23 +56,9 @@ impl Board {
             half_move_clock: self.half_move_clock,
             repetition_count: Cell::new(Repeats::default()),
             threats_to: Default::default(),
-            // [
-            //     Cell::<_>::new(Bitboard::niche()),
-            //     Cell::<_>::new(Bitboard::niche()),
-            // ],
             checkers_of: Default::default(),
-            // checkers_of: [
-            //     Cell::<_>::new(Bitboard::niche()),
-            //     Cell::<_>::new(Bitboard::niche()),
-            // ],
-            pinned: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            discoverer: [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
+            pinned: Default::default(),
+            discoverer: Default::default(),
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
             pieces: self.pieces.clone(),
@@ -92,22 +78,9 @@ impl Board {
         self.half_move_clock = b.half_move_clock;
         self.repetition_count = Cell::new(Repeats::default());
         self.threats_to =  Default::default();
-        //     Cell::<_>::new(Bitboard::niche()),
-        //     Cell::<_>::new(Bitboard::niche()),
-        // ];
         self.checkers_of =  Default::default();
-        // self.checkers_of = [
-        //     Cell::<_>::new(Bitboard::niche()),
-        //     Cell::<_>::new(Bitboard::niche()),
-        // ];
-        self.pinned = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
-        self.discoverer = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
+        self.pinned = Default::default();
+        self.discoverer = Default::default();
         // material: Cell::<_>::new(b.material()),
         // moves= b.moves.clone(),
         self.pieces = b.pieces.clone();
@@ -124,22 +97,9 @@ impl Board {
         bds[i].half_move_clock = bds[j].half_move_clock;
         bds[i].repetition_count = Cell::new(Repeats::default());
         bds[i].threats_to =  Default::default();
-        //     Cell::<_>::new(Bitboard::niche()),
-        //     Cell::<_>::new(Bitboard::niche()),
-        // ];
         bds[i].checkers_of = Default::default();
-        // [
-        //     Cell::<_>::new(Bitboard::niche()),
-        //     Cell::<_>::new(Bitboard::niche()),
-        // ];
-        bds[i].pinned = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
-        bds[i].discoverer = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
+        bds[i].pinned = Default::default();
+        bds[i].discoverer = Default::default();
         // material: Cell::<_>::new(bds[j].material()),
         // moves= bds[j].moves.clone(),
         bds[i].pieces = bds[j].pieces.clone();

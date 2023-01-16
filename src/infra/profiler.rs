@@ -273,7 +273,7 @@ impl PerfProfiler {
         writeln!(w,
         "PROFD: {n:<30}\t{ins:>15}\t{it:>15}\t{cy:>15}\t{br:>15}\t{bm:>15}\t{cm:>15}\t{cr:>15}\t{cpi:>15.2}\t{ch:>15.2}\n",
         n = self.name,
-        ins = ((counts[&self.ins]) / iters - NOOP_INSTRUCTION_OVERHEAD).human(),
+        ins = (((counts[&self.ins]) / iters).saturating_sub(NOOP_INSTRUCTION_OVERHEAD)).human(),
         it = iters,
         // Formatting::u128((0u32).into()),
         cy = (counts[&self.cycles] / iters).human(),

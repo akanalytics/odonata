@@ -207,13 +207,21 @@ impl<const NICHE: u64> LazyBitboard<NICHE> {
         let mut bb = self.cell.get();
         if bb.bits() == NICHE {
             bb = f();
-            debug_assert!(bb.bits() == NICHE, "Lazy bitboard evaluated to niche value");
+            debug_assert!(bb.bits() != NICHE, "Lazy bb {bb} == niche value {NICHE}");
             self.cell.set(bb);
         }
         bb
     }
     pub fn get(&self) -> Bitboard {
         self.cell.get()
+    }
+
+    pub fn set(&self, v: Bitboard) {
+        self.cell.set(v)
+    }
+
+    pub const fn niche(&self) -> Bitboard {
+        Bitboard(NICHE)
     }
 }
 

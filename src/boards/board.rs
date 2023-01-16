@@ -98,8 +98,8 @@ pub struct Board {
     pub(super) half_move_clock:  u16,
     pub(super) threats_to:       [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) checkers_of:      [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
-    pub(super) pinned:           [Cell<Bitboard>; Color::len()],
-    pub(super) discoverer:       [Cell<Bitboard>; Color::len()],
+    pub(super) pinned:           [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
+    pub(super) discoverer:       [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) repetition_count: Cell<Repeats>,
 }
 
@@ -124,19 +124,8 @@ impl Default for Board {
             repetition_count: Cell::<_>::new(Repeats::default()),
             threats_to:       Default::default(),
             checkers_of:      Default::default(),
-            // checkers_of:      [
-            //     Cell::<_>::new(Bitboard::niche()),
-            //     Cell::<_>::new(Bitboard::niche()),
-            // ],
-            pinned:           [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            discoverer:       [
-                Cell::<_>::new(Bitboard::niche()),
-                Cell::<_>::new(Bitboard::niche()),
-            ],
-            // material: Cell::<_>::new(Material::niche()),
+            pinned:      Default::default(),
+            discoverer:   Default::default(),
             hash:             0,
             // moves: MoveList,
         }
@@ -340,23 +329,10 @@ impl Board {
     fn calculate_internals(&mut self) {
         self.hash = Hasher::default().hash_board(self);
         // self.material.set(Material::niche());
-        self.pinned = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
-        self.discoverer = [
-            Cell::<_>::new(Bitboard::niche()),
-            Cell::<_>::new(Bitboard::niche()),
-        ];
+        self.pinned = Default::default();
+        self.discoverer = Default::default();
         self.threats_to = Default::default();
-        //     Cell::<_>::new(Bitboard::niche()),
-        //     Cell::<_>::new(Bitboard::niche()),
-        // ];
         self.checkers_of = Default::default();
-        // self.checkers_of = [
-        //     Cell::<_>::new(Bitboard::niche()),
-        //     Cell::<_>::new(Bitboard::niche()),
-        // ];
     }
 
     #[inline]
