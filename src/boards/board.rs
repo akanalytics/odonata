@@ -18,35 +18,32 @@ use std::{
     cell::Cell,
     fmt::{self, Write},
     iter::*,
-    mem,
     str::FromStr,
 };
 
 use super::BoardCalcs;
 
 pub struct Var {
-    // start: Board,
-    current: Board,
-    // moves:  Vec<Move>,
-    boards:  [Board; 31], // board before
+    moves:  Vec<Move>,
+    boards:  Vec<Board>, 
     ply:     usize,
 }
 
 impl Var {
     pub fn new(b: Board) -> Self {
-        let me = Self {
-            current: b,
+        let mut me = Self {
             boards:  Default::default(),
-            // moves:  Vec::new(),
+            moves:  Vec::new(),
             ply:     0,
         };
-        // me.boards.resize(128, Board::default());
+        me.boards.resize(128, Board::default());
+        me.boards[0] = b;
         me
     }
 
     #[inline]
     pub fn board(&self) -> &Board {
-        &self.current
+        &self.boards[self.ply]
     }
 
     #[inline]
@@ -64,27 +61,25 @@ impl Var {
     pub fn push_move(&mut self, mv: Move) {
         let i = self.ply();
         self.ply += 1;
-        // self.moves.push(mv);
-        mem::swap(&mut self.current, &mut self.boards[i]); // board in [i]
-        self.current.copy_from(&self.boards[i]);
-        self.current.apply_move(mv);
+        self.moves.push(mv);
+        // mem::swap(&mut self.current, &mut self.boards[i]); // board in [i]
+        // self.current.copy_from(&self.boards[i]);
+        // self.current.apply_move(mv);
 
-        // let (start, end) = self.boards.split_at_mut(i + 1);
-        // end[0].copy_from(&start[i]);
-        // end[0].apply_move(mv);
+        let (start, end) = self.boards.split_at_mut(i + 1);
+        end[0].copy_from(&start[i]);
+        end[0].apply_move(mv);
     }
 
     #[inline]
     pub fn pop_move(&mut self) {
         self.ply -= 1;
-        let i = self.ply();
-        mem::swap(&mut self.current, &mut self.boards[i]); // board in [i]
-                                                           // self.moves.pop();
+        // let i = self.ply();
+        // mem::swap(&mut self.current, &mut self.boards[i]); // board in [i]
+        self.moves.pop();
     }
 }
 
-// unsafe impl Send for Board {}
-// unsafe impl Sync for Board {}
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
