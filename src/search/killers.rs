@@ -1,19 +1,20 @@
-use crate::boards::Board;
-use crate::infra::component::Component;
+use crate::{boards::Board, infra::component::Component};
 // use crate::{debug, logger::LogInit};
-use crate::movelist::MoveList;
-use crate::mv::Move;
-use crate::piece::Ply;
-use crate::piece::MAX_PLY;
+use crate::{
+    movelist::MoveList,
+    mv::Move,
+    piece::{Ply, MAX_PLY},
+};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Killers {
-    enabled: bool,
+    enabled:          bool,
     clear_every_move: bool,
-    use_ply_below: bool,
+    use_ply_below:    bool,
+    castles:    bool,
 
     #[serde(skip)]
     killers: Vec<[Move; 2]>,
@@ -22,10 +23,11 @@ pub struct Killers {
 impl Default for Killers {
     fn default() -> Self {
         Killers {
-            enabled: true,
+            enabled:          true,
             clear_every_move: false,
-            use_ply_below: true,
-            killers: vec![[Move::new_null(); 2]; MAX_PLY as usize],
+            use_ply_below:    true,
+            castles:          false,
+            killers:          vec![[Move::new_null(); 2]; MAX_PLY as usize],
         }
     }
 }
@@ -39,6 +41,7 @@ impl Component for Killers {
         if self.clear_every_move {
             self.killers.fill([Move::new_null(); 2]);
         } else {
+            // reduce the ply count by 2
             self.killers.remove(0);
             self.killers.push([Move::new_null(); 2]);
             self.killers.remove(0);
@@ -84,7 +87,7 @@ impl Killers {
 
     pub fn store(&mut self, y: Ply, m: &Move, b: &Board) {
         // killers are quiet
-        if !self.enabled || m.is_castle(b) || m.is_capture() {
+        if !self.enabled || (m.is_castle(b) && !self.castles) || m.is_capture() {
             return;
         }
         // dont store duplicates
@@ -100,50 +103,63 @@ impl Killers {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anyhow::Result;
-    use figment::providers::{Format, Toml};
-    use figment::Figment;
+    use crate::{
+        catalog::Catalog,
+        domain::engine::Engine,
+        infra::metric::Metrics,
+        search::{engine::ThreadedSearch, timecontrol::TimeControl},
+    };
+
+    use crate::infra::utils::DecimalFormatter;
+
+    // use tabled::{Style, Table, Tabled};
     use test_log::test;
-    use toml;
 
     #[test]
-    fn serde_killers_test() -> Result<()> {
-        info!("{}", toml::to_string(&Killers::default())?);
+    fn nodes_to_depth() {
+        let positions = Catalog::example_game();
+        let mut eng1 = ThreadedSearch::new();
+        let mut eng2 = ThreadedSearch::new();
+        // eng2.set_option("tt.enabled", "false").unwrap();
+        eng2.set_option("killers.enabled", "true").unwrap();
+        eng2.set_option("killers.use_ply_below", "true").unwrap(); // 11.4%
+        eng2.set_option("killers.clear_every_move", "true")
+            .unwrap();
 
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(
-                "config.toml",
-                r#"
-                enabled = true
-                clear_every_move = false
-                use_ply_below = true
-            "#,
-            )?;
+        let tc = TimeControl::Depth(4);
+        let mut nodes1 = 0.;
+        let mut nodes2 = 0.;
 
-            // jail.set_env("config_name", "env-test");
+        let mut metrics1 = Metrics::new();
+        let mut metrics2 = Metrics::new();
 
-            // jail.create_file("Config.json", r#"
-            //     {
-            //         "name": "json-test",
-            //         "debug": true
-            //     }
-            // "#)?;
+        // example game has every move, black and white
+        for (i, pos) in positions.iter().step_by(2).enumerate() {
+            let sr1 = eng1.search(pos.clone(), tc).unwrap();
+            let sr2 = eng2.search(pos.clone(), tc).unwrap();
+            metrics1.include(&sr1.metrics.unwrap());
+            metrics2.include(&sr2.metrics.unwrap());
+            nodes1 += sr1.nodes as f64;
+            nodes2 += sr2.nodes as f64;
+            println!("[{i}] nodes = {cmp} {sr1} {sr2}", cmp = sr1.nodes > sr2.nodes, sr1 = sr1.nodes, sr2 = sr2.nodes);
+        }
 
-            let _killers: Killers = Figment::new()
-                .merge(Toml::file("config.toml"))
-                // .merge(Env::prefixed("CONFIG_"))
-                // .join(Json::file("Config.json"))
-                .extract()?;
+        println!(
+            "nodes = {nodes1} vs {nodes2} => eng2/eng1 improvement = {perc}%",
+            perc = (100. - nodes2 * 100. / nodes1).dp(2)
+        );
 
-            // assert_eq!(killers, Killers {
-            //     enabled: true,
-            //     clear_every_move: false,
-            //     use_ply_below: true,
-            //     .. Default::default()
-            //     });
-            Ok(())
-        });
-        Ok(())
+        // #[derive(Tabled)]
+        // struct SideBySide {
+        //     left:  String,
+        //     right: String,
+        // }
+
+        // let sbs = SideBySide {
+        //     left:  metrics1.to_string(),
+        //     right: metrics2.to_string(),
+        // };
+
+        // println!("{}", Table::new([&sbs]).with(Style::markdown()));
     }
 }

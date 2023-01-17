@@ -7,6 +7,7 @@ use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::piece::Ply;
 use crate::position::Position;
@@ -395,6 +396,8 @@ impl Algo {
             self.set_state(State::StartSearch);
             self.search_iteratively(&mut trail);
             self.set_state(State::EndSearch);
+            Metrics::flush_thread_local();
+            self.results.metrics = Some(Metrics::get_last_iter())
         }
     }
 

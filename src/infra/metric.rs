@@ -165,7 +165,7 @@ impl Default for Metrics {
 }
 
 impl Metrics {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -264,6 +264,10 @@ impl Metrics {
             t = t.with(Modify::new(Rows::single(i)).with(Border::default().top('-')));
         }
         writeln!(f, "{t}")
+    }
+
+    pub fn get_last_iter() -> Metrics {
+        Clone::clone(&METRICS_LAST_ITER.read())
     }
 
     pub fn flush_thread_local() {
@@ -601,6 +605,7 @@ impl fmt::Display for Metrics {
         };
 
         generate_table("Counter \\ Depth", false).fmt(f)?;
+        writeln!(f)?;
         generate_table("Counter \\ Ply", true).fmt(f)?;
         Ok(())
     }

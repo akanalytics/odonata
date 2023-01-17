@@ -959,6 +959,7 @@ preserve_bm = false
 enabled = true
 clear_every_move = false
 use_ply_below = true
+castles = true
 
 [counter_move]
 enabled = true

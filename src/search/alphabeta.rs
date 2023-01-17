@@ -120,7 +120,7 @@ impl Algo {
         score
     }
 
-    #[instrument(target="tree", "", skip_all, fields(k=kind,a=%alpha,b=%beta,t=?trail))]
+    #[instrument(target="tree",level="debug", "", skip_all, fields(k=kind,a=%alpha,b=%beta,t=?trail))]
     pub fn alphabeta(
         &mut self,
         kind: &str,
@@ -226,7 +226,7 @@ impl Algo {
             .move_orderer
             .create_sorted_moves(n, b, tt_mv, last_move);
         if trail.path().len() < 2 {
-            event!(target:"ab", Level::INFO, "{var} generating moves...", var = trail.path(), );
+            event!(target:"ab", Level::DEBUG, "{var} generating moves...", var = trail.path(), );
         }
         let mut count = 0;
         let mut quiets = 0;

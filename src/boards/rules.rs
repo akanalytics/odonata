@@ -48,112 +48,6 @@ where
         me
     }
 
-    // pub fn append_to_movelist(&self, moves: &mut MoveList) {
-    //     for &(p, from, bb) in self.legal_moves.iter() {
-    //         if p == Piece::Pawn {
-    //             #[allow(clippy::collapsible_else_if)]
-    //             if Bitboard::RANKS_18.contains(bb) {
-    //                 for to in bb.squares() {
-    //                     if to.is_in(self.board.them()) {
-    //                         // try and pre-sort promos by likely usefulness
-    //                         // let cap = self.board.piece_unchecked(to);
-    //                         moves.push(Move::new_promo_capture(from, to, Piece::Queen, self.board));
-    //                         moves.push(Move::new_promo_capture(
-    //                             from,
-    //                             to,
-    //                             Piece::Knight,
-    //                             self.board,
-    //                         ));
-    //                         moves.push(Move::new_promo_capture(from, to, Piece::Rook, self.board));
-    //                         moves.push(Move::new_promo_capture(
-    //                             from,
-    //                             to,
-    //                             Piece::Bishop,
-    //                             self.board,
-    //                         ));
-    //                     } else {
-    //                         moves.push(Move::new_promo(from, to, Piece::Queen));
-    //                         moves.push(Move::new_promo(from, to, Piece::Knight));
-    //                         moves.push(Move::new_promo(from, to, Piece::Rook));
-    //                         moves.push(Move::new_promo(from, to, Piece::Bishop));
-    //                     }
-    //                 }
-    //             } else {
-    //                 for to in bb.squares() {
-    //                     moves.push(Move::new_pawn_move(from, to, self.board));
-    //                 }
-    //             }
-    //         } else if p == Piece::King && from.is_in((bb << 2) | (bb >> 2)) {
-    //             moves.push(Move::new_castle(
-    //                 from,
-    //                 bb.first_square(),
-    //                 CastlingRights::NONE,
-    //             ));
-    //         } else {
-    //             for to in bb.squares() {
-    //                 if to.is_in(self.board.them()) {
-    //                     moves.push(Move::new_capture(p, from, to, self.board));
-    //                 } else {
-    //                     moves.push(Move::new_quiet(p, from, to));
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    // fn capture_to_movelist<'a>(
-    //     moves: &'a mut MoveList,
-    //     bd: &'a Board,
-    // ) -> impl FnMut(Piece, Square, Bitboard) + 'a {
-    //     |p, from, bb| {
-    //         if p != Piece::Pawn {
-    //             for to in bb.squares() {
-    //                 if to.is_in(bd.them()) {
-    //                     moves.push(Move::new_capture(p, from, to, bd));
-    //                 } else {
-    //                     moves.push(Move::new_quiet(p, from, to));
-    //                 }
-    //             }
-    //         } else {
-    //             #[allow(clippy::collapsible_else_if)]
-    //             if Bitboard::RANKS_18.contains(bb) {
-    //                 for to in bb.squares() {
-    //                     if to.is_in(bd.them()) {
-    //                         // try and pre-sort promos by likely usefulness
-    //                         // let cap = bd.piece_unchecked(to);
-    //                         moves.push(Move::new_promo_capture(from, to, Piece::Queen, bd));
-    //                         moves.push(Move::new_promo_capture(from, to, Piece::Knight, bd));
-    //                         moves.push(Move::new_promo_capture(from, to, Piece::Rook, bd));
-    //                         moves.push(Move::new_promo_capture(from, to, Piece::Bishop, bd));
-    //                     } else {
-    //                         moves.push(Move::new_promo(from, to, Piece::Queen));
-    //                         moves.push(Move::new_promo(from, to, Piece::Knight));
-    //                         moves.push(Move::new_promo(from, to, Piece::Rook));
-    //                         moves.push(Move::new_promo(from, to, Piece::Bishop));
-    //                     }
-    //                 }
-    //             } else {
-    //                 for to in bb.squares() {
-    //                     moves.push(Move::new_pawn_move(from, to, bd));
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    // pub fn pseudo_legals(b: &Board, moves: &mut MoveList) {
-    //     Rules::pawn_captures_incl_promo(b, moves);
-    //     Rules::pawn_promos(b, moves);
-    //     Rules::pawn_push(b, moves);
-    //     // Rules::pawn_capture_promos(b, moves);
-    //     Rules::non_pawn(Piece::Knight, b, moves);
-    //     Rules::non_pawn(Piece::Bishop, b, moves);
-    //     Rules::non_pawn(Piece::Rook, b, moves);
-    //     Rules::non_pawn(Piece::Queen, b, moves);
-    //     // Rules::non_pawn(Piece::King,b,  moves);
-    //     Rules::king_legal(b, moves);
-    //     Rules::castles(b, moves);
-    // }
 
     pub fn king_legal(&mut self) {
         let bd = self.board;
@@ -169,16 +63,6 @@ where
         let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::all_attacks_on(bd, bd.color_us(), occ - our_kings);
         let attacks = (king_att & !us) - king_danger;
-
-        // let mut moves = Moves {
-        //     piece:      Piece::King,
-        //     from:       king_sq,
-        //     to:         attacks,
-        //     castle:     false,
-        //     en_passant: false,
-        //     promo:      false,
-        // };
-        // (self.callback)(&mut moves);
         for to in attacks.squares() {
             if to.is_in(them) {
                 (self.callback)(Move::new_capture(Piece::King, king_sq, to, bd));
@@ -191,8 +75,6 @@ where
     pub fn generate(&mut self) {
         let t = Metrics::timing_start();
         let b = self.board;
-        // profile_method!("move generation");
-        // let _g = hprof::enter("move generation");
 
         let us = b.us();
         let them = b.them();
@@ -204,9 +86,9 @@ where
         if checkers.popcount() >= 2 {
             return self.king_legal();
         }
-        let the_checker = checkers.square();
         let gen = PreCalc::default();
         if checkers.popcount() == 1 {
+            let the_checker = checkers.square();
             let king_sq = our_kings.square();
             // Captr checker -> capture-sq & piece not pinned & (checker)
             // Block checker -> to & piece not pinned & (xrays to checker excl)
@@ -214,7 +96,6 @@ where
             for &p in Piece::ALL_BAR_KING.iter() {
                 for fr in (b.pieces(p) & us & !b.pinned(b.color_us())).squares() {
                     let attacks = blocking & gen.attacks(b.color_us(), p, us, them, fr) & !us;
-                    // DONE
                     self.add_moves(attacks, p, fr, b);
                 }
             }
@@ -293,7 +174,6 @@ where
     }
 
     #[inline]
-    // DONE
     fn add_moves(&mut self, dests: Bitboard, p: Piece, fr: Square, bd: &Board) {
         if p != Piece::Pawn {
             for to in dests.squares() {
@@ -321,7 +201,6 @@ where
         for to in dests.squares() {
             if to.is_in(bd.them()) {
                 // try and pre-sort promos by likely usefulness
-                let _cap = bd.piece_unchecked(to);
                 (self.callback)(Move::new_promo_capture(fr, to, Piece::Queen, bd));
                 (self.callback)(Move::new_promo_capture(fr, to, Piece::Knight, bd));
                 (self.callback)(Move::new_promo_capture(fr, to, Piece::Rook, bd));

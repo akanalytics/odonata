@@ -363,7 +363,7 @@ impl Trail {
 
     pub fn set_tree_crit(&mut self, crit: TreeCrit) {
         self.tree_crit = crit;
-        if log::log_enabled!(target: "tree", log::Level::Info) {
+        if log::log_enabled!(target: "tree", log::Level::Debug) {
             self.tree_crit.enabled = true;
         }
     }

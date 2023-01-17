@@ -45,6 +45,7 @@ impl Board {
         //     return false;
         // }
 
+
         if m.is_capture() {
             debug_assert!(
                 !m.capture_square(self).is_null(),
@@ -65,8 +66,9 @@ impl Board {
                 return false;
             }
         }
+        let mover = m.mover_piece(self);
 
-        let double_push = m.mover_piece(self) == Piece::Pawn
+        let double_push = mover == Piece::Pawn
             && (m.to().index() == m.from().index() + 16 || m.to().index() + 16 == m.from().index());
         if double_push {
             if !m.is_pawn_double_push(self) {
@@ -107,6 +109,12 @@ impl Board {
             // } else if !m.ep().is_in(self.them() & self.pawns()) {
             //     return false;
             // }
+        }
+        if m.is_castle(self) {
+            if mover != Piece::King {
+                trace!("Mover not a king for castle");
+                return false;
+            }
         }
         true
     }
@@ -510,6 +518,29 @@ mod tests {
         let fen = "8/8/8/8/8/8/1k6/K7 w - - 0 0 id 'check by king!'";
         let bd = Board::parse_fen(fen).unwrap();
         assert_eq!(bd.is_in_check(Color::White), true);
+    }
+
+    #[test]
+    fn test_legal_move_perft() {
+        let mut starting_pos = Catalog::perft_kiwipete().0;
+
+        // check all these legal moves are indeed identified as legal
+        let mut func = |bd: &Board, mv: Move| {
+            assert!(bd.is_pseudo_legal_and_legal_move(mv), "{bd} move: {mv}");
+        };
+        Perft::perft_with(&mut starting_pos, 4, &mut func);
+
+
+        // check all these moves which are illegal are indeed identified as illegal
+        let wrong_board = Catalog::perft_kiwipete().0;
+        let mut func = |_: &Board, mv: Move| {
+            assert_eq!(
+                wrong_board.legal_moves().contains(&mv),
+                wrong_board.is_pseudo_legal_and_legal_move(mv),
+                "{wrong_board} move: {mv}"
+            );
+        };
+        Perft::perft_with(&mut starting_pos, 4, &mut func);
     }
 
     #[test]

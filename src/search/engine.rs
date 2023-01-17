@@ -2,7 +2,6 @@ use crate::cache::tt2::TranspositionTable2;
 use crate::domain::engine::Engine;
 use crate::domain::SearchResults;
 use crate::infra::component::{Component, State, FEATURE};
-use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
 use crate::infra::utils::{Displayable, DurationFormatter, Formatting};
 use crate::position::Position;
@@ -292,7 +291,6 @@ impl ThreadedSearch {
                 // let result = panic::catch_unwind(|| {
                 //     Stat::set_this_thread_index(i as usize);
                 algo.run_search();
-                Metrics::flush_thread_local();
                 Ok(algo)
                 // });
                 // if let Err(ref error) = result {
