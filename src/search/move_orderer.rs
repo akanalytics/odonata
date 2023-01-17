@@ -515,7 +515,7 @@ impl OrderedMoveList {
                 }
             }
             MoveType::Initialize => {
-                b.legal_moves_into(all_moves);
+                b.legal_moves_with(|mv| all_moves.push(mv));
                 let mv = &self.tt;
                 all_moves.retain(|m| mv != m);
             }
@@ -647,7 +647,7 @@ impl OrderedMoveList {
 
             // unorderer
             MoveType::Unsorted => {
-                b.legal_moves_into(moves);
+                b.legal_moves_with(|mv| moves.push(mv));
                 // std::mem::swap(&mut self.moves, &mut self.all_moves);
             }
             // Captures

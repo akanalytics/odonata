@@ -1,18 +1,20 @@
-use crate::bits::Square;
-use crate::boards::Board;
-use crate::domain::NodeType;
-use crate::cache::tt2::TranspositionTable2;
-use crate::domain::Trail;
-use crate::eval::endgame::EndGame;
-use crate::eval::eval::Eval;
-use crate::eval::score::{Score, ToScore};
-use crate::infra::component::Component;
-use crate::infra::metric::Metrics;
-use crate::movelist::MoveList;
-use crate::mv::Move;
-use crate::piece::Ply;
-use crate::search::node::Node;
-use crate::{Bitboard, Piece};
+use crate::{
+    bits::Square,
+    boards::Board,
+    cache::tt2::TranspositionTable2,
+    domain::{NodeType, Trail},
+    eval::{
+        endgame::EndGame,
+        eval::Eval,
+        score::{Score, ToScore},
+    },
+    infra::{component::Component, metric::Metrics},
+    movelist::MoveList,
+    mv::Move,
+    piece::Ply,
+    search::node::Node,
+    Bitboard, Piece,
+};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -83,10 +85,10 @@ impl fmt::Display for Qs {
 }
 
 pub struct RunQs<'a> {
-    pub eval: &'a Eval,
-    pub tt: &'a TranspositionTable2,
+    pub eval:   &'a Eval,
+    pub tt:     &'a TranspositionTable2,
     pub config: &'a Qs,
-    pub trail: &'a mut Trail,
+    pub trail:  &'a mut Trail,
 }
 
 impl RunQs<'_> {
@@ -179,8 +181,8 @@ impl RunQs<'_> {
             Metrics::incr_node(&n, Event::NodeQsInCheck);
         }
 
-        let moves = bd.legal_moves();
-        let moves = self.sort_moves(&moves, in_check, &n, bd, lm, hm);
+        let mut moves = MoveList::new();
+        self.sort_moves(in_check, &n, bd, lm, hm, &mut moves);
 
         let mut unpruned_move_count = 0;
         let mut bs = None;
@@ -212,30 +214,36 @@ impl RunQs<'_> {
         Ok(bs.unwrap_or(n.alpha).clamp_score())
     }
 
-    //
     // sort moves
     //
     fn sort_moves(
         &self,
-        moves: &MoveList,
         in_check: bool,
         n: &Node,
         bd: &Board,
         lm: Option<Move>,
         hm: Move,
-    ) -> MoveList {
-        let capture_only = |mv: &&Move| in_check || mv.is_capture();
-        let incl_promo = |mv: &&Move| in_check || mv.is_capture() || mv.is_promo();
-        let some_promos =
-            |mv: &&Move| in_check || mv.is_capture() || mv.promo_piece() == self.config.promo_piece;
-
+        moves: &mut MoveList
+    ) {
         Metrics::incr_node(&n, Event::NodeQsInterior);
 
         let t = Metrics::timing_start();
-        let mut moves: MoveList = match (self.config.promos, self.config.promo_piece) {
-            (false, _) => moves.iter().filter(capture_only).cloned().collect(),
-            (true, None) => moves.iter().filter(incl_promo).cloned().collect(),
-            (true, Some(_)) => moves.iter().filter(some_promos).cloned().collect(),
+        match (self.config.promos, self.config.promo_piece) {
+            (false, _) => bd.legal_moves_with(|mv| {
+                if in_check || mv.is_capture() {
+                    moves.push(mv)
+                }
+            }),
+            (true, None) => bd.legal_moves_with(|mv| {
+                if in_check || mv.is_capture() || mv.is_promo() {
+                    moves.push(mv)
+                }
+            }),
+            (true, Some(_)) => bd.legal_moves_with(|mv| {
+                if in_check || mv.is_capture() || mv.promo_piece() == self.config.promo_piece {
+                    moves.push(mv)
+                }
+            }),
         };
 
         moves.sort_by_cached_key(|m| {
@@ -253,10 +261,8 @@ impl RunQs<'_> {
         });
         moves.reverse();
         Metrics::profile(t, Timing::TimingQsMoveSort);
-        moves
     }
 
-    //
     // delta prune
     //
     fn can_delta_prune_move(&self, mv: Move, n: &Node, pat: Score, bd: &Board) -> bool {
@@ -276,7 +282,6 @@ impl RunQs<'_> {
         }
     }
 
-    //
     // see prune
     //
     fn can_see_prune_move(&self, mv: Move, n: &Node, _pat: Score, bd: &Board) -> bool {
@@ -353,10 +358,10 @@ impl RunQs<'_> {
         self.trail.push_move(&n, mv.clone());
         // self.current_variation.push(mv);
         let qsn = Node {
-            ply: n.ply + 1,
+            ply:   n.ply + 1,
             depth: n.depth - 1,
             alpha: -n.beta,
-            beta: -n.alpha,
+            beta:  -n.alpha,
         };
         let s = -self.qs(qsn, &mut child, Some(mv)).unwrap_or_else(|e| e);
         self.trail.pop_move(&n, mv);
@@ -386,12 +391,14 @@ impl RunQs<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::engine::Engine;
-    use crate::infra::profiler::PerfProfiler;
-    use crate::search::engine::ThreadedSearch;
-    use crate::search::timecontrol::*;
-    use crate::test_log::test;
-    use crate::{catalog::*, Algo, Position};
+    use crate::{
+        catalog::*,
+        domain::engine::Engine,
+        infra::profiler::PerfProfiler,
+        search::{engine::ThreadedSearch, timecontrol::*},
+        test_log::test,
+        Algo, Position,
+    };
     use anyhow::Result;
 
     #[test]
@@ -436,10 +443,10 @@ mod tests {
             let node = Node::root(0);
             let mut board = pos.board().clone();
             let mut qs = RunQs {
-                eval: &eng.eval,
-                tt: &eng.tt,
+                eval:   &eng.eval,
+                tt:     &eng.tt,
                 config: &eng.qs,
-                trail: &mut trail,
+                trail:  &mut trail,
             };
             let _score = prof.benchmark(|| qs.qs(node, &mut board, None));
             trace!("{pos}\n{trail}\n");

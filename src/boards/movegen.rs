@@ -283,32 +283,16 @@ impl Board {
     // }
 
     #[inline]
-    pub fn legal_moves_into(&self, moves: &mut MoveList) {
+    pub fn legal_moves_with(&self, f: impl FnMut(Move)) {
         Metrics::incr(Counter::MoveGen);
-        LegalMoves::new(self, Bitboard::all(), |_| {}, moves);
-    }
-
-    #[inline]
-    pub fn legal_moves_count(&self) -> usize {
-        let mut count = 0;
-        let mut moves = MoveList::new();
-        LegalMoves::new(
-            self,
-            Bitboard::all(),
-            |moves| {
-                count += moves.len();
-                moves.to = Bitboard::empty()
-            },
-            &mut moves,
-        );
-        count
+        LegalMoves::new(self, Bitboard::all(), f);
     }
 
     #[inline]
     pub fn legal_moves(&self) -> MoveList {
         Metrics::incr(Counter::MoveGen);
         let mut moves = MoveList::new();
-        self.legal_moves_into(&mut moves);
+        LegalMoves::new(self, Bitboard::all(), |mv| moves.push(mv));
         moves
     }
 }
@@ -655,7 +639,7 @@ mod tests {
         let mut func = |bd: &Board, _mv: Move| {
             legal_moves.benchmark(|| black_box(bd).legal_moves());
             let mut dest = MoveList::new();
-            legal_moves_into.benchmark(|| black_box(bd).legal_moves_into(&mut dest));
+            legal_moves_into.benchmark(|| black_box(bd).legal_moves_with(|mv| dest.push(mv)));
         };
         Perft::perft_with(&mut starting_pos, 3, &mut func);
     }

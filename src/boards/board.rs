@@ -550,7 +550,9 @@ impl Board {
     }
 
     pub fn has_legal_moves(&self) -> bool {
-        !self.legal_moves().is_empty()
+        let mut has_moves = false;
+        self.legal_moves_with(|_mv| has_moves = true);
+        has_moves
     }
 
     /// called with is_in_check( board.turn() ) to see if currently in check

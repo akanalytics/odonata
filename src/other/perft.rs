@@ -20,46 +20,42 @@ impl Perft {
         if depth == 0 {
             return;
         }
-        let moves = board.legal_moves();
         if depth == 1 {
-            moves.iter().for_each(|&mv| f(board, mv));
+            board.legal_moves_with(|mv| f(board, mv))
         } else {
+            let moves = board.legal_moves();
             for &m in moves.iter() {
                 Self::perft_with(&mut board.make_move(m), depth - 1, f);
             }
         }
     }
 
-    pub fn perft_with2(var: &mut Var, depth: u32) -> u64 {
+    pub fn perft_with2(var: &mut Var, depth: u32, f: &mut impl FnMut(&Board, Move)) {
         if depth == 0 {
-            return 1;
+            return;
         }
         let board = var.board();
         if depth == 1 {
-            board.legal_moves_count() as u64
+            board.legal_moves_with(|mv| f(board, mv))
         } else {
-            let mut count = 0;
             let moves = board.legal_moves();
             for &m in moves.iter() {
                 var.push_move(m);
-                count += Self::perft_with2(var, depth - 1);
+                Self::perft_with2(var, depth - 1, f);
                 var.pop_move();
             }
-            count
         }
     }
 
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
-        let count;
-        count = Self::perft_with2(&mut Var::new(board.clone()), depth);
+        let mut count = 0;
+        Self::perft_with2(&mut Var::new(board.clone()), depth, &mut |_b, _mv| count += 1);
         count.max(1) // we count perft(0) as 1
     }
 
     pub fn perft_v2(board: &mut Board, depth: u32) -> u64 {
         let mut count = 0;
-        Self::perft_with(board, depth, &mut |_b, _mv| {
-            count += 1
-        });
+        Self::perft_with(board, depth, &mut |_b, _mv| count += 1);
         count.max(1) // we count perft(0) as 1
     }
 
