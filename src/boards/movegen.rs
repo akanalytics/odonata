@@ -1,16 +1,15 @@
 use anyhow::anyhow;
 use itertools::Itertools;
 
-use crate::bits::bitboard::Bitboard;
-use crate::bits::precalc::PreCalc;
-use crate::bits::Square;
-use crate::boards::rules::Rules;
-use crate::boards::Board;
-use crate::infra::metric::*;
-use crate::movelist::MoveList;
-use crate::mv::{BareMove, Move};
-use crate::piece::Piece;
-use crate::search::node::{Counter, Timing};
+use crate::{
+    bits::{bitboard::Bitboard, precalc::PreCalc, Square},
+    boards::{rules::LegalMoves, Board},
+    infra::metric::*,
+    movelist::MoveList,
+    mv::{BareMove, Move},
+    piece::Piece,
+    search::node::{Counter, Timing},
+};
 
 // fn is_in_check(&self, king_color: Color) -> bool;
 // fn will_check_them(&self, mv: &Move) -> bool;
@@ -286,14 +285,30 @@ impl Board {
     #[inline]
     pub fn legal_moves_into(&self, moves: &mut MoveList) {
         Metrics::incr(Counter::MoveGen);
-        Rules::legals_for(self, moves);
+        LegalMoves::new(self, Bitboard::all(), |_| {}, moves);
+    }
+
+    #[inline]
+    pub fn legal_moves_count(&self) -> usize {
+        let mut count = 0;
+        let mut moves = MoveList::new();
+        LegalMoves::new(
+            self,
+            Bitboard::all(),
+            |moves| {
+                count += moves.len();
+                moves.to = Bitboard::empty()
+            },
+            &mut moves,
+        );
+        count
     }
 
     #[inline]
     pub fn legal_moves(&self) -> MoveList {
         Metrics::incr(Counter::MoveGen);
         let mut moves = MoveList::new();
-        Rules::legals_for(self, &mut moves);
+        self.legal_moves_into(&mut moves);
         moves
     }
 }
@@ -303,11 +318,13 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::globals::constants::*;
-    use crate::infra::black_box;
-    use crate::infra::profiler::PerfProfiler;
-    use crate::other::Perft;
-    use crate::{catalog::*, Color};
+    use crate::{
+        catalog::*,
+        globals::constants::*,
+        infra::{black_box, profiler::PerfProfiler},
+        other::Perft,
+        Color,
+    };
     use anyhow::Result;
     use test_log::test;
     // use crate::movelist::MoveValidator;
@@ -325,7 +342,10 @@ mod tests {
         let mover = mv.mover_piece(&bd);
         let destinations = precalc.attacks(bd.color_us(), mover, bd.us(), bd.them(), mv.from());
 
-        if !mv.to().is_in(destinations) && !bd.is_en_passant_square(mv.to()) && !mv.to_inner().is_castle(&bd) {
+        if !mv.to().is_in(destinations)
+            && !bd.is_en_passant_square(mv.to())
+            && !mv.to_inner().is_castle(&bd)
+        {
             println!("bad attack");
         }
         println!(
@@ -347,7 +367,7 @@ mod tests {
         let moves = board.legal_moves();
         assert_eq!(moves.len(), 32);
         // println!("{}\n{:#?}", board, moves);
-        //assert_eq!(format!("{:#?}", moves), "vec![]");
+        // assert_eq!(format!("{:#?}", moves), "vec![]");
         Ok(())
     }
 
@@ -625,8 +645,6 @@ mod tests {
         }
     }
 
-
-
     #[test]
     fn bench_movegen() {
         let mut starting_pos = Board::starting_pos();
@@ -641,5 +659,4 @@ mod tests {
         };
         Perft::perft_with(&mut starting_pos, 3, &mut func);
     }
-
 }
