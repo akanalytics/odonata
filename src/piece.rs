@@ -319,6 +319,15 @@ impl Piece {
             Color::Black => self.to_upper_char().to_ascii_lowercase(),
         }
     }
+
+    pub fn parse(s: &str) -> Result<Piece> {
+        if s.len() == 1 {
+            Piece::from_char(s.chars().next().unwrap())
+        } else {
+            bail!("Unknown piece '{s}'");
+        }
+    }
+
 }
 
 #[enumflags2::bitflags]
@@ -492,6 +501,12 @@ mod tests {
         for i in 0..Piece::len() {
             assert_eq!(Piece::from_index(i).index(), i);
         }
+        assert_eq!(Piece::parse("P").unwrap(), Piece::Pawn);
+        assert_eq!(Piece::parse("Q").unwrap(), Piece::Queen);
+        assert_eq!(Piece::parse("q").unwrap(), Piece::Queen);
+        assert_eq!(Piece::parse("").is_err(), true);
+        assert_eq!(Piece::parse("X").is_err(), true);
+        assert_eq!(Piece::parse("XX").is_err(), true);
     }
 
     #[test]

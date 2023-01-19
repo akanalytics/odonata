@@ -958,8 +958,14 @@ preserve_bm = false
 [killers]
 enabled = true
 clear_every_move = false
+clear_scores_every_move = false
 use_ply_below = true
 castles = true
+captures = false
+record_mover = true
+order = false
+ply = 10
+
 
 [counter_move]
 enabled = true

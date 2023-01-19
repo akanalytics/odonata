@@ -20,6 +20,8 @@ use crate::{
 // fn threats_to(&self, c: Color) -> Bitboard;
 
 impl Board {
+
+
     pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metrics::timing_start();
         let ret = self.is_pseudo_legal_move(m) && self.is_legal_move(m);
@@ -122,16 +124,16 @@ impl Board {
     pub fn is_pseudo_legal_baremove(&self, m: &BareMove) -> bool {
         let precalc = PreCalc::default();
 
-        let mover = self.piece(m.from());
+        let mover = self.piece(m.from);
         // check piece move
         let Some(mover) = mover  else {
             return false;
         };
-        if let Some(pp) = m.promo() {
+        if let Some(pp) = m.promo {
             if mover != Piece::Pawn {
                 return false;
             }
-            if !m.to().as_bb().intersects(Bitboard::RANKS_18) {
+            if !m.to.as_bb().intersects(Bitboard::RANKS_18) {
                 // TODO! exact promo rank for white/black
                 return false;
             }
@@ -140,29 +142,29 @@ impl Board {
             }
         }
 
-        if m.from().is_in(self.line_pieces()) {
-            if precalc.between(m.from(), m.to()).is_empty() {
+        if m.from.is_in(self.line_pieces()) {
+            if precalc.between(m.from, m.to).is_empty() {
                 // to/from dont share a diagonal or orthogonal
                 return false;
             }
             if precalc
-                .strictly_between(m.from(), m.to())
+                .strictly_between(m.from, m.to)
                 .intersects(self.occupied())
             {
                 return false;
             }
         }
-        if m.from().is_in(self.pawns()) {
-            if (precalc.strictly_between(m.from(), m.to()) & self.occupied()).any() {
+        if m.from.is_in(self.pawns()) {
+            if (precalc.strictly_between(m.from, m.to) & self.occupied()).any() {
                 return false;
             }
-            if self.is_en_passant_square(m.to())
-                && m.to()
-                    .is_in(precalc.pawn_attacks_from_sq(self.color_us(), m.from()))
+            if self.is_en_passant_square(m.to)
+                && m.to
+                    .is_in(precalc.pawn_capture_attacks_from_sq(self.color_us(), m.from))
             {
                 return true;
             }
-            if m.to().is_in(Bitboard::RANKS_18) && m.promo().is_none() {
+            if m.to.is_in(Bitboard::RANKS_18) && m.promo.is_none() {
                 return false;
             }
         }
@@ -172,8 +174,8 @@ impl Board {
         }
 
         let destinations =
-            precalc.attacks(self.color_us(), mover, self.us(), self.them(), m.from());
-        if !m.to().is_in(destinations) {
+            precalc.attacks(self.color_us(), mover, self.us(), self.them(), m.from);
+        if !m.to.is_in(destinations) {
             // println!("Returning false for {m} on board {self}");
             return false;
         }
@@ -216,11 +218,11 @@ impl Board {
         if mv.is_null() {
             return false;
         }
-        if !mv.from().is_in(self.us()) {
+        if !mv.from.is_in(self.us()) {
             return false;
         }
 
-        // castling and kings moves already done above
+        // kings moves already done above
         let mut us = self.us();
         let mut kings = self.kings() & us;
         if kings.is_empty() {
@@ -229,7 +231,7 @@ impl Board {
 
         // idea - lightweight make_move - no hash - just enough to check rays of sliders etc
         let mut them = self.them();
-        let from_to_bits = mv.from().as_bb() | mv.to().as_bb();
+        let from_to_bits = mv.from.as_bb() | mv.to.as_bb();
         us ^= from_to_bits;
 
         if mv.from.is_in(kings) {
@@ -238,14 +240,14 @@ impl Board {
         let sq = kings.square();
 
         // regular capture
-        if mv.to().is_in(self.them()) {
-            them.remove(mv.to().as_bb());
-        } else if mv.from().is_in(self.pawns())
-            && !mv.to().is_in(self.them())
-            && mv.from().file_index() != mv.to().file_index()
+        if mv.to.is_in(self.them()) {
+            them.remove(mv.to.as_bb());
+        } else if mv.from.is_in(self.pawns())
+            && !mv.to.is_in(self.them())
+            && mv.from.file_index() != mv.to.file_index()
         {
             // ep capture is like capture but with capture piece on *ep* square not *dest*
-            let sq = Square::from_xy(mv.to().file_index() as u32, mv.from().rank_index() as u32);
+            let sq = Square::from_xy(mv.to.file_index() as u32, mv.from.rank_index() as u32);
             debug_assert!(
                 sq.is_in(self.them()),
                 "ep capture square not occupied for move {mv} on board {self}"

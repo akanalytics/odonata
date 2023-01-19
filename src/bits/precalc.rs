@@ -132,6 +132,9 @@ impl PreCalc {
         }
     }
 
+    // surround - for each square we have the region of squares with a checyshev-distance of n
+    // surround[B2][1] = kings moves from B2
+    // surround[B2][0] = B2
     fn pop_surround(surround: &mut [[Bitboard; 8]; 64]) {
         for d in 0..8 {
             for s1 in Bitboard::all().squares() {
@@ -167,6 +170,7 @@ impl PreCalc {
     }
 
     // king moves - see https://www.chessprogramming.org/Distance
+    // max difference in rank or file
     #[inline]
     pub fn chebyshev_distance(&self, s1: Square, s2: Square) -> i32 {
         Square::calc_chebyshev_distance(s1, s2)
@@ -310,7 +314,7 @@ impl PreCalc {
     }
 
     #[inline]
-    pub fn pawn_attacks_from_sq(&self, c: Color, pawn: Square) -> Bitboard {
+    pub fn pawn_capture_attacks_from_sq(&self, c: Color, pawn: Square) -> Bitboard {
         pawn.as_bb().shift(c.pawn_capture_east()) | pawn.as_bb().shift(c.pawn_capture_west())
     }
 

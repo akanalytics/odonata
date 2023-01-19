@@ -33,8 +33,8 @@ impl Moves {
 
 #[derive(Debug)]
 pub struct LegalMoves<'a, F: FnMut(Move)> {
-    board: &'a Board,
-    callback:  F,
+    board:    &'a Board,
+    callback: F,
     // list:  &'a mut MoveList,
 }
 
@@ -43,11 +43,10 @@ where
     F: FnMut(Move),
 {
     pub fn new(board: &'a Board, _mask: Bitboard, callback: F) -> Self {
-        let mut me = Self { board, callback};
+        let mut me = Self { board, callback };
         me.generate();
         me
     }
-
 
     pub fn king_legal(&mut self) {
         let bd = self.board;
@@ -234,13 +233,7 @@ where
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
             if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
-                let m = Move::new_castle(
-                    king_sq,
-                    king_to.square(),
-                    // king_to.square().shift(Dir::E),
-                    // rook_to.square(),
-                    right,
-                );
+                let m = Move::new_castle(king_sq, king_to.square());
                 (self.callback)(m);
             }
         }
@@ -253,11 +246,7 @@ where
             if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
                 let king_to = king_to.square();
                 // let rook_from = king_to.shift(Dir::W).shift(Dir::W);
-                let m = Move::new_castle(
-                    king_sq, king_to, // rook_from,
-                    // rook_to.square(),
-                    right,
-                );
+                let m = Move::new_castle(king_sq, king_to);
                 (self.callback)(m);
             }
         }

@@ -83,7 +83,7 @@ impl BareMove {
             0 => None,
             pi => Some(Piece::from_index(pi as usize)),
         };
-        BareMove { to, from, promo }
+        BareMove { mover: None, to, from, promo }
     }
 }
 // pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
