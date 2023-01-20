@@ -5,7 +5,7 @@ use crate::{
         square::Square},
     boards::{Board, BoardCalcs},
     globals::constants::*,
-    infra::utils::{Displayable, StringUtils},
+    infra::utils::{StringUtils, ToStringOr},
     piece::{Color, Piece}, PreCalc,
 };
 use anyhow::{anyhow, bail, Result};
@@ -23,25 +23,32 @@ pub struct BareMove {
     pub promo: Option<Piece>,
 }
 
+
+impl FromStr for BareMove {
+    type Err = anyhow::Error;
+
+    /// either uci or lan acceptable eg e4e5, e4xd5, e7e8p, Ra1a8, Bc1xd2
+    fn from_str(s: &str) -> Result<Self> {
+        Self::parse_uci(s).or_else(|_| Self::parse_lan(s))
+    }
+}
+
+impl fmt::Display for BareMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_null() {
+            write!(f, "0000")
+        } else {
+            write!(f, "{}{}{}", self.from.uci(), self.to.uci(), self.promo.to_string_or(""))
+        }
+    }
+}
 impl BareMove {
     pub fn null() -> Self {
         Default::default()
     }
 
-    pub fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <BareMove as fmt::Display>::fmt(self, f)
-    }
-
-    pub fn to_uci(&self) -> String {
-        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
-    }
-
     pub fn is_null(&self) -> bool {
         self.to == self.from
-    }
-
-    pub fn to_san(&self, b: &Board) -> String {
-        b.to_san(b.augment_move(*self))
     }
 
     pub fn is_castle(&self, b: &Board) -> bool {
@@ -52,8 +59,8 @@ impl BareMove {
         if s.trim() == "0000" {
             return Ok(Self::null());
         }
-        let from = Bitboard::parse_square(s.take_slice(0..2))?;
-        let to = Bitboard::parse_square(s.take_slice(2..4))?;
+        let from = Square::parse(s.take_slice(0..2))?;
+        let to = Square::parse(s.take_slice(2..4))?;
         let promo = if let Some(ch) = s.take_char_at(4) {
             Some(Piece::from_char(ch)?)
         } else {
@@ -82,19 +89,7 @@ impl BareMove {
         } else {
             Some(Piece::Pawn)
         };
-        let from = Bitboard::parse_square(s.take_slice(0..2))?;
-        let to = Bitboard::parse_square(s.take_slice(2..4))?;
-        let promo = if let Some(ch) = s.take_char_at(4) {
-            Some(Piece::from_char(ch)?)
-        } else {
-            None
-        };
-        Ok(BareMove {
-            mover,
-            from,
-            to,
-            promo,
-        })
+        Ok(BareMove { mover, ..Self::parse_uci(&s)? })
     }
 
     pub fn validate(&self, bd: &Board) -> Result<Move, &'static str> {
@@ -261,28 +256,7 @@ impl BareMove {
 
 }
 
-impl FromStr for BareMove {
-    type Err = anyhow::Error;
 
-    /// either uci or lan acceptable eg e4e5, e4xd5, e7e8p, Ra1a8, Bc1xd2
-    fn from_str(s: &str) -> Result<Self> {
-        Self::parse_uci(s).or_else(|_| Self::parse_lan(s))
-    }
-}
-
-impl fmt::Display for BareMove {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_null() {
-            write!(f, "0000")
-        } else {
-            write!(f, "{}{}", self.from.uci(), self.to.uci())?;
-            if let Some(p) = self.promo {
-                write!(f, "{}", p.to_char(Color::Black))?
-            }
-            Ok(())
-        }
-    }
-}
 
 impl Board {
     pub fn is_castling_move_legal(&self, mv: BareMove) -> bool {
@@ -682,8 +656,8 @@ impl Move {
         if s.trim() == "0000" {
             return Ok(Self::new_null());
         }
-        let from = Bitboard::parse_square(s.take_slice(0..2))?;
-        let to = Bitboard::parse_square(s.take_slice(2..4))?;
+        let from = Square::parse(s.take_slice(0..2))?;
+        let to = Square::parse(s.take_slice(2..4))?;
         if let Some(ch) = s.take_char_at(4) {
             let _promo = Piece::from_char(ch)?;
             if from.rank_number_as_white(b.color_us()) != 7 {
@@ -903,25 +877,25 @@ mod tests {
 
     #[test]
     fn test_baremove() {
-        assert_eq!(BareMove::parse_uci("a2a3").unwrap().to_uci(), "a2a3");
-        assert_eq!(BareMove::parse_uci("a2a3Q").unwrap().to_uci(), "a2a3q");
-        assert_eq!(BareMove::parse_uci("0000").unwrap().to_uci(), "0000");
+        assert_eq!(BareMove::parse_uci("a2a3").unwrap().to_string(), "a2a3");
+        assert_eq!(BareMove::parse_uci("a2a3Q").unwrap().to_string(), "a2a3q");
+        assert_eq!(BareMove::parse_uci("0000").unwrap().to_string(), "0000");
 
-        assert_eq!(BareMove::parse_lan("0000").unwrap().to_uci(), "0000");
-        assert_eq!(BareMove::parse_lan("a2a3").unwrap().to_uci(), "a2a3");
-        assert_eq!(BareMove::parse_lan("a2-a3").unwrap().to_uci(), "a2a3");
-        assert_eq!(BareMove::parse_lan("e4xd5").unwrap().to_uci(), "e4d5");
-        assert_eq!(BareMove::parse_lan("e7e8q").unwrap().to_uci(), "e7e8q");
-        assert_eq!(BareMove::parse_lan("e7e8q").unwrap().to_uci(), "e7e8q");
-        assert_eq!(BareMove::parse_lan("Re7e8").unwrap().to_uci(), "e7e8");
+        assert_eq!(BareMove::parse_lan("0000").unwrap().to_string(), "0000");
+        assert_eq!(BareMove::parse_lan("a2a3").unwrap().to_string(), "a2a3");
+        assert_eq!(BareMove::parse_lan("a2-a3").unwrap().to_string(), "a2a3");
+        assert_eq!(BareMove::parse_lan("e4xd5").unwrap().to_string(), "e4d5");
+        assert_eq!(BareMove::parse_lan("e7e8q").unwrap().to_string(), "e7e8q");
+        assert_eq!(BareMove::parse_lan("e7e8q").unwrap().to_string(), "e7e8q");
+        assert_eq!(BareMove::parse_lan("Re7e8").unwrap().to_string(), "e7e8");
         let mv = BareMove::parse_lan("Re7e8").unwrap();
         assert_eq!( mv.mover, Some(Piece::Rook) );
         assert_eq!(BareMove::parse_lan("").is_err(), true);
         assert_eq!(BareMove::parse_lan("X").is_err(), true);
         assert_eq!(BareMove::parse_lan("Be5").is_err(), true);
 
-        assert_eq!("a2a3".parse::<BareMove>().unwrap().to_uci(), "a2a3");
-        assert_eq!("Re7e8".parse::<BareMove>().unwrap().to_uci(), "e7e8");
+        assert_eq!("a2a3".parse::<BareMove>().unwrap().to_string(), "a2a3");
+        assert_eq!("Re7e8".parse::<BareMove>().unwrap().to_string(), "e7e8");
 
         // parses as uci which doesn't have a mover
         assert_eq!("a2a3".parse::<BareMove>().unwrap().mover, None);

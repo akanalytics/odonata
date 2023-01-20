@@ -546,7 +546,7 @@ impl OrderedMoveList {
 
             // Killers
             MoveType::Killer => {
-                algo.killers.legal_moves_for(self.n.ply, b, moves);
+                algo.killers.legal_moves_for(&self.n, b, moves);
                 if !self.tt.is_null() {
                     moves.retain(|&mut mv| mv != self.tt); // only keep killers that aren't hash moves
                 }

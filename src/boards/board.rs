@@ -802,7 +802,7 @@ impl Board {
         bb.en_passant = if words[3] == "-" {
             None
         } else {
-            Some(Bitboard::parse_square(words[3])?)
+            Some(Square::parse(words[3])?)
         };
         bb.half_move_clock = words[4]
             .parse()

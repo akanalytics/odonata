@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::bits::bitboard::{Bitboard, Dir, Squares};
-use crate::piece::Color;
-use std::cmp;
-use std::fmt;
+use crate::{
+    bits::bitboard::{Bitboard, Dir, Squares},
+    piece::Color,
+};
+use std::{cmp, fmt, str::FromStr};
 
 #[derive(Copy, Hash, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Square(u16);
@@ -12,6 +13,19 @@ impl Default for Square {
     #[inline]
     fn default() -> Self {
         Self::null()
+    }
+}
+
+impl FromStr for Square {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 2 {
+            return Err(anyhow::anyhow!("invalid square '{}' parsing square", s));
+        }
+        let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
+        let bb = Bitboard::parse_file(chars[1])? & Bitboard::parse_rank(chars[2])?;
+        Ok(bb.square())
     }
 }
 
@@ -80,6 +94,7 @@ impl Square {
     pub const F8: Square = Square::from_u8(61);
     pub const G8: Square = Square::from_u8(62);
     pub const H8: Square = Square::from_u8(63);
+
 }
 // Bitboard::from_bits_truncate(1 << i)
 
@@ -92,7 +107,7 @@ impl Square {
 
     #[inline]
     pub const fn from_xy(x: u32, y: u32) -> Square {
-        debug_assert!(x <=7 && y <= 7, "Square::from_xy");
+        debug_assert!(x <= 7 && y <= 7, "Square::from_xy");
         Square::from_u32((y << 3) | x)
     }
 
@@ -124,6 +139,10 @@ impl Square {
     #[inline]
     pub const fn as_bb(self) -> Bitboard {
         Bitboard::from_sq(self.0)
+    }
+
+    pub fn parse(s: &str) -> anyhow::Result<Square> {
+        s.parse()
     }
 
     #[inline]
@@ -316,9 +335,10 @@ mod tests {
     // const a1b2: Bitboard = Bitboard::A1.or(Bitboard::B2);
 
     use super::*;
-    use crate::globals::constants::*;
-    use crate::infra::black_box;
-    use crate::infra::profiler::*;
+    use crate::{
+        globals::constants::*,
+        infra::{black_box, profiler::*},
+    };
 
     #[test]
     fn test_square() {

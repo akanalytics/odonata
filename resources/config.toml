@@ -958,13 +958,16 @@ preserve_bm = false
 [killers]
 enabled = true
 clear_every_move = false
-clear_scores_every_move = false
+clear_scores_every_move = true
 use_ply_below = true
 castles = true
 captures = false
 record_mover = true
 order = false
-ply = 10
+max_depth = 256
+min_depth = 0
+max_ply = 256
+min_ply = 0
 
 
 [counter_move]

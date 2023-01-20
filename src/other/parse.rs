@@ -1,4 +1,4 @@
-use crate::bits::bitboard::Bitboard;
+use crate::bits::Square;
 use crate::boards::Board;
 use crate::infra::utils::StringUtils;
 use crate::movelist::MoveList;
@@ -115,7 +115,7 @@ impl Parse {
                 break;
             }
 
-            if !dst_square.is_empty() && lm.to() != Bitboard::parse_square(&dst_square)? {
+            if !dst_square.is_empty() && lm.to() != Square::parse(&dst_square)? {
                 continue;
             }
             if !src_file.is_empty() && lm.from().uci().take_substring(0, 1) != src_file {

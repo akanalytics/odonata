@@ -942,19 +942,10 @@ impl Bitboard {
         let s = s.replace(',', " ");
         let mut bb = Bitboard::empty();
         for sq_str in s.split_ascii_whitespace() {
-            let sq = Self::parse_square(sq_str)?;
+            let sq = Square::parse(sq_str)?;
             bb |= sq.as_bb()
         }
         Ok(bb)
-    }
-
-    pub fn parse_square(s: &str) -> Result<Square> {
-        if s.len() != 2 {
-            return Err(anyhow!("invalid square '{}' parsing square", s));
-        }
-        let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
-        let bb = Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?;
-        Ok(bb.square())
     }
 }
 
@@ -1205,9 +1196,9 @@ mod tests {
         assert_eq!(Bitboard::parse_file("h").unwrap(), Bitboard::FILE_H);
         assert_eq!(Bitboard::parse_rank("1").unwrap(), Bitboard::RANK_1);
         assert_eq!(Bitboard::parse_rank("8").unwrap(), Bitboard::RANK_8);
-        assert_eq!(Bitboard::parse_square("a1").unwrap(), a1.square());
-        assert_eq!(Bitboard::parse_square("a8").unwrap(), a8.square());
-        assert_eq!(Bitboard::parse_square("h8").unwrap(), h8.square());
+        assert_eq!(Square::parse("a1").unwrap(), a1.square());
+        assert_eq!(Square::parse("a8").unwrap(), a8.square());
+        assert_eq!(Square::parse("h8").unwrap(), h8.square());
 
         assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), h8 | h1);
         assert_eq!(
@@ -1240,19 +1231,19 @@ mod tests {
             "invalid rank 'a' parsing square"
         );
         assert_eq!(
-            Bitboard::parse_square("aa").unwrap_err().to_string(),
+            "aa".parse::<Square>().unwrap_err().to_string(),
             "invalid rank 'a' parsing square"
         );
         assert_eq!(
-            Bitboard::parse_square("11").unwrap_err().to_string(),
+            Square::parse("11").unwrap_err().to_string(),
             "invalid file '1' parsing square"
         );
         assert_eq!(
-            Bitboard::parse_square("").unwrap_err().to_string(),
+            Square::parse("").unwrap_err().to_string(),
             "invalid square '' parsing square"
         );
         assert_eq!(
-            Bitboard::parse_square("abc").unwrap_err().to_string(),
+            Square::parse("abc").unwrap_err().to_string(),
             "invalid square 'abc' parsing square"
         );
     }

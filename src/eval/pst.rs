@@ -2,7 +2,6 @@ use crate::bits::square::Square;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::piece::{Color, Piece};
-use crate::Bitboard;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;
@@ -66,7 +65,7 @@ impl<'de> Deserialize<'de> for Pst {
         for (i, &p) in Piece::ALL.iter().enumerate() {
             let map = [&h.p, &h.n, &h.b, &h.r, &h.q, &h.k][i];
             for (k, &v) in map.iter() {
-                let sq = Bitboard::parse_square(k).map_err(serde::de::Error::custom)?;
+                let sq = Square::parse(k).map_err(serde::de::Error::custom)?;
                 pst.array[p][sq] = v;
             }
         }

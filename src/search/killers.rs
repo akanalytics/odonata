@@ -8,6 +8,8 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::node::Node;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Killers {
@@ -19,7 +21,10 @@ pub struct Killers {
     captures:                bool,
     record_mover:            bool,
     order:                   bool,
-    ply:                     Ply,
+    min_depth:               Ply,
+    max_depth:               Ply,
+    min_ply:                 Ply,
+    max_ply:                 Ply,
 
     #[serde(skip)]
     killers: Vec<[(BareMove, u32); 2]>,
@@ -36,7 +41,10 @@ impl Default for Killers {
             captures:                false,
             record_mover:            false,
             order:                   false,
-            ply:                     10,
+            min_depth:               0,
+            max_depth:               100,
+            min_ply:                 0,
+            max_ply:                 100,
             killers:                 vec![[(BareMove::null(), 0); 2]; MAX_PLY as usize],
         }
     }
@@ -86,13 +94,13 @@ impl fmt::Display for Killers {
 }
 
 impl Killers {
-    pub fn legal_moves_for(&self, y: Ply, b: &Board, moves: &mut MoveList) {
+    pub fn legal_moves_for(&self, n: &Node, b: &Board, moves: &mut MoveList) {
         if !self.enabled {
             return;
         }
-        self.legal_moves_for_single_ply(y, b, moves);
-        if y > 2 && self.use_ply_below {
-            self.legal_moves_for_single_ply(y - 2, b, moves);
+        self.legal_moves_for_single_ply(n, n.ply, b, moves);
+        if n.ply > 2 && self.use_ply_below {
+            self.legal_moves_for_single_ply(n, n.ply - 2, b, moves);
         }
     }
 
@@ -114,8 +122,14 @@ impl Killers {
         }
     }
 
-    fn legal_moves_for_single_ply(&self, y: Ply, b: &Board, moves: &mut MoveList) {
-        if self.order && y > self.ply && self.killers[y as usize][1].1 > self.killers[y as usize][0].1 {
+    fn legal_moves_for_single_ply(&self, n: &Node, y: Ply, b: &Board, moves: &mut MoveList) {
+        if self.order
+        && (n.depth <= self.max_depth
+            && n.depth >= self.min_depth ||
+            n.ply <= self.max_ply
+            && n.ply >= self.min_ply)
+            && self.killers[y as usize][1].1 > self.killers[y as usize][0].1
+        {
             self.add_if_valid(self.killers[y as usize][1].0, b, moves);
             self.add_if_valid(self.killers[y as usize][0].0, b, moves);
         } else {
@@ -124,11 +138,12 @@ impl Killers {
         }
     }
 
-    pub fn store(&mut self, y: Ply, m: &Move, b: &Board) {
+    pub fn store(&mut self, n: &Node, m: &Move, b: &Board) {
         // killers are quiet
         if !self.enabled || (m.is_castle(b) && !self.castles) || m.is_capture() || m.is_null() {
             return;
         }
+        let y = n.ply;
         let mut bm = m.to_inner();
         if self.record_mover {
             bm.mover = Some(m.mover_piece(b))
@@ -144,12 +159,17 @@ impl Killers {
         }
         // self.killers[y as usize][3] = self.killers[y as usize][2];
         // self.killers[y as usize][2] = self.killers[y as usize][1];
-        if self.order && y > self.ply {
+        if self.order
+            && (n.depth <= self.max_depth
+            && n.depth >= self.min_depth ||
+            n.ply <= self.max_ply
+            && n.ply >= self.min_ply)
+        {
             if self.killers[y as usize][0].1 > self.killers[y as usize][1].1 {
-                self.killers[y as usize][1] = (bm, 5);
+                self.killers[y as usize][1] = (bm, 0);
                 self.killers[y as usize][0].1 = 0;
             } else {
-                self.killers[y as usize][0] = (bm, 5);
+                self.killers[y as usize][0] = (bm, 0);
                 self.killers[y as usize][1].1 = 0;
             }
         } else {

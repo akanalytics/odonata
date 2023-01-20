@@ -1,25 +1,28 @@
-use crate::bits::square::Square;
-use crate::boards::Board;
-use crate::domain::NodeType;
-use crate::cache::lockless_hashmap::HashEntry;
-use crate::eval::score::Score;
-use crate::infra::component::{Component, State};
-use crate::infra::metric::Metrics;
-use crate::mv::{BareMove, Move};
-use crate::piece::{Hash, Piece, Ply};
-use crate::search::node::{Counter, Timing};
-use crate::variation::Variation;
+use crate::{
+    bits::square::Square,
+    boards::Board,
+    cache::lockless_hashmap::HashEntry,
+    domain::NodeType,
+    eval::score::Score,
+    infra::{
+        component::{Component, State},
+        metric::Metrics,
+    },
+    mv::{BareMove, Move},
+    piece::{Hash, Piece, Ply},
+    search::node::{Counter, Timing},
+    variation::Variation,
+};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct TtNode {
     pub score: TtScore,
     pub depth: Ply,
-    pub nt: NodeType,
-    pub bm: BareMove,
+    pub nt:    NodeType,
+    pub bm:    BareMove,
 }
 
 /// TtScore has mate scores relative to current ply, NOT to root board
@@ -83,7 +86,12 @@ impl BareMove {
             0 => None,
             pi => Some(Piece::from_index(pi as usize)),
         };
-        BareMove { mover: None, to, from, promo }
+        BareMove {
+            mover: None,
+            to,
+            from,
+            promo,
+        }
     }
 }
 // pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
@@ -150,13 +158,9 @@ impl TtNode {
     }
 
     pub fn validate_move(&self, bd: &Board) -> Move {
-        if self.bm.is_null() {
-            Move::new_null()
-        } else {
-            if bd.is_pseudo_legal_baremove(&self.bm) && bd.is_legal_baremove(&self.bm) {
-                let mv = bd.augment_move(self.bm);
-                mv
-            } else {
+        match self.bm.validate(bd) {
+            Ok(mv) => mv,
+            Err(_e) => {
                 Metrics::incr(Counter::TtIllegalMove);
                 Move::new_null()
             }
@@ -224,25 +228,25 @@ pub struct TranspositionTable2 {
     #[serde(skip)]
     table: Arc<TABLE>,
 
-    pub enabled: bool,
-    aging: bool,
-    persistent: bool,
-    pub use_tt_for_pv: bool,
-    pub use_tt_for_eval: bool,
-    pub tt_for_eval_depth: i32,
+    pub enabled:            bool,
+    aging:                  bool,
+    persistent:             bool,
+    pub use_tt_for_pv:      bool,
+    pub use_tt_for_eval:    bool,
+    pub tt_for_eval_depth:  i32,
     pub allow_truncated_pv: bool,
-    pub mb: i64,
-    hmvc_horizon: i32,
-    min_ply: Ply,
-    min_depth: Ply,
-    buckets: usize,
-    aligned: bool,
-    overlapping_buckets: bool,
-    cacheline_size: usize,
-    rewrite_pv: bool,
-    freshen_on_fetch: bool,
-    replacement: Replacement,
-    preserve_bm: bool,
+    pub mb:                 i64,
+    hmvc_horizon:           i32,
+    min_ply:                Ply,
+    min_depth:              Ply,
+    buckets:                usize,
+    aligned:                bool,
+    overlapping_buckets:    bool,
+    cacheline_size:         usize,
+    rewrite_pv:             bool,
+    freshen_on_fetch:       bool,
+    replacement:            Replacement,
+    preserve_bm:            bool,
 
     #[serde(skip)]
     pub current_age: u8,
@@ -251,27 +255,27 @@ pub struct TranspositionTable2 {
 impl Default for TranspositionTable2 {
     fn default() -> Self {
         Self {
-            table: Arc::new(TABLE::default()),
-            enabled: true,
-            use_tt_for_pv: false,
-            allow_truncated_pv: false,
-            use_tt_for_eval: true,
-            tt_for_eval_depth: 0,
-            mb: 8,
-            aging: true,
-            persistent: true,
-            buckets: 2,
-            aligned: false,
-            cacheline_size: 128,
+            table:               Arc::new(TABLE::default()),
+            enabled:             true,
+            use_tt_for_pv:       false,
+            allow_truncated_pv:  false,
+            use_tt_for_eval:     true,
+            tt_for_eval_depth:   0,
+            mb:                  8,
+            aging:               true,
+            persistent:          true,
+            buckets:             2,
+            aligned:             false,
+            cacheline_size:      128,
             overlapping_buckets: false,
-            current_age: 10, // to allow us to look back
-            hmvc_horizon: 85,
-            min_ply: 1, // search restrictions on ply=0
-            min_depth: 1,
-            rewrite_pv: true,
-            freshen_on_fetch: true,
-            replacement: Replacement::AgeTypeDepth,
-            preserve_bm: false,
+            current_age:         10, // to allow us to look back
+            hmvc_horizon:        85,
+            min_ply:             1, // search restrictions on ply=0
+            min_depth:           1,
+            rewrite_pv:          true,
+            freshen_on_fetch:    true,
+            replacement:         Replacement::AgeTypeDepth,
+            preserve_bm:         false,
             // deletes: Stat::new("deletes"),
             // fail_priority: Stat::new("ins fail priority"),
             // fail_ownership: Stat::new("ins fail owner"),
@@ -715,21 +719,21 @@ impl TranspositionTable2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
-    use crate::comms::uci_server::*;
-    use crate::globals::constants::*;
-    use crate::piece::*;
-    use crate::search::algo::*;
-    use crate::search::engine::ThreadedSearch;
-    use crate::search::timecontrol::*;
+    use crate::{
+        catalog::*,
+        comms::uci_server::*,
+        globals::constants::*,
+        piece::*,
+        search::{algo::*, engine::ThreadedSearch, timecontrol::*},
+    };
     use test_log::test;
 
     fn entry123() -> TtNode {
         TtNode {
             score: TtScore(Score::from_cp(300)),
             depth: 2,
-            nt: NodeType::ExactPv,
-            bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
+            nt:    NodeType::ExactPv,
+            bm:    Move::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
         }
     }
 
@@ -737,8 +741,8 @@ mod tests {
         TtNode {
             score: TtScore(Score::from_cp(200)),
             depth: 3,
-            nt: NodeType::ExactPv,
-            bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
+            nt:    NodeType::ExactPv,
+            bm:    Move::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
         }
     }
 
@@ -746,8 +750,8 @@ mod tests {
         TtNode {
             score: TtScore(Score::from_cp(201)),
             depth: 4,
-            nt: NodeType::ExactPv,
-            bm: Move::new_quiet(Piece::Rook, a1.square(), a2.square()).to_inner(),
+            nt:    NodeType::ExactPv,
+            bm:    Move::new_quiet(Piece::Rook, a1.square(), a2.square()).to_inner(),
         }
     }
 

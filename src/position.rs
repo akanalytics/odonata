@@ -1,3 +1,4 @@
+use crate::bits::Square;
 use crate::bits::bitboard::Bitboard;
 use crate::boards::Board;
 use crate::catalog::Catalog;
@@ -171,7 +172,7 @@ impl Position {
             pos.board.set_en_passant(None)
         } else {
             pos.board
-                .set_en_passant(Some(Bitboard::parse_square(words[3])?))
+                .set_en_passant(Some(Square::parse(words[3])?))
         };
 
         let mut remaining = StringUtils::trim_first_n_words(epd, 4);
