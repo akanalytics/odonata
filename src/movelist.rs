@@ -585,7 +585,7 @@ impl Board {
         let mut v = Vec::new();
         for &mv in moves.iter() {
             debug_assert!(
-                self.is_legal_move(mv),
+                mv.is_valid(self),
                 "mv {} is illegal for board {}",
                 mv,
                 self.to_fen()
@@ -600,7 +600,7 @@ impl Board {
         let mut board = self.clone();
         for (i, mv) in var.moves().enumerate() {
             debug_assert!(
-                board.is_legal_move(mv),
+                mv.is_valid(&board),
                 "mv {} is illegal for board {}",
                 mv,
                 board.to_fen()

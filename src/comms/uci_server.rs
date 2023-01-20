@@ -336,8 +336,7 @@ impl UciServer {
                 let to = mv.to().uci();
                 let capture = mv.capture_square(&b).uci();
                 let ep = mv.double_push_en_passant_square().uci();
-                // pseudo_legal=b.is_pseudo_legal_move(&mv);
-                let legal = b.is_legal_move(mv);
+                let legal = mv.is_valid(&b);
                 let san = if legal {
                     b.to_san(mv)
                 } else {

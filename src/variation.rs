@@ -1,9 +1,7 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::boards::Board;
-use crate::mv::Move;
-use crate::piece::Ply;
+use crate::{boards::Board, mv::Move, piece::Ply};
 use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -161,7 +159,7 @@ impl Variation {
         let mut b2 = b.clone();
         let mut s = Vec::new();
         for mv in self.moves() {
-            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(mv) {
+            if !mv.is_null() && mv.to_inner().validate(&b2).is_err() {
                 panic!(
                     "{uci}: {mv} is not legal for board {b}",
                     uci = self.to_uci(),
@@ -179,7 +177,7 @@ impl Variation {
         let mut s = vec![];
         let mut errors = false;
         for mv in self.moves() {
-            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(mv) {
+            if !mv.is_null() && mv.to_inner().validate(&b2).is_err() {
                 errors = true;
             }
             match errors {
@@ -230,7 +228,7 @@ impl Variation {
             for _ in 0..len {
                 self.moves.push(mv);
             }
-            //self.moves.resize_with(ply, || *mv);
+            // self.moves.resize_with(ply, || *mv);
         }
     }
 

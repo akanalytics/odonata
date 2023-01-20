@@ -165,7 +165,7 @@ where
                 // }
                 // special case: will removing the capture piece AND moving the pawn result in check
                 let m = Move::new_ep_capture(fr, to.square(), bd);
-                if bd.is_legal_move(m) {
+                if m.is_valid(bd) {
                     (self.callback)(m);
                 }
             }

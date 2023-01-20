@@ -26,7 +26,7 @@ impl Board {
                 "Invalid board before move {mv} from {var} on board {b} (base board {self:#})"
             );
             debug_assert!(
-                b.is_legal_move(mv),
+                mv.is_valid(&b),
                 "Move {mv} from {var} on board {b} (base board {self:#}) is invalid"
             );
             b = b.make_move(mv);

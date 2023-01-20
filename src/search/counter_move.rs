@@ -66,15 +66,6 @@ impl fmt::Display for CounterMove {
 }
 
 impl CounterMove {
-    // #[inline]
-    // pub fn counter_move_for(&self, b: &Board, parent: Move) -> Option<Move> {
-    //     if let Some(m) = self.counter_move_unchecked(b.color_us(), parent) {
-    //         if !m.is_null() && b.is_pseudo_legal_move(&m) && b.is_legal_move(&m) {
-    //             return Some(m);
-    //         }
-    //     }
-    //     None
-    // }
 
     pub fn adjust_by_factor(&mut self, age_factor: i32) {
         for c in Color::ALL {

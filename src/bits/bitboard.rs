@@ -832,7 +832,7 @@ impl Bitboard {
 
     #[inline]
     pub const fn square(self) -> Square {
-        // debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
+        debug_assert!(self.popcount() == 1, "attempt to convert bb to square where popcount != 1");
         let sq = self.0.trailing_zeros();
         // debug_assert!(sq < 64);
         Square::from_u32(sq)

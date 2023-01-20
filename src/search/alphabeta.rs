@@ -440,7 +440,7 @@ impl Algo {
                 n.alpha = s;
                 nt = NodeType::ExactPv;
                 debug_assert!(
-                    b.is_pseudo_legal_move(bm.unwrap()),
+                    bm.unwrap().to_inner().validate(b).is_ok(),
                     "bm {} on board {}",
                     bm.unwrap(),
                     b

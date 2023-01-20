@@ -2,11 +2,13 @@ use crate::{
     bits::{
         bitboard::{Bitboard, Dir},
         castling::CastlingRights,
-        square::Square},
+        square::Square,
+    },
     boards::{Board, BoardCalcs},
     globals::constants::*,
     infra::utils::{StringUtils, ToStringOr},
-    piece::{Color, Piece}, PreCalc,
+    piece::{Color, Piece},
+    PreCalc,
 };
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
@@ -23,7 +25,6 @@ pub struct BareMove {
     pub promo: Option<Piece>,
 }
 
-
 impl FromStr for BareMove {
     type Err = anyhow::Error;
 
@@ -38,7 +39,13 @@ impl fmt::Display for BareMove {
         if self.is_null() {
             write!(f, "0000")
         } else {
-            write!(f, "{}{}{}", self.from.uci(), self.to.uci(), self.promo.to_string_or(""))
+            write!(
+                f,
+                "{}{}{}",
+                self.from.uci(),
+                self.to.uci(),
+                self.promo.to_string_or("")
+            )
         }
     }
 }
@@ -89,7 +96,10 @@ impl BareMove {
         } else {
             Some(Piece::Pawn)
         };
-        Ok(BareMove { mover, ..Self::parse_uci(&s)? })
+        Ok(BareMove {
+            mover,
+            ..Self::parse_uci(&s)?
+        })
     }
 
     pub fn validate(&self, bd: &Board) -> Result<Move, &'static str> {
@@ -136,21 +146,19 @@ impl BareMove {
 
         let pc = PreCalc::default();
 
-        // check pawn movement 
+        // check pawn movement
         if mover == Piece::Pawn {
             if (pc.strictly_between(from, to) & bd.occupied()).any() {
                 return Err("cannot double push when skip square is occupied");
             }
             if from.file_index() == to.file_index() {
                 // if its a push - to-sq must be empty
-                if to.is_in(bd.occupied()) {                
+                if to.is_in(bd.occupied()) {
                     return Err("pawn push must be to an empty square");
                 }
             } else {
                 // if its a pawn capture - to-sq must be en-passant-sq or enemy
-                if !bd.is_en_passant_square(to)
-                && 
-                !to.is_in(them) {
+                if !bd.is_en_passant_square(to) && !to.is_in(them) {
                     return Err("pawn capture must be to enemy square or en-passant square");
                 }
             }
@@ -165,8 +173,6 @@ impl BareMove {
             }
         }
 
-
-
         if mv.is_castle(bd) {
             let rights = CastlingRights::from_king_move(to);
             if !bd.castling().contains(rights) {
@@ -176,27 +182,31 @@ impl BareMove {
                 return Err("cannot castle when in check");
             }
             let king_in_between = Square::from_u32((from.index() + to.index()) as u32 / 2);
-            if king_in_between.is_in(us|them) || to.is_in(them) {
+            if king_in_between.is_in(us | them) || to.is_in(them) {
                 return Err("cannot castle when king step/to square is occupied");
             }
-            if king_in_between.is_in(us|them) || to.is_in(them) {
+            if king_in_between.is_in(us | them) || to.is_in(them) {
                 return Err("cannot castle when king-step/to square is occupied");
             }
             // west of king-to is either the king-step square (king side) or the rook step-over sq (queens)
             // in either case it must be empty, but the step-sq situation is checked above hence the specific error
-            if to.shift(Dir::W).is_in(us|them) {
+            if to.shift(Dir::W).is_in(us | them) {
                 return Err("rook step-square must be empty");
             }
-            if BoardCalcs::attacked_by(king_in_between.as_bb(), us|them, bd).intersects(them) {
+            if BoardCalcs::attacked_by(king_in_between.as_bb(), us | them, bd).intersects(them) {
                 return Err("cannot castle when king moves through check");
             }
-
-
         } else {
             let atts = pc.attacks(color_us, mover, us, them, from);
-            if !to.is_in(atts)  {
-                if !(mover == Piece::Pawn && bd.is_en_passant_square(to) && to.is_in(pc.pawn_capture_attacks_from_sq(color_us, from))) {
-                    trace!("{mover} {from} -> {to}\n{atts} {bd} {ep}", ep = bd.is_en_passant_square(to));
+            if !to.is_in(atts) {
+                if !(mover == Piece::Pawn
+                    && bd.is_en_passant_square(to)
+                    && to.is_in(pc.pawn_capture_attacks_from_sq(color_us, from)))
+                {
+                    trace!(
+                        "{mover} {from} -> {to}\n{atts} {bd} {ep}",
+                        ep = bd.is_en_passant_square(to)
+                    );
                     return Err("to-square is not a valid move-to square for the piece");
                 }
             }
@@ -205,27 +215,45 @@ impl BareMove {
         // pseudo-legal move - test for in check - castling already handled at this point
         //
         // idea - lightweight make_move - no hash - just enough to check rays of sliders etc
-        // this also means that if the king didnt 
+        // this also means that if the king didnt
         let from_to_bits = from.as_bb() | to.as_bb();
         let mut our_king = bd.kings() & us;
 
-        // make the the occupied sqs reflect any move, and opponents sqs reflect any captures
-        let us = us ^ from_to_bits;  
-        let them = them - us;
+        // make the the occupied sqs reflect any move,
+        let us = us ^ from_to_bits;
 
+        // or remove any en passant captures from them, in case the captured pawn (via e/p capture ) was blocking an attack
+        let them = if bd.is_en_passant_square(to)
+            && from.is_in(bd.pawns())
+            && !to.is_in(them)
+            && from.file_index() != to.file_index()
+        {
+            let capture_sq = Square::from_xy(to.file_index() as u32, from.rank_index() as u32);
+            them - capture_sq.as_bb()
+        } else {
+            // .. and opponents sqs reflect any regular captures
+            them - us
+        };
 
-        if !our_king.is_empty() 
-            ||
-            // if its not a king move and the piece isn't pinned and the king is not in check
-            !from.is_in(bd.pinned(color_us)) && mover != Piece::King && !bd.is_in_check(color_us){
-
+        // if its not a king move and the piece isn't pinned and the king is not in check and its not an ep capture
+        let skip_king_attacked_test = !from.is_in(bd.pinned(color_us))
+            && mover != Piece::King
+            && !bd.is_in_check(color_us)
+            && !bd.is_en_passant_square(to);
+        if our_king.any() && !skip_king_attacked_test {
             // if the king moves, adjust the king square
             if mover == Piece::King {
                 our_king ^= from_to_bits;
-            }    
+            }
+
+            debug_assert!(
+                our_king.popcount() == 1,
+                "move {mv} on board {bd} king square failure"
+            );
+
             // king square (or square the king will end up on)
             let ksq = our_king.square();
-            
+
             // note that the king_sq itself wont be seen as an attack so capturing a piece is fine
             let occ = us | them;
             if (pc.rook_attacks(occ, ksq) & bd.rooks_or_queens() & them).any() {
@@ -249,85 +277,10 @@ impl BareMove {
             }
         }
 
-
-
         Ok(Move::new_move(mover, from, to, mv.promo, bd))
     }
-
 }
 
-
-
-impl Board {
-    pub fn is_castling_move_legal(&self, mv: BareMove) -> bool {
-        let c = self.color_us();
-        let right = CastlingRights::from_king_move(mv.to);
-        let king = mv.from;
-        if CastlingRights::is_king_side(&right) {
-            if self.castling().contains(right)
-                && !CastlingRights::king_side_move_squares(c).intersects(self.occupied())
-            {
-                let rook_to = king.shift(Dir::E);
-                let king_to = rook_to.shift(Dir::E);
-                let king_moves = king.as_bb() | rook_to.as_bb() | king_to.as_bb();
-                if BoardCalcs::attacked_by(king_moves, self.occupied(), self).disjoint(self.them())
-                {
-                    return true;
-                }
-            }
-        }
-        if CastlingRights::is_queen_side(&right) {
-            if self.castling().contains(right)
-                && !CastlingRights::queen_side_move_squares(c).intersects(self.occupied())
-            {
-                let rook_to = king.shift(Dir::W);
-                let king_to = rook_to.shift(Dir::W);
-                let king_moves = king.as_bb() | rook_to.as_bb() | king_to.as_bb();
-                if BoardCalcs::attacked_by(king_moves, self.occupied(), self).disjoint(self.them())
-                {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    pub fn augment_move(&self, mv: BareMove) -> Move {
-        if mv.is_null() {
-            return Move::new_null();
-        }
-        let from = mv.from;
-        let to = mv.to;
-        let mover = self.piece(from).unwrap_or_else(|| {
-            panic!(
-                "move {mv} no piece on {from} for board {fen}",
-                fen = self.to_fen()
-            )
-        });
-        let capture_piece = self.piece(to);
-        if mover == Piece::King && CastlingRights::is_castling(from, to) {
-            return Move::new_castle(from, to);
-        }
-        if let Some(promo) = mv.promo {
-            if let Some(_capture) = capture_piece {
-                return Move::new_promo_capture(from, to, promo, self);
-            } else {
-                return Move::new_promo(from, to, promo);
-            }
-        }
-        if let Some(_captured) = capture_piece {
-            return Move::new_capture(mover, from, to, self);
-        }
-        // diagonal pawn capture yet to-square is empty
-        if mover == Piece::Pawn {
-            return Move::new_pawn_move(from, to, self);
-        }
-        if from == to {
-            return Move::new_null();
-        }
-        Move::new_quiet(mover, from, to)
-    }
-}
 
 type UMOVE = u16;
 
@@ -342,26 +295,14 @@ impl fmt::Debug for Move {
             .field("uci", &self.to_uci())
             .field("from", &self.from())
             .field("to", &self.to())
-            .field("is_capture", &self.is_capture())
-            // .field("castling", &self.castling_side())
             .field("promo", &self.promo_piece())
-            // .field("ep", &self.ep())
-            .field(
-                "bits",
-                &format!("{:064b}", self.bits)
-                    .chars()
-                    .collect::<Vec<char>>()
-                    .chunks(8)
-                    .map(|c| c.iter().collect::<String>())
-                    .collect::<Vec<String>>()
-                    .join(" "),
-            )
+            .field("flag", &self.flag())
             .finish()
     }
 }
 
 // 16 - less 2x6 for from/to = 4 bits = 16 things
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum MoveFlag {
     Quiet              = 0,
     Castle,
@@ -652,6 +593,28 @@ impl Move {
         }
     }
 
+    /// if mv is invalid then maybe mover is not set
+    pub fn to_inner_with_mover(&self, bd: &Board) -> BareMove {
+        BareMove {
+            mover: bd.piece(self.from()),
+            from:  self.from(),
+            to:    self.to(),
+            promo: self.promo_piece(),
+        }
+    }
+
+    pub fn validate(&self, bd: &Board) -> std::result::Result<(), &str> {
+        let mv = self.to_inner().validate(bd)?;
+        if *self != mv {
+            return Err("move flags likely wrong");
+        }
+        Ok(())
+    }
+
+    pub fn is_valid(&self, bd: &Board) -> bool {
+        self.validate(bd).is_ok()
+    }
+
     pub fn parse_uci(s: &str, b: &Board) -> Result<Self> {
         if s.trim() == "0000" {
             return Ok(Self::new_null());
@@ -837,7 +800,7 @@ impl Move {
 
     #[inline]
     pub fn mvv_lva_score(&self, bd: &Board) -> i32 {
-        debug_assert!(bd.is_legal_move(*self), "{self} is illegal for board {bd}");
+        debug_assert!(self.is_valid(bd), "{self} is illegal for board {bd}");
         let mut score = 0;
         if let Some(cap) = self.capture_piece(bd) {
             score += cap.centipawns() * 10 - self.mover_piece(bd).centipawns() / 10;
@@ -889,7 +852,7 @@ mod tests {
         assert_eq!(BareMove::parse_lan("e7e8q").unwrap().to_string(), "e7e8q");
         assert_eq!(BareMove::parse_lan("Re7e8").unwrap().to_string(), "e7e8");
         let mv = BareMove::parse_lan("Re7e8").unwrap();
-        assert_eq!( mv.mover, Some(Piece::Rook) );
+        assert_eq!(mv.mover, Some(Piece::Rook));
         assert_eq!(BareMove::parse_lan("").is_err(), true);
         assert_eq!(BareMove::parse_lan("X").is_err(), true);
         assert_eq!(BareMove::parse_lan("Be5").is_err(), true);
@@ -901,11 +864,16 @@ mod tests {
         assert_eq!("a2a3".parse::<BareMove>().unwrap().mover, None);
 
         // parses as lan (as uci forbids '-') which has a mover
-        assert_eq!("a2-a3".parse::<BareMove>().unwrap().mover, Some(Piece::Pawn));
+        assert_eq!(
+            "a2-a3".parse::<BareMove>().unwrap().mover,
+            Some(Piece::Pawn)
+        );
     }
 
     #[test]
-    fn test_validate_move() -> anyhow::Result<()>   {
+    fn test_validate_move() -> anyhow::Result<()> {
+        let b = Board::parse_fen("1r5k/8/7r/K1pP3r/7r/8/8/8 w - c6 0 1").unwrap();
+        assert_eq!("d5c6".parse::<BareMove>()?.validate(&b).is_err(), true); // ep capture discovered check
 
         let p = Position::parse_epd(
             r"
@@ -920,19 +888,40 @@ mod tests {
         )
         .unwrap();
         let b = p.board();
-        assert_eq!("f4f5".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "f4f5");
+        assert_eq!(
+            "f4f5".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "f4f5"
+        );
         assert_eq!("h4h5".parse::<BareMove>()?.validate(b).is_err(), true);
-        assert_eq!("h5g6".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "h5g6"); // ep capture
-        assert_eq!("Ke1g1".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "e1g1"); // castle K
+        assert_eq!(
+            "h5g6".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "h5g6"
+        ); // ep capture
+        assert_eq!(
+            "Ke1g1".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "e1g1"
+        ); // castle K
         assert_eq!("Ke1c1".parse::<BareMove>()?.validate(b).is_err(), true); // castle Q
-        assert_eq!("Ra1a7".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "a1a7"); // rook attack
+        assert_eq!(
+            "Ra1a7".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "a1a7"
+        ); // rook attack
         assert_eq!("Ra1a8".parse::<BareMove>()?.validate(b).is_err(), true); // rook x-ray attack
         assert_eq!("Ra1b2".parse::<BareMove>()?.validate(b).is_err(), true); // rook diagonal
-        assert_eq!("Ke1d1".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "e1d1"); // king move
+        assert_eq!(
+            "Ke1d1".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "e1d1"
+        ); // king move
         assert_eq!("Ke1e2".parse::<BareMove>()?.validate(b).is_err(), true); // king in check
-        assert_eq!("Re3e2".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "e3e2"); // pinned piece ok
+        assert_eq!(
+            "Re3e2".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "e3e2"
+        ); // pinned piece ok
         assert_eq!("Re3f3".parse::<BareMove>()?.validate(b).is_err(), true); // pinned piece
-        assert_eq!("0000".parse::<BareMove>()?.validate(b).unwrap().to_uci(), "0000"); // null move
+        assert_eq!(
+            "0000".parse::<BareMove>()?.validate(b).unwrap().to_uci(),
+            "0000"
+        ); // null move
 
         test_all_legal_and_illegal_moves(&b);
         for pos in Catalog::bratko_kopec().iter() {
@@ -941,33 +930,47 @@ mod tests {
         Ok(())
     }
 
-
-    fn test_all_legal_and_illegal_moves(b: &Board)    {
+    fn test_all_legal_and_illegal_moves(b: &Board) {
         let pieces = Piece::ALL.iter().map(|&p| Some(p)).chain(once(None));
         for mover in pieces.clone() {
             for from in Square::all() {
                 for to in Square::all() {
                     for promo in pieces.clone() {
-                        let bm = BareMove { mover, from, to, promo};
+                        let bm = BareMove {
+                            mover,
+                            from,
+                            to,
+                            promo,
+                        };
                         if bm.is_null() {
                             continue;
                         }
                         let mut found = false;
                         for lm in b.legal_moves().iter() {
-                            if lm.to() == bm.to && lm.from() == bm.from && lm.promo_piece() == bm.promo && (Some(lm.mover_piece(b)) == bm.mover || bm.mover == None) {
-                                assert_eq!(bm.validate(b).expect(&format!("{bm} {bm:?}")).to_uci(), lm.to_uci());
+                            if lm.to() == bm.to
+                                && lm.from() == bm.from
+                                && lm.promo_piece() == bm.promo
+                                && (Some(lm.mover_piece(b)) == bm.mover || bm.mover == None)
+                            {
+                                assert_eq!(
+                                    bm.validate(b).expect(&format!("{bm} {bm:?}")).to_uci(),
+                                    lm.to_uci()
+                                );
                                 found = true;
-                            } 
+                            }
                         }
                         if !found {
-                            assert_eq!(bm.validate(b).is_err(), true, "bm expected illegal: {bm} on board {b}");
+                            assert_eq!(
+                                bm.validate(b).is_err(),
+                                true,
+                                "bm expected illegal: {bm} on board {b}"
+                            );
                         }
-                    } 
+                    }
                 }
             }
         }
     }
-
 
     #[test]
     fn bench_validate_move() {
@@ -976,17 +979,14 @@ mod tests {
 
         let mut validate_good = PerfProfiler::new("baremove: validate good".into());
         let mut validate_bad = PerfProfiler::new("baremove: validate bad".into());
-        let mut validate_old = PerfProfiler::new("baremove: validate old".into());
 
         let mut func = |bd: &Board, mv: Move| {
             let bm = mv.to_inner();
             _ = validate_good.benchmark(|| black_box(bm).validate(black_box(bd)));
             _ = validate_bad.benchmark(|| black_box(bm).validate(black_box(&wrong)));
-            _ = validate_old.benchmark(|| black_box(bd).is_pseudo_legal_and_legal_move(black_box(mv)));
         };
         Perft::perft_with(&mut starting_pos, 2, &mut func);
     }
-
 
     #[test]
     fn test_parse_uci() -> anyhow::Result<()> {
@@ -1119,7 +1119,7 @@ mod tests {
         let mut count = 0;
         for pos in positions {
             let mut func = |bd: &Board, mv: Move| {
-                assert_eq!(bd.augment_move(mv.to_inner()), mv);
+                assert_eq!(mv.to_inner().validate(&bd).unwrap(), mv);
                 *&mut count += 1
             };
             Perft::perft_with(&mut pos.board().clone(), 3, &mut func);

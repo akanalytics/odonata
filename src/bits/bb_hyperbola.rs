@@ -147,11 +147,13 @@ impl SlidingPieceAttacks for Hyperbola {
 
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
+        debug_assert!(!from.is_null());
         self.hyperbola(occ, from, self.mask[from].file) | self.rank_hyperbola(occ, from)
     }
 
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
+        debug_assert!(!from.is_null());
         self.hyperbola(occ, from, self.mask[from].diag)
             | self.hyperbola(occ, from, self.mask[from].anti_diag)
     }
