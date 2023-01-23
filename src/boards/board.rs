@@ -504,7 +504,7 @@ impl Board {
     #[inline]
     pub fn pinned(&self, king_color: Color) -> Bitboard {
         let mut pi = self.pinned[king_color].get();
-        if pi == Bitboard::niche() {
+        if pi == self.pinned[Color::White].niche() {
             let pd = BoardCalcs::pinned_and_discoverers(self, king_color);
             self.pinned[king_color].set(pd.0);
             self.discoverer[king_color].set(pd.1);
@@ -516,7 +516,7 @@ impl Board {
     #[inline]
     pub fn discoverer(&self, king_color: Color) -> Bitboard {
         let mut di = self.discoverer[king_color].get();
-        if di == Bitboard::niche() {
+        if di == self.discoverer[Color::White].niche() {
             let pd = BoardCalcs::pinned_and_discoverers(self, king_color);
             self.pinned[king_color].set(pd.0);
             self.discoverer[king_color].set(pd.1);
