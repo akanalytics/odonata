@@ -39,6 +39,7 @@ pub struct Qs {
     pub max_ply: u16,
     pub delta_prune: bool,
     pub delta_prune_move_margin: Score,
+    pub delta_prune_move_pawn_margin: Score,
     pub delta_prune_node_margin: Score,
     pub recapture_score: i32,
     pub probe_tt: bool,
@@ -62,8 +63,9 @@ impl Default for Qs {
             promo_piece: Some(Piece::Queen),
             max_ply: 10,
             delta_prune: true,
-            delta_prune_move_margin: Score::from_cp(1000),
-            delta_prune_node_margin: Score::from_cp(2000),
+            delta_prune_move_margin: Score::from_cp(200),
+            delta_prune_move_pawn_margin: Score::from_cp(100),
+            delta_prune_node_margin: Score::from_cp(0),
             checks_max_ply: 2,
             recapture_score: 0,
             probe_tt: true,
@@ -110,13 +112,15 @@ impl RunQs<'_> {
         let orig_alpha = n.alpha;
 
         Metrics::incr_node(&n, Event::NodeQs);
-        if n.is_zw() {
-            Metrics::incr_node(&n, Event::NodeQsZw);
+        if n.depth == 0 {
+            Metrics::incr_node(&n, Event::NodeQsLeaf);
+            if n.is_zw() {
+                Metrics::incr_node(&n, Event::NodeQsLeafZw);
+            }
         }
-
         if EndGame::is_insufficient_material(&bd) {
             self.trail
-                .terminal(&n, Score::DRAW, Event::QsInsufficientMaterial);
+                .terminal(&n, Score::DRAW, Event::QsCatInsufficientMaterial);
             return Err(Score::DRAW);
         }
 
@@ -136,8 +140,8 @@ impl RunQs<'_> {
 
         if !in_check {
             if pat >= n.beta {
-                Metrics::incr_node(&n, Event::QsStandingPatFailHigh);
-                self.trail.prune_node(&n, pat, Event::QsStandingPatFailHigh);
+                Metrics::incr_node(&n, Event::QsCatCutStandingPat);
+                self.trail.prune_node(&n, pat, Event::QsCatCutStandingPat);
                 return Err(pat.clamp_score());
             }
             // TODO: zugawang check
@@ -149,13 +153,15 @@ impl RunQs<'_> {
             }
             // coarse delta prune - where margin bigger than any possible move
             // b.most_valuable_piece_except_king(b.them());
-            let mut p = bd
+            let p = bd
                 .most_valuable_piece_except_king(bd.occupied())
-                .unwrap_or((Piece::Queen, Square::A1))
+                .unwrap_or((Piece::Pawn, Square::A1))
                 .0;
-            if p != Piece::Queen {
-                p = Piece::Rook;
-            }
+            // if p != Piece::Queen {
+            //     p = Piece::Rook;
+            // }
+            // calculate value of best enemy + pawn + static_margin (=0) => most_gain = most you can gain.
+            // if min pieces && pat + most_gain < alpha   -> prune
             let ph = bd.phase(&self.eval.phaser);
             let pawn = self.eval.mb.piece_weights[Piece::Pawn].interpolate(ph);
             let mvp = self.eval.mb.piece_weights[p].interpolate(ph) + pawn;
@@ -166,23 +172,24 @@ impl RunQs<'_> {
                 .any()
             {
                 let queen = self.eval.mb.piece_weights[Piece::Queen].interpolate(ph);
-                margin = margin + Score::from_f32(queen);
+                margin = margin + Score::from_f32(queen - pawn);
             }
             if bd.occupied().popcount() >= self.config.delta_prune_min_pieces
                 && pat.is_numeric()
                 && pat + margin <= n.alpha
             {
-                Metrics::incr_node(&n, Event::QsDeltaPruneNode);
+                Metrics::incr_node(&n, Event::QsCatAllDeltaPruneNode);
                 self.trail
-                    .prune_node(&n, pat + margin, Event::QsDeltaPruneNode);
+                    .prune_node(&n, pat + margin, Event::QsCatAllDeltaPruneNode);
                 return Err((pat + margin).clamp_score());
             }
         } else {
             Metrics::incr_node(&n, Event::NodeQsInCheck);
         }
 
+        Metrics::incr_node(&n, Event::QsMoveGen);
         let mut moves = MoveList::new();
-        self.sort_moves(in_check, &n, bd, lm, hm, &mut moves);
+        self.gen_sorted_moves(in_check, &n, bd, lm, hm, &mut moves);
 
         let mut unpruned_move_count = 0;
         let mut bs = None;
@@ -201,13 +208,13 @@ impl RunQs<'_> {
         }
 
         if bs < Some(orig_alpha) {
-            Metrics::incr_node(&n, Event::NodeQsAll);
+            Metrics::incr_node(&n, Event::QsCatAll);
             if orig_alpha.is_numeric() && bs < Some(orig_alpha - 200.cp()) {
-                Metrics::incr_node(&n, Event::NodeQsAllVeryLow);
+                Metrics::incr_node(&n, Event::QsCatAllCp200);
             }
         } else {
-            Metrics::incr_node(&n, Event::NodeQsPv);
-            Metrics::add_node(&n, Event::QsMoveCountAtPvNode, unpruned_move_count);
+            Metrics::incr_node(&n, Event::QsCatNodePv);
+            Metrics::add_node(&n, Event::QsCountMovesAtPvNode, unpruned_move_count);
         }
         trace!("leaving qs: orig alpha {orig_alpha} and new {}", n.alpha);
 
@@ -216,17 +223,15 @@ impl RunQs<'_> {
 
     // sort moves
     //
-    fn sort_moves(
+    fn gen_sorted_moves(
         &self,
         in_check: bool,
-        n: &Node,
+        _n: &Node,
         bd: &Board,
         lm: Option<Move>,
         hm: Move,
         moves: &mut MoveList,
     ) {
-        Metrics::incr_node(&n, Event::NodeQsInterior);
-
         let t = Metrics::timing_start();
         match (in_check, self.config.promos, self.config.promo_piece) {
             (true, ..) => bd.legal_moves_with(|mv| moves.push(mv)),
@@ -265,16 +270,20 @@ impl RunQs<'_> {
     // delta prune
     //
     fn can_delta_prune_move(&self, mv: Move, n: &Node, pat: Score, bd: &Board) -> bool {
+        let margin = if mv.from().is_in(bd.pawns()) {
+            self.config.delta_prune_move_pawn_margin
+        } else {
+            self.config.delta_prune_move_margin
+        };
         if pat.is_numeric()
             && self.config.delta_prune
             && (self.config.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
             && (self.config.delta_prune_gives_check || !bd.gives_check(mv))
             && (self.config.delta_prune_near_promos || !mv.is_near_promo(&bd))
             && bd.occupied().popcount() >= self.config.delta_prune_min_pieces
-            && pat + bd.eval_move_material(&self.eval, mv) + self.config.delta_prune_move_margin
-                <= n.alpha
+            && pat + bd.eval_move_material(&self.eval, mv) + margin <= n.alpha
         {
-            Metrics::incr_node(&n, Event::QsDeltaPruneMove);
+            Metrics::incr_node(&n, Event::QsMovePruneDelta);
             true
         } else {
             false
@@ -295,7 +304,7 @@ impl RunQs<'_> {
             Metrics::profile(t, Timing::TimingQsSee);
 
             if score == 0.cp() && n.depth >= -self.config.even_exchange_max_ply || score < 0.cp() {
-                Metrics::incr_node(&n, Event::QsSeePruneMove);
+                Metrics::incr_node(&n, Event::QsMovePruneSee);
                 true
             } else {
                 false
@@ -345,6 +354,8 @@ impl RunQs<'_> {
         Ok(Move::new_null())
     }
 
+
+    #[inline(always)]
     fn child_move(
         &mut self,
         n: &mut Node,
@@ -371,9 +382,9 @@ impl RunQs<'_> {
         }
         // cutoffs before any pv recording
         if s >= n.beta {
-            Metrics::incr_node(&n, Event::NodeQsCut);
-            Metrics::add_node(&n, Event::QsMoveCountAtCutNode, unpruned_move_count);
-            self.trail.fail(&n, s, mv, Event::NodeQsCut);
+            Metrics::incr_node(&n, Event::QsCatCut);
+            Metrics::add_node(&n, Event::QsCountMovesAtCutNode, unpruned_move_count);
+            self.trail.fail(&n, s, mv, Event::QsCatCut);
             return Err(s.clamp_score());
         }
         if s > n.alpha {
@@ -450,6 +461,14 @@ mod tests {
             let _score = prof.benchmark(|| qs.qs(node, &mut board, None));
             trace!("{pos}\n{trail}\n");
         }
+    }
+
+    #[test]
+    fn metrics_qs() {
+        let pos = Catalog::test_position();
+        let mut eng = Algo::new();
+        let res = eng.search(pos.clone(), TimeControl::Depth(7)).unwrap();
+        println!("{mets}", mets = res.metrics.unwrap().summary("Qs"));
     }
 
     #[test]

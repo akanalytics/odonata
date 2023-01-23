@@ -1,21 +1,27 @@
-use crate::boards::Board;
-use crate::eval::endgame::EndGame;
-use crate::infra::utils::{Displayable, Formatting};
-use crate::mv::Move;
-use crate::piece::{MoveType, Ply};
-use crate::search::node::{Counter, Histograms, Node, Timing};
+use crate::{
+    boards::Board,
+    eval::endgame::EndGame,
+    infra::utils::{Displayable, Formatting},
+    mv::Move,
+    piece::{MoveType, Ply},
+    search::node::{Counter, Histograms, Node, Timing},
+};
 use hdrhist::HDRHist;
 use itertools::Itertools;
 use static_init::dynamic;
-use std::cell::RefCell;
-use std::cmp::{max, min};
-use std::time::{Duration, Instant};
-use std::{fmt, iter};
+use std::{
+    cell::RefCell,
+    cmp::{max, min},
+    fmt, iter,
+    time::{Duration, Instant},
+};
 use strum::{EnumCount, IntoEnumIterator};
-use tabled::builder::Builder;
-use tabled::object::{Columns, Rows, Segment};
-use tabled::style::{Border, BorderText};
-use tabled::{Alignment, Modify, Style, Table};
+use tabled::{
+    builder::Builder,
+    object::{Columns, Rows, Segment},
+    style::{Border, BorderText},
+    Alignment, Modify, Style, Table,
+};
 
 pub use crate::search::node::Event;
 use strum::EnumMessage;
@@ -47,7 +53,6 @@ impl fmt::Debug for Histogram {
     }
 }
 
-//
 // Node counter
 //
 #[derive(Default, Debug, Clone, Copy)]
@@ -57,6 +62,11 @@ impl NodeCounter {
     pub fn add(&mut self, n: &Node, i: u64) {
         self.0[min(n.ply, 31) as usize] += i;
         self.1[min(max(n.depth, 0), 31) as usize] += i;
+    }
+
+    // -1 => total
+    fn count(&self) -> u64 {
+        self.for_ply(-1)
     }
 
     // -1 => total
@@ -85,7 +95,6 @@ impl NodeCounter {
     }
 }
 
-//
 // DurationCounter
 //
 #[derive(Default, Debug, Clone, Copy)]
@@ -115,7 +124,6 @@ impl DurationCounter {
     }
 }
 
-//
 // Profile Counter
 //
 #[derive(Default, Debug, Clone, Copy)]
@@ -143,22 +151,22 @@ impl ProfilerCounter {
 
 #[derive(Debug, Clone)]
 pub struct Metrics {
-    counters: Vec<u64>,
-    nodes: Vec<NodeCounter>,
-    profilers: Vec<ProfilerCounter>,
-    durations: Vec<DurationCounter>,
-    endgame: Vec<u64>,
+    counters:   Vec<u64>,
+    nodes:      Vec<NodeCounter>,
+    profilers:  Vec<ProfilerCounter>,
+    durations:  Vec<DurationCounter>,
+    endgame:    Vec<u64>,
     histograms: Vec<Histogram>,
 }
 
 impl Default for Metrics {
     fn default() -> Self {
         Self {
-            nodes: vec![NodeCounter::default(); Event::COUNT],
-            counters: vec![Default::default(); Counter::COUNT],
-            profilers: vec![Default::default(); Timing::COUNT],
-            durations: vec![Default::default(); Event::COUNT],
-            endgame: vec![Default::default(); EndGame::COUNT],
+            nodes:      vec![NodeCounter::default(); Event::COUNT],
+            counters:   vec![Default::default(); Counter::COUNT],
+            profilers:  vec![Default::default(); Timing::COUNT],
+            durations:  vec![Default::default(); Event::COUNT],
+            endgame:    vec![Default::default(); EndGame::COUNT],
             histograms: vec![Default::default(); 1],
         }
     }
@@ -192,6 +200,22 @@ impl Metrics {
         }
     }
 
+    pub fn summary(&self, pattern: &str) -> String {
+        let mut s = String::new();
+        for e in Event::iter() {
+            let name = e.name();
+            if !name.contains(pattern) {
+                continue;
+            }
+
+            s += &format!(
+                "{name:<30} {count}\n",
+                count = self.nodes[e.index()].count()
+            );
+        }
+        s.lines().sorted().join("\n")
+    }
+
     pub fn to_string() -> String {
         // let tl = METRICS_THREAD.with(|tm| format!("{}", &*tm.borrow()));
         format!(
@@ -207,8 +231,7 @@ impl Metrics {
     }
 
     fn write_profilers_as_table(f: &mut fmt::Formatter, profs: &[ProfilerCounter]) -> fmt::Result {
-        //
-        //Profilers
+        // Profilers
         //
         fn as_table(profilers: &[ProfilerCounter]) -> Table {
             let mut b = Builder::default();
@@ -241,18 +264,15 @@ impl Metrics {
         b.set_columns(["Counter", "Value"]);
 
         for e in Counter::iter() {
-            b.add_record([
-                e.as_ref(),
-                &match e {
-                    Counter::EvalCachePercent => perc(
-                        counters[Counter::EvalCacheHit.index()],
-                        counters[Counter::EvalCacheHit.index()]
-                            + counters[Counter::EvalCacheMiss.index()],
-                    ),
-                    _ if counters[e.index()] != 0 => i(counters[e.index()]),
-                    _ => String::new(),
-                },
-            ]);
+            b.add_record([e.as_ref(), &match e {
+                Counter::EvalCachePercent => perc(
+                    counters[Counter::EvalCacheHit.index()],
+                    counters[Counter::EvalCacheHit.index()]
+                        + counters[Counter::EvalCacheMiss.index()],
+                ),
+                _ if counters[e.index()] != 0 => i(counters[e.index()]),
+                _ => String::new(),
+            }]);
         }
         let mut t = b
             .build()
@@ -439,7 +459,6 @@ impl fmt::Display for Metrics {
             d = Displayable(|f| Self::write_counters_as_table(f, &self.counters))
         )?;
 
-        //
         // Endgame
         //
         let mut b = Builder::default();
@@ -459,7 +478,6 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        //
         // Histograms
         //
         let mut b = Builder::default();
@@ -500,7 +518,6 @@ impl fmt::Display for Metrics {
             d = Displayable(|f| Self::write_profilers_as_table(f, &self.profilers))
         )?;
 
-        //
         // ply/depth tables
         //
         let generate_table = |corner: &str, by_ply: bool| {

@@ -162,7 +162,6 @@ impl Algo {
         }
 
         if n.is_qs() {
-            Metrics::incr_node(&n, Event::NodeLeafQs);
             let t = Metrics::timing_start();
             let mut qs = RunQs {
                 eval: &self.eval,
@@ -172,7 +171,7 @@ impl Algo {
             };
             let s = qs.qs(n, b, Some(last_move)).unwrap_or_else(|e| e);
             Metrics::profile(t, Timing::TimingQs);
-            return Ok((s, Event::NodeLeafQs));
+            return Ok((s, Event::NodeQsLeaf));
         }
 
         Metrics::incr_node(&n, Event::NodeInterior);
