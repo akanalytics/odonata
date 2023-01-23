@@ -441,6 +441,16 @@ impl fmt::Debug for Bitboard {
     }
 }
 
+impl FromIterator<Square> for Bitboard {
+    fn from_iter<T: IntoIterator<Item = Square>>(iter: T) -> Self {
+        let mut bb = Self::empty();
+        for sq in iter {
+            bb |= sq.as_bb()
+        }
+        bb
+    }
+}
+
 impl ops::Shl<u8> for Bitboard {
     type Output = Bitboard;
 
@@ -534,8 +544,31 @@ impl ops::BitXorAssign for Bitboard {
 
 impl Bitboard {
     #[inline]
+    pub const fn from_xy(x: u32, y: u32) -> Bitboard {
+        let bit = 1 << (y * 8 + x);
+        Bitboard(bit)
+    }
+
+    #[inline]
+    pub const fn from_sq(index: u16) -> Bitboard {
+        debug_assert!(index < 64);
+        let bit = 1 << index;
+        Bitboard(bit)
+    }
+
+    #[inline]
+    pub const fn from_u64(bits: u64) -> Bitboard {
+        Bitboard(bits)
+    }
+
+    #[inline]
     pub const fn all() -> Bitboard {
         Bitboard(u64::MAX)
+    }
+
+    #[inline]
+    pub const fn empty() -> Bitboard {
+        Bitboard::EMPTY
     }
 
     #[inline]
@@ -546,11 +579,6 @@ impl Bitboard {
     #[inline]
     pub const fn is_all(self) -> bool {
         self.0 == Self::all().0
-    }
-
-    #[inline]
-    pub const fn empty() -> Bitboard {
-        Bitboard::EMPTY
     }
 
     #[inline]
@@ -588,30 +616,6 @@ impl Bitboard {
     // remove,
     // set,
     // toggle,
-
-    #[inline]
-    pub const fn from_xy(x: u32, y: u32) -> Bitboard {
-        let bit = 1 << (y * 8 + x);
-        Bitboard(bit)
-    }
-
-    #[inline]
-    pub const fn from_sq(index: u16) -> Bitboard {
-        debug_assert!(index < 64);
-        let bit = 1 << index;
-        Bitboard(bit)
-    }
-
-    #[inline]
-    pub const fn from_u64(bits: u64) -> Bitboard {
-        Bitboard(bits)
-    }
-
-    // a niche value that never occurs "in real life"
-    #[inline]
-    pub const fn niche() -> Bitboard {
-        Bitboard::all()
-    }
 
     #[inline]
     pub const fn disjoint(self, other: Bitboard) -> bool {
@@ -832,7 +836,10 @@ impl Bitboard {
 
     #[inline]
     pub const fn square(self) -> Square {
-        debug_assert!(self.popcount() == 1, "attempt to convert bb to square where popcount != 1");
+        debug_assert!(
+            self.popcount() == 1,
+            "attempt to convert bb to square where popcount != 1"
+        );
         let sq = self.0.trailing_zeros();
         // debug_assert!(sq < 64);
         Square::from_u32(sq)
@@ -1156,6 +1163,19 @@ mod tests {
         assert_eq!(
             (Bitboard::A1 | Bitboard::H1).flood_kq_sides().popcount(),
             64
+        );
+        // from iterator
+        assert_eq!(
+            [a1.square(), b1.square()].into_iter().collect::<Bitboard>(),
+            Bitboard::A1 | Bitboard::B1
+        );
+        assert_eq!(
+            Some(a1.square()).into_iter().collect::<Bitboard>(),
+            Bitboard::A1
+        );
+        assert_eq!(
+            None::<Square>.into_iter().collect::<Bitboard>(),
+            Bitboard::empty()
         );
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }
