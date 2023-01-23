@@ -223,27 +223,26 @@ impl RunQs<'_> {
         bd: &Board,
         lm: Option<Move>,
         hm: Move,
-        moves: &mut MoveList
+        moves: &mut MoveList,
     ) {
         Metrics::incr_node(&n, Event::NodeQsInterior);
 
         let t = Metrics::timing_start();
-        match (self.config.promos, self.config.promo_piece) {
-            (false, _) => bd.legal_moves_with(|mv| {
-                if in_check || mv.is_capture() {
+        match (in_check, self.config.promos, self.config.promo_piece) {
+            (true, ..) => bd.legal_moves_with(|mv| moves.push(mv)),
+            (false, false, _) => bd.legal_moves_to_with(bd.them(), |mv| moves.push(mv)),
+            (false, true, None) => bd.legal_moves_to_with(bd.them() | Bitboard::RANKS_18, |mv| {
+                if mv.is_capture() || mv.is_promo() {
                     moves.push(mv)
                 }
             }),
-            (true, None) => bd.legal_moves_with(|mv| {
-                if in_check || mv.is_capture() || mv.is_promo() {
-                    moves.push(mv)
-                }
-            }),
-            (true, Some(_)) => bd.legal_moves_with(|mv| {
-                if in_check || mv.is_capture() || mv.promo_piece() == self.config.promo_piece {
-                    moves.push(mv)
-                }
-            }),
+            (false, true, Some(_)) => {
+                bd.legal_moves_to_with(bd.them() | Bitboard::RANKS_18, |mv| {
+                    if mv.is_capture() || mv.promo_piece() == self.config.promo_piece {
+                        moves.push(mv)
+                    }
+                })
+            }
         };
 
         moves.sort_by_cached_key(|m| {

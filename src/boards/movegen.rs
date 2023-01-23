@@ -16,13 +16,12 @@ use crate::{
     search::node::{Counter, Timing},
 };
 
-
 #[derive(Debug)]
 pub struct LegalMoves<'a, F: FnMut(Move)> {
     board:    &'a Board,
+    to_mask:  Bitboard,
     callback: F,
 }
-
 
 impl Board {
     pub fn validate_moves(&self, moves: &[Move]) -> anyhow::Result<()> {
@@ -40,6 +39,12 @@ impl Board {
     }
 
     #[inline]
+    pub fn legal_moves_to_with(&self, to: Bitboard, f: impl FnMut(Move)) {
+        Metrics::incr(Counter::MoveGen);
+        LegalMoves::new(self, to, f);
+    }
+
+    #[inline]
     pub fn legal_moves_with(&self, f: impl FnMut(Move)) {
         Metrics::incr(Counter::MoveGen);
         LegalMoves::new(self, Bitboard::all(), f);
@@ -54,13 +59,17 @@ impl Board {
     }
 }
 
-
 impl<'a, F> LegalMoves<'a, F>
 where
     F: FnMut(Move),
 {
-    pub fn new(board: &'a Board, _mask: Bitboard, callback: F) -> Self {
-        let mut me = Self { board, callback };
+    pub fn new(board: &'a Board, to_mask: Bitboard, callback: F) -> Self {
+        let mut me = Self {
+            board,
+            to_mask,
+            callback,
+        };
+        // to_mask: to_mask | board.en_passant_square().into_iter().collect::<Bitboard>(),
         me.generate();
         me
     }
@@ -78,7 +87,7 @@ where
         let king_sq = (bd.kings() & us).square();
         let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::all_attacks_on(bd, bd.color_us(), occ - our_kings);
-        let attacks = (king_att & !us) - king_danger;
+        let attacks = (king_att & !us & self.to_mask) - king_danger;
         for to in attacks.squares() {
             if to.is_in(them) {
                 (self.callback)(Move::new_capture(Piece::King, king_sq, to, bd));
@@ -111,7 +120,8 @@ where
             let blocking = gen.between(king_sq, the_checker) | checkers; // "| checkers" is for knight checkers
             for &p in Piece::ALL_BAR_KING.iter() {
                 for fr in (b.pieces(p) & us & !b.pinned(b.color_us())).squares() {
-                    let attacks = blocking & gen.attacks(b.color_us(), p, us, them, fr) & !us;
+                    let attacks =
+                        self.to_mask & blocking & gen.attacks(b.color_us(), p, us, them, fr) & !us;
                     self.add_moves(attacks, p, fr, b);
                 }
             }
@@ -127,7 +137,7 @@ where
             for &p in Piece::ALL_BAR_KING.iter() {
                 // not in check
                 for fr in (b.pieces(p) & us).squares() {
-                    let attacks = gen.attacks(b.color_us(), p, us, them, fr) & !us;
+                    let attacks = self.to_mask & gen.attacks(b.color_us(), p, us, them, fr) & !us;
                     if !fr.is_in(pinned) {
                         // all non pinned pieces
                         self.add_moves(attacks, p, fr, b);
@@ -158,6 +168,9 @@ where
         let them = bd.color_them();
         let to = to.as_bb();
         let capture_sq = to.shift(them.forward());
+        if capture_sq.disjoint(self.to_mask) {
+            return;
+        }
         let checkers = bd.checkers_of(us);
         if checkers.popcount() == 1 {
             // any non-pinned pawn can capture the checker
@@ -249,7 +262,9 @@ where
             let rook_to = king.shift(Dir::E);
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
-            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
+            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them)
+                && king_to.intersects(self.to_mask)
+            {
                 let m = Move::new_castle(king_sq, king_to.square());
                 (self.callback)(m);
             }
@@ -260,7 +275,9 @@ where
             let rook_to = king.shift(Dir::W);
             let king_to = rook_to.shift(Dir::W);
             let king_moves = king | rook_to | king_to;
-            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
+            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them)
+                && king_to.intersects(self.to_mask)
+            {
                 let king_to = king_to.square();
                 // let rook_from = king_to.shift(Dir::W).shift(Dir::W);
                 let m = Move::new_castle(king_sq, king_to);
