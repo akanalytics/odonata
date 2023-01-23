@@ -59,31 +59,26 @@ impl BoardCalcs {
         let opponent = us.opposite();
         let pawns = bd.pawns() & bd.color(opponent);
         let knights = bd.knights() & bd.color(opponent);
-        let bishops = bd.bishops() & bd.color(opponent);
-        let rooks = bd.rooks() & bd.color(opponent);
-        let queens = bd.queens() & bd.color(opponent);
+        let bishops_or_queens = bd.bishops_or_queens() & bd.color(opponent);
+        let rooks_or_queens = bd.rooks_or_queens() & bd.color(opponent);
         let kings = bd.kings() & bd.color(opponent);
 
         let attack_gen = PreCalc::default();
         let (east, west) = attack_gen.pawn_attacks_ew(pawns, opponent);
         let mut threats = east | west;
 
-        for p in knights.iter() {
-            let sq = p.square();
+        for sq in knights.squares() {
             threats |= attack_gen.knight_attacks(sq);
         }
-        for p in (bishops | queens).iter() {
-            let sq = p.square();
+        for sq in (bishops_or_queens).squares() {
             threats |= attack_gen.bishop_attacks(occ, sq);
         }
 
-        for p in (rooks | queens).iter() {
-            let sq = p.square();
+        for sq in (rooks_or_queens).squares() {
             threats |= attack_gen.rook_attacks(occ, sq);
         }
 
-        for p in kings.iter() {
-            let sq = p.square();
+        for sq in kings.squares() {
             threats |= attack_gen.king_attacks(sq);
         }
         threats

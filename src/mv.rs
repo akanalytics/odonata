@@ -321,7 +321,6 @@ enum MoveFlag {
     EnPassantCapture,
     Unused2,
     Unused3,
-    // 15, 16
 }
 
 impl MoveFlag {

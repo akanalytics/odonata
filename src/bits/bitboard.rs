@@ -1059,10 +1059,7 @@ impl ExactSizeIterator for BitIterator {
     // fn is_empty(&self) -> bool {
     //     self.bb.is_empty()
     // }
-    // #[inline]
-    // fn count(self) -> usize {
-    //     self.bb.popcount() as usize
-    // }
+
 }
 
 impl fmt::Display for Bitboard {
