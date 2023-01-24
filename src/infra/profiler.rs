@@ -9,7 +9,7 @@ pub struct Flamegraph<'a> {
 
     #[cfg(windows)]
     guard: Option<&str<'a>>,
-    name: Option<String>,
+    name:  Option<String>,
 }
 
 impl fmt::Debug for Flamegraph<'_> {
@@ -26,7 +26,7 @@ impl<'a> Flamegraph<'a> {
     pub fn new(name: String) -> Flamegraph<'a> {
         let mut prof = Flamegraph {
             guard: None,
-            name: None,
+            name:  None,
         };
         if Self::is_requested() {
             prof.enable(name);
@@ -36,7 +36,8 @@ impl<'a> Flamegraph<'a> {
     }
 
     pub fn is_requested() -> bool {
-        event_enabled!(target: "flamegraph", tracing::Level::INFO) || log::log_enabled!(target: "flamegraph", log::Level::Info)
+        event_enabled!(target: "flamegraph", tracing::Level::INFO)
+            || log::log_enabled!(target: "flamegraph", log::Level::Info)
     }
 
     pub fn enable(&mut self, name: String) {
@@ -63,22 +64,80 @@ impl<'a> Flamegraph<'a> {
     /// returns the filenames created
     #[cfg(not(windows))]
     pub fn report(&mut self) -> anyhow::Result<()> {
-        fn proc() -> impl Fn(&mut pprof::Frames) {
-            move |frames| {
-                // let vec = &frames.frames;
-                frames.frames = frames
-                    .frames
-                    .clone()
-                    .into_iter()
-                    .unique_by(|vec| vec[0].name())
-                    .collect();
+        // the call stack is in reverse item [0][0] is the most nested call
+        fn remove_recursion(stacks: &mut Vec<Vec<pprof::Symbol>>) {
+            // println!("vvvvvv\n{}\n^^^^^^^", stacks.iter().flatten().format("\n"));
+            for x in (0..stacks.len()).rev() {
+                for y in (0..stacks[x].len()).rev() {
+                    if y >= stacks[x].len() {
+                        continue;
+                    }
+                    let item = stacks[x][y].name();
+                    // remove all items before this one
+                    for x1 in 0..stacks.len() {
+                        for y1 in 0..stacks[x1].len() {
+                            if y1 >= stacks[x1].len() {
+                                continue;
+                            }
+                            if (x1 < x || x1 == x && y1 < y) && stacks[x1][y1].name() == item {
+                                stacks[x1].remove(y1);
+                            }
+                        }
+                    }
+                }
             }
         }
-        use itertools::Itertools;
+
+        // for n in 0..stacks.iter().flatten().count() {
+        //     let first = stacks.iter().flatten().nth(n).cloned();
+        //     let Some(first) = first else {
+        //         return;
+        //     };
+        //     // remove all matching from nth onwards
+        //     let mut index = 0;
+        //     for t in 0..stacks.len() {
+        //         stacks[t].retain(|s| {
+        //             let remove = s.name() == first.name() && index > n;
+        //             index += 1;
+        //             !remove
+        //         });
+        //     }
+        // // remove all matching excluding 0th in stack 0
+        // let mut index = 0;
+        // stacks[0].retain(|s| {
+        //     let remove = s.name() != first.name() && index != 0;
+        //     index += 0;
+        //     !remove
+        // });
+        // }
+        // }
+        //     for t in 0..stacks.len() {
+        //         let mut index = 0;
+        //         for _ in 0..stacks[t].len() {
+
+        //             if stacks[t][0..index]
+        //                 .iter()
+        //                 .chain(stacks[t+1..].iter().flatten())
+        //                 .any(|s| s.name() == stacks[t][index].name())
+        //             {
+        //                 // println!("removing {} at index {}", callstack[index].name(), index);
+        //                 stacks[t].remove(index);
+        //             } else {
+        //                 // println!("not removing {} at index {}", callstack[index].name(), index);
+        //                 index += 1;
+        //             }
+        //         }
+        //     }
+        // }
+
+        fn frames_post_processor() -> impl Fn(&mut pprof::Frames) {
+            move |frames| remove_recursion(&mut frames.frames)
+        }
+        // use itertools::Itertools;
         let Some(guard) = &self.guard else {
             return Ok(());
         };
-        let Ok(report) = guard.report().build() else {
+        let Ok(report) = guard.report().frames_post_processor(frames_post_processor()).build() else {
         // frames_post_processor(proc()).build() else {
             anyhow::bail!("Unable to build flamegraph report");
         };
@@ -87,6 +146,7 @@ impl<'a> Flamegraph<'a> {
             panic!("name not set on flamegraph profiler");
         };
         use std::fs::File;
+
         let name1 = format!("flamegraph_{name}_1.svg");
         let file = File::create(&name1)?;
         let mut options = pprof::flamegraph::Options::default();
@@ -119,20 +179,20 @@ impl<'a> Drop for Flamegraph<'a> {
 
 pub struct PerfProfiler {
     benchmark_iters: u64,
-    group: Group,
-    name: String,
-    iters: u64,
-    ins: Counter,
-    branches: Counter,
-    branch_misses: Counter,
-    cache_misses: Counter,
+    group:           Group,
+    name:            String,
+    iters:           u64,
+    ins:             Counter,
+    branches:        Counter,
+    branch_misses:   Counter,
+    cache_misses:    Counter,
     // cache_refs: Counter,
-    cycles: Counter,
+    cycles:          Counter,
 }
 
 static FLAMEGRAPH: Mutex<Flamegraph> = Mutex::new(Flamegraph {
     guard: None,
-    name: None,
+    name:  None,
 });
 
 impl fmt::Display for PerfProfiler {
@@ -313,10 +373,11 @@ mod tests {
         }
     }
 
-    use crate::infra::black_box;
-    use crate::infra::profiler::FLAMEGRAPH;
-    use crate::test_log::test;
-    use crate::trace::stat::Stat;
+    use crate::{
+        infra::{black_box, profiler::FLAMEGRAPH},
+        test_log::test,
+        trace::stat::Stat,
+    };
 
     #[derive(Default)]
     struct Struct {
@@ -338,8 +399,7 @@ mod tests {
     #[test]
     fn bench_noop() {
         let mut prof1 = PerfProfiler::new("noop".into());
-        prof1.benchmark(|| {
-        })
+        prof1.benchmark(|| {})
     }
 
     #[test]
