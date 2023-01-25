@@ -11,7 +11,7 @@ use crate::{
     mv::Move,
     piece::{Ply, LEN_PLY},
     search::node::{Event, Node},
-    variation::Variation,
+    variation::Variation, Position,
 };
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -327,6 +327,7 @@ pub struct Trail {
     pv_for_ply:    Vec<Variation>,
     score_for_ply: Vec<Score>,
     root:          Board,
+    positions:      Vec<Position>,
 
     refutations:       Vec<Variation>,
     refutation_scores: Vec<Score>,
@@ -348,6 +349,7 @@ impl Trail {
             path: Variation::new(),
             pv_for_ply: vec![Variation::new(); LEN_PLY],
             score_for_ply: vec![Score::zero(); LEN_PLY],
+            positions: vec![],
             refutations: vec![],
             refutation_scores: vec![],
             tree_crit: TreeCrit::default(),
@@ -379,12 +381,20 @@ impl Trail {
         &self.path
     }
 
+    pub fn positions(&self) -> &[Position] {
+        &self.positions
+    }
+
     fn board(&self, ply: i32) -> Board {
         let ply = ply as usize;
         self.root().make_moves_old(&self.path.take(ply))
     }
 
-    pub fn pv(&self) -> &Variation {
+    pub fn pv(&self, n: &Node) -> Variation {
+        self.pv_for_ply[n.ply as usize].skip(n.ply as usize)
+    }
+
+    pub fn root_pv(&self) -> &Variation {
         debug_assert!(self.pv_for_ply[0].validate(self.root()).is_ok(), "{self:#}");
         &self.pv_for_ply[0]
     }
@@ -560,6 +570,10 @@ impl Trail {
     pub fn take_tree(&mut self) -> ChessTree {
         let board = self.root().clone();
         mem::replace(&mut self.chess_tree, ChessTree::new(board))
+    }
+
+    pub fn record(&mut self, pos: Position)  {
+        self.positions.push(pos);
     }
 }
 

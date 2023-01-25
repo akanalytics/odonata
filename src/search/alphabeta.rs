@@ -66,7 +66,7 @@ impl Algo {
         let (_pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
         } else {
-            (trail.pv().clone(), Some(Score::default()))
+            (trail.root_pv().clone(), Some(Score::default()))
         };
         // assert!(trail.pv().starts_with(&pv), "Board {board:L>} {pv} (table) != {tpv} (trail) \n\n{trail:#}", tpv= trail.pv());
         if n.alpha == -Score::INFINITY
@@ -169,7 +169,7 @@ impl Algo {
                 trail,
                 config: &self.qs,
             };
-            let s = qs.qs(n, b, Some(last_move)).unwrap_or_else(|e| e);
+            let s = qs.qsearch(&n, b, Some(last_move)).unwrap_or_else(|e| e);
             Metrics::profile(t, Timing::TimingQs);
             return Ok((s, Event::NodeQsLeaf));
         }

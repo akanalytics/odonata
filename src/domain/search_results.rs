@@ -1,45 +1,50 @@
-use crate::eval::eval::Eval;
-use crate::eval::score::Score;
-use crate::infra::metric::Metrics;
-use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Differ, Displayable};
-use crate::movelist::ScoredMoveList;
-use crate::mv::Move;
-use crate::other::outcome::Outcome;
-use crate::piece::Ply;
-use crate::search::timecontrol::TimeControl;
-use crate::other::Tag;
-use crate::variation::Variation;
-use crate::{boards::Board, Algo, MoveList, Position};
+use crate::{
+    boards::Board,
+    eval::{eval::Eval, score::Score},
+    infra::{
+        metric::Metrics,
+        utils::{calculate_branching_factor_by_nodes_and_depth, Differ, Displayable},
+    },
+    movelist::ScoredMoveList,
+    mv::Move,
+    other::{outcome::Outcome, Tag},
+    piece::Ply,
+    search::timecontrol::TimeControl,
+    variation::Variation,
+    Algo, MoveList, Position,
+};
 use anyhow::Context;
 use itertools::Itertools;
-use std::fmt;
-use std::iter::{self, FromIterator};
-use std::time::Duration;
+use std::{
+    fmt,
+    iter::{self, FromIterator},
+    time::Duration,
+};
 use tabled::builder::Builder;
 
-use super::info::Info;
-use super::ChessTree;
+use super::{info::Info, ChessTree, Trail};
 
 #[derive(Clone, Default, Debug)]
 pub struct SearchResults {
-    pub bm: Move,
-    pub depth: Ply,
-    pub seldepth: Ply,
-    pub time_millis: u64,
-    pub nodes: u64,
-    pub nodes_thread: u64,
-    pub nps: u64,
-    pub tbhits: u64,
-    pub bf: f64,
+    pub bm:                 Move,
+    pub depth:              Ply,
+    pub seldepth:           Ply,
+    pub time_millis:        u64,
+    pub nodes:              u64,
+    pub nodes_thread:       u64,
+    pub nps:                u64,
+    pub tbhits:             u64,
+    pub bf:                 f64,
     pub hashfull_per_mille: u32,
-    pub outcome: Outcome,
-    pub emt: Duration,
-    pub tc: Option<TimeControl>,
-    pub pos: Option<Position>,
-    pub multi_pv: Vec<(Variation, Score)>,
-    pub infos: Vec<Info>,
-    pub tree: Option<ChessTree>,
-    pub metrics: Option<Metrics>,
+    pub outcome:            Outcome,
+    pub emt:                Duration,
+    pub tc:                 Option<TimeControl>,
+    pub pos:                Option<Position>,
+    pub multi_pv:           Vec<(Variation, Score)>,
+    pub infos:              Vec<Info>,
+    pub tree:               Option<ChessTree>,
+    pub metrics:            Option<Metrics>,
+    pub positions:          Vec<Position>,
 }
 
 impl fmt::Display for SearchResults {
@@ -69,8 +74,8 @@ impl fmt::Display for SearchResults {
 }
 
 pub struct SearchResultsWithExplanation<'a> {
-    sr: &'a SearchResults,
-    eval: &'a Eval,
+    sr:    &'a SearchResults,
+    eval:  &'a Eval,
     board: &'a Board,
 }
 
@@ -102,7 +107,7 @@ fn parse_bestmove_uci(s: &str, b: &Board) -> anyhow::Result<(Move, Option<Move>)
         words.next(),
     ) {
         (Some("bestmove"), Some(bm), Some("ponder"), Some(pm), None) => (bm, Some(pm)),
-        (Some("bestmove"), Some(bm), None, _, _) => (bm, None),
+        (Some("bestmove"), Some(bm), None, ..) => (bm, None),
         (_, _, _, _, Some(_)) => anyhow::bail!("too many words in '{s}'"),
         _ => anyhow::bail!("expected: bestmove bm [ponder pm] but found '{s}'"),
     };
@@ -337,6 +342,7 @@ impl SearchResults {
                 tc: None,
                 tree: None,
                 metrics: None,
+                positions: vec![],
             }
         } else {
             let mut sr = SearchResults::default();
@@ -357,12 +363,14 @@ impl SearchResults {
         algo: &Algo,
         depth: Ply,
         multi_pv: Vec<(Variation, Score)>,
-        seldepth: Option<Ply>,
-        tree: ChessTree,
+        // seldepth: Option<Ply>,
+        trail: &mut Trail,
     ) -> Self {
         let nodes_thread_cumul = algo.clock.cumul_nodes_this_thread();
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
             .unwrap_or_default();
+        let mut vec = Vec::new();
+        vec.extend_from_slice(trail.positions());
         SearchResults {
             bm: multi_pv
                 .get(0)
@@ -374,7 +382,7 @@ impl SearchResults {
             nodes_thread: algo.clock.cumul_nodes_this_thread(),
             nps: algo.clock.cumul_knps_all_threads() * 1000,
             depth,
-            seldepth: seldepth.unwrap_or_default(),
+            seldepth: trail.selective_depth(),
             time_millis: algo.clock.elapsed_search().time.as_millis() as u64,
             hashfull_per_mille: algo.tt.hashfull_per_mille(),
             bf,
@@ -383,7 +391,8 @@ impl SearchResults {
             emt: algo.clock.elapsed_search().time,
             pos: Some(algo.position.clone()),
             tc: Some(algo.mte.time_control().clone()),
-            tree: Some(tree),
+            tree: Some(trail.take_tree()),
+            positions: vec,
             metrics: None,
         }
     }
@@ -513,9 +522,9 @@ impl SearchResults {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::infra::testing::*;
     use crate::{
         catalog::*,
+        infra::testing::*,
         search::{engine::ThreadedSearch, timecontrol::TimeControl},
     };
     use test_log::test;

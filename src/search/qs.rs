@@ -11,9 +11,10 @@ use crate::{
     infra::{component::Component, metric::Metrics},
     movelist::MoveList,
     mv::Move,
+    other::Tag,
     piece::Ply,
     search::node::Node,
-    Bitboard, Piece,
+    Bitboard, Piece, Position,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -100,6 +101,34 @@ impl RunQs<'_> {
     // and a mate score might cut a genuine mate score elsewhere
     // since we only consider captures, repeats aren't an issue
 
+    pub fn qsearch(&mut self, n: &Node, bd: &mut Board, lm: Option<Move>) -> Result<Score, Score> {
+        debug_assert_eq!(n.depth, 0);
+        if n.depth == 0 {
+            Metrics::incr_node(&n, Event::NodeQsLeaf);
+            if n.is_zw() {
+                Metrics::incr_node(&n, Event::NodeQsLeafZw);
+            }
+        }
+        let res = self.qs(*n, bd, lm);
+        if cfg!(debug_assertions) && false {
+            let mut pos = Position::from_board(bd.clone());
+            pos.set(Tag::Pv(self.trail.pv(n).clone()));
+            pos.set(Tag::SuppliedVariation(self.trail.path().clone()));
+
+            if let Ok(res) = res {
+                pos.set(Tag::Comment(0, "Pv".into()));
+                pos.set(Tag::CentipawnEvaluation(res.as_i16() as i32));
+            } else {
+                pos.set(Tag::Comment(0, "Cut".into()));
+            }
+            if self.trail.pv(n).len() > self.trail.path().len() {
+                pos.set(Tag::Comment(0, "******".into()));
+            }
+            self.trail.record(pos);
+        }
+        res
+    }
+
     #[instrument(target="tree", "qs", skip_all, fields(t=?self.trail,%n))]
     pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<Move>) -> Result<Score, Score> {
         debug_assert!(n.alpha < n.beta && n.ply >= 0 && n.depth <= 0, "{n}");
@@ -112,12 +141,6 @@ impl RunQs<'_> {
         let orig_alpha = n.alpha;
 
         Metrics::incr_node(&n, Event::NodeQs);
-        if n.depth == 0 {
-            Metrics::incr_node(&n, Event::NodeQsLeaf);
-            if n.is_zw() {
-                Metrics::incr_node(&n, Event::NodeQsLeafZw);
-            }
-        }
         if EndGame::is_insufficient_material(&bd) {
             self.trail
                 .terminal(&n, Score::DRAW, Event::QsCatInsufficientMaterial);
@@ -145,8 +168,8 @@ impl RunQs<'_> {
                 return Err(pat.clamp_score());
             }
             // TODO: zugawang check
-            // you cant stand pat unless theres already a move/pv (alpha=finite)
-            if pat > n.alpha && n.alpha.is_finite() && n.ply >= 1 {
+            // ?? you cant stand pat unless theres already a move/pv (alpha=finite)
+            if pat > n.alpha {
                 self.trail
                     .terminal(&n, pat, Event::QsStandingPatAlphaRaised);
                 n.alpha = pat;
@@ -192,7 +215,7 @@ impl RunQs<'_> {
         self.gen_sorted_moves(in_check, &n, bd, lm, hm, &mut moves);
 
         let mut unpruned_move_count = 0;
-        let mut bs = None;
+        let mut bs = None; // Some(pat);
         for &mv in moves.iter() {
             Metrics::incr_node(&n, Event::QsMoveCount);
             if !in_check && self.can_delta_prune_move(mv, &n, pat, bd) {
@@ -208,6 +231,7 @@ impl RunQs<'_> {
         }
 
         if bs < Some(orig_alpha) {
+            self.trail.terminal(&n, n.alpha, Event::QsCatAll);
             Metrics::incr_node(&n, Event::QsCatAll);
             if orig_alpha.is_numeric() && bs < Some(orig_alpha - 200.cp()) {
                 Metrics::incr_node(&n, Event::QsCatAllCp200);
@@ -217,7 +241,6 @@ impl RunQs<'_> {
             Metrics::add_node(&n, Event::QsCountMovesAtPvNode, unpruned_move_count);
         }
         trace!("leaving qs: orig alpha {orig_alpha} and new {}", n.alpha);
-
         Ok(bs.unwrap_or(n.alpha).clamp_score())
     }
 
@@ -354,7 +377,6 @@ impl RunQs<'_> {
         Ok(Move::new_null())
     }
 
-
     #[inline(always)]
     fn child_move(
         &mut self,
@@ -365,7 +387,7 @@ impl RunQs<'_> {
         unpruned_move_count: u64,
     ) -> Result<(), Score> {
         let mut child = bd.make_move(mv);
-        self.trail.push_move(&n, mv.clone());
+        self.trail.push_move(n, mv);
         // self.current_variation.push(mv);
         let qsn = Node {
             ply:   n.ply + 1,
@@ -391,6 +413,7 @@ impl RunQs<'_> {
             self.trail.alpha_raised(&n, s, mv, Event::QsAlphaRaised);
             // self.record_move(n.ply, &mv);
             n.alpha = s;
+            *bs = Some(s);
         } else {
             self.trail.ignore_move(&n, s, mv, Event::QsMoveScoreLow);
         }
@@ -410,6 +433,7 @@ mod tests {
         Algo, Position,
     };
     use anyhow::Result;
+    use itertools::Itertools;
 
     #[test]
     fn qsearch_serde_test() {
@@ -458,17 +482,18 @@ mod tests {
                 config: &eng.qs,
                 trail:  &mut trail,
             };
-            let _score = prof.benchmark(|| qs.qs(node, &mut board, None));
+            let _score = prof.benchmark(|| qs.qsearch(&node, &mut board, None));
             trace!("{pos}\n{trail}\n");
         }
     }
 
     #[test]
     fn metrics_qs() {
-        let pos = Catalog::test_position();
+        let pos = Position::parse_epd("1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1").unwrap(); // Catalog::test_position();
         let mut eng = Algo::new();
-        let res = eng.search(pos.clone(), TimeControl::Depth(7)).unwrap();
+        let res = eng.search(pos.clone(), TimeControl::Depth(1)).unwrap();
         println!("{mets}", mets = res.metrics.unwrap().summary("Qs"));
+        println!("{posits}", posits = res.positions.iter().format("\n"));
     }
 
     #[test]

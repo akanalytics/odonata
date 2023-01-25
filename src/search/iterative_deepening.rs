@@ -91,7 +91,7 @@ impl Algo {
         let mut ply = self.ids.start_ply;
         // let mut last_good_multi_pv = Vec::new();
         let mut score = Score::zero();
-        let mut sel_depth = None;
+        // let mut sel_depth = None;
         let mut last_results = SearchResults::new();
 
         'outer: loop {
@@ -112,10 +112,10 @@ impl Algo {
                     )
                     .0;
                 self.mte.estimate_iteration(ply + 1, &mut self.clock);
-                let pv = trail.pv();
+                let pv = trail.root_pv();
 
                 let info = if score.is_finite() {
-                    sel_depth = Some(trail.selective_depth());
+                    // let sel_depth = Some(trail.selective_depth());
                     Info {
                         kind: InfoKind::Pv,
                         nodes: Some(self.clock.cumul_nodes_all_threads()),
@@ -164,7 +164,7 @@ impl Algo {
             }
 
             // some stuff is captured even if we exit part way through an iteration
-            let sr = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.take_tree());
+            let sr = SearchResults::from_multi_pv(self, ply, multi_pv, trail);
             last_results.nodes = sr.nodes;
             last_results.nodes_thread = sr.nodes_thread;
             last_results.nps = sr.nps;
