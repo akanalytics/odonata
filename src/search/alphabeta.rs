@@ -151,7 +151,7 @@ impl Algo {
         }
 
         Metrics::incr_node(&n, Event::NodeTotal);
-        self.clock.inc_nodes();
+        self.clock.inc_int_nodes();
         if n.is_zw() {
             Metrics::incr_node(&n, Event::NodeZw);
         }
@@ -165,6 +165,7 @@ impl Algo {
             let t = Metrics::timing_start();
             let mut qs = RunQs {
                 eval: &self.eval,
+                clock: &self.clock,
                 tt: &self.tt,
                 trail,
                 config: &self.qs,

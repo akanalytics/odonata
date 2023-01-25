@@ -2,6 +2,7 @@ use crate::{
     bits::Square,
     boards::Board,
     cache::tt2::TranspositionTable2,
+    clock::Clock,
     domain::{NodeType, Trail},
     eval::{
         endgame::EndGame,
@@ -89,6 +90,7 @@ impl fmt::Display for Qs {
 
 pub struct RunQs<'a> {
     pub eval:   &'a Eval,
+    pub clock:  &'a Clock,
     pub tt:     &'a TranspositionTable2,
     pub config: &'a Qs,
     pub trail:  &'a mut Trail,
@@ -109,21 +111,27 @@ impl RunQs<'_> {
                 Metrics::incr_node(&n, Event::NodeQsLeafZw);
             }
         }
+        let q_nodes = self.clock.q_nodes();
         let res = self.qs(*n, bd, lm);
         if cfg!(debug_assertions) && false {
             let mut pos = Position::from_board(bd.clone());
             pos.set(Tag::Pv(self.trail.pv(n).clone()));
             pos.set(Tag::SuppliedVariation(self.trail.path().clone()));
+            pos.set(Tag::AnalysisCountNodes(self.clock.q_nodes() - q_nodes));
 
-            if let Ok(res) = res {
-                pos.set(Tag::Comment(0, "Pv".into()));
-                pos.set(Tag::CentipawnEvaluation(res.as_i16() as i32));
-            } else {
-                pos.set(Tag::Comment(0, "Cut".into()));
-            }
-            if self.trail.pv(n).len() > self.trail.path().len() {
-                pos.set(Tag::Comment(0, "******".into()));
-            }
+            match res {
+                Ok(score) => {
+                    pos.set(Tag::Comment(0, "Pv".into()));
+                    pos.set(Tag::CentipawnEvaluation(score.as_i16() as i32));
+                }
+                Err(score) => {
+                    pos.set(Tag::Comment(0, "Cut".into()));
+                    pos.set(Tag::CentipawnEvaluation(score.as_i16() as i32));
+                }
+            };
+            // if self.trail.pv(n).len() > self.trail.path().len() {
+            //     pos.set(Tag::Comment(0, "******".into()));
+            // }
             self.trail.record(pos);
         }
         res
@@ -141,6 +149,7 @@ impl RunQs<'_> {
         let orig_alpha = n.alpha;
 
         Metrics::incr_node(&n, Event::NodeQs);
+        self.clock.inc_q_nodes();
         if EndGame::is_insufficient_material(&bd) {
             self.trail
                 .terminal(&n, Score::DRAW, Event::QsCatInsufficientMaterial);
@@ -169,7 +178,7 @@ impl RunQs<'_> {
             }
             // TODO: zugawang check
             // ?? you cant stand pat unless theres already a move/pv (alpha=finite)
-            if pat > n.alpha {
+            if pat > n.alpha { // && n.alpha.is_finite() && n.ply >= 1 {
                 self.trail
                     .terminal(&n, pat, Event::QsStandingPatAlphaRaised);
                 n.alpha = pat;
@@ -478,6 +487,7 @@ mod tests {
             let mut board = pos.board().clone();
             let mut qs = RunQs {
                 eval:   &eng.eval,
+                clock:  &eng.clock,
                 tt:     &eng.tt,
                 config: &eng.qs,
                 trail:  &mut trail,

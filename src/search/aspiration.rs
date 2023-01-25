@@ -170,8 +170,8 @@ mod tests {
             results.tags_mut().remove(Tag::ACN);
             println!(
                 "{:>12} {:>12} {}",
-                Formatting::u128(nodes),
-                Formatting::u128(node_count),
+                Formatting::u64(nodes),
+                Formatting::u64(node_count),
                 results
             );
         }

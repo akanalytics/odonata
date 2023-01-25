@@ -507,7 +507,7 @@ impl SearchResults {
             pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
         }
         if tags.contains(&Tag::ACN) {
-            pos.set(Tag::AnalysisCountNodes(self.nodes as u128));
+            pos.set(Tag::AnalysisCountNodes(self.nodes));
         }
         if tags.contains(&Tag::BF) {
             pos.set(Tag::BranchingFactor(self.bf));

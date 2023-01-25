@@ -372,7 +372,7 @@ impl Formatting {
         format_num!(".4s", n)
     }
 
-    pub fn u128(n: u128) -> String {
+    pub fn u64(n: u64) -> String {
         format_num!(",d", n as f64)
     }
 

@@ -33,7 +33,7 @@ impl fmt::Display for SliceStat<'_> {
                 f,
                 "{:<20} {:>11}",
                 s.name(),
-                Formatting::u128(s.get() as u128)
+                Formatting::u64(s.get() as u64)
             )?;
         }
         Ok(())
@@ -67,7 +67,7 @@ impl fmt::Display for ArrayStat<'_> {
                 f,
                 "{:<20} {:>11}",
                 s.name(),
-                Formatting::u128(s.get() as u128)
+                Formatting::u64(s.get() as u64)
             )?;
         }
         Ok(())

@@ -1,11 +1,17 @@
-use crate::infra::component::{Component, State};
-use crate::infra::utils::DurationFormatter;
+use crate::infra::{
+    component::{Component, State},
+    utils::DurationFormatter,
+};
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::ops::Sub;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    fmt,
+    ops::Sub,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::{Duration, Instant},
+};
 
 #[derive(Default, Debug)]
 #[repr(align(64))]
@@ -19,10 +25,10 @@ struct Aligned(AtomicU64);
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Measure {
-    pub time: Duration,
-    pub nodes: u64,
+    pub time:         Duration,
+    pub nodes:        u64,
     pub instructions: u64,
-    pub cycles: u64,
+    pub cycles:       u64,
 }
 
 impl Measure {
@@ -46,6 +52,8 @@ impl Sub for Measure {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Clock {
+    include_q_nodes: bool,
+
     #[serde(skip)]
     start_search: Measure,
 
@@ -61,7 +69,10 @@ pub struct Clock {
     thread_index: u32,
 
     #[serde(skip)]
-    nodes: Arc<Vec<Aligned>>,
+    int_nodes: Arc<Vec<Aligned>>,
+
+    #[serde(skip)]
+    q_nodes: Arc<Vec<Aligned>>,
 }
 
 // impl Clone for Clock {
@@ -80,12 +91,18 @@ pub struct Clock {
 impl Default for Clock {
     fn default() -> Self {
         Clock {
-            start_search: Measure::new(),
-            start_iter: Measure::new(),
-            timer: Instant::now(),
+            include_q_nodes: false,
+            start_search:    Measure::new(),
+            start_iter:      Measure::new(),
+            timer:           Instant::now(),
             // profiler: RefCell::new(Profiler::new("Clock".to_string())),
-            thread_index: 0,
-            nodes: Arc::new({
+            thread_index:    0,
+            int_nodes:       Arc::new({
+                let mut v = Vec::with_capacity(32);
+                v.extend(std::iter::repeat_with(|| Aligned(AtomicU64::default())).take(32));
+                v
+            }),
+            q_nodes:         Arc::new({
                 let mut v = Vec::with_capacity(32);
                 v.extend(std::iter::repeat_with(|| Aligned(AtomicU64::default())).take(32));
                 v
@@ -100,14 +117,15 @@ impl Component for Clock {
         match s {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
-            StartSearch => *self = Self::default(),
+            StartSearch => self.new_position(),
             EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
             Shutdown => {}
         }
     }
+
     fn new_game(&mut self) {
-        *self = Clock::default()
+        self.new_position();
     }
 
     fn new_iter(&mut self) {
@@ -119,10 +137,12 @@ impl Component for Clock {
     }
 
     fn new_position(&mut self) {
-        *self = Clock::default()
+        *self = Clock {
+            include_q_nodes: self.include_q_nodes,
+            ..Clock::default()
+        };
     }
 }
-
 // impl fmt::Debug for Clock {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         f.debug_struct("Clock")
@@ -143,6 +163,9 @@ impl fmt::Display for Clock {
         writeln!(f, "search time      : {s}")?;
 
         let s = self.elapsed_search().nodes.human();
+        writeln!(f, "search int nodes : {s}")?;
+
+        let s = self.elapsed_search().nodes.human();
         writeln!(f, "search nodes     : {s}")?;
 
         let s = self.cumul_knps_all_threads().human();
@@ -150,9 +173,6 @@ impl fmt::Display for Clock {
 
         let s = self.elapsed_iter_this_thread().time.human();
         writeln!(f, "iter time        : {s}")?;
-
-        let s = self.elapsed_iter_this_thread().nodes.human();
-        writeln!(f, "iter nodes       : {s}")?;
 
         let s = self.cumul_nodes_this_thread();
         writeln!(f, "cumul nodes      : {s}")?;
@@ -173,11 +193,17 @@ impl Clock {
     /// iter1: ply1_nodes
     /// iter2: (ply1_nodes) + ply1_nodes + ply2_nodes
     /// iter3: (ply1_nodes) + (ply1_nodes + ply2_nodes) + (ply1_nodes + ply2_nodes + ply3_nodes)
-    ///
     pub fn cumul_nodes_this_thread(&self) -> u64 {
-        self.nodes[self.thread_index as usize]
+        self.int_nodes[self.thread_index as usize]
             .0
             .load(Ordering::Relaxed)
+            + if self.include_q_nodes {
+                self.q_nodes[self.thread_index as usize]
+                    .0
+                    .load(Ordering::Relaxed)
+            } else {
+                0
+            }
     }
 
     // #[inline]
@@ -187,7 +213,18 @@ impl Clock {
 
     #[inline]
     pub fn cumul_nodes_all_threads(&self) -> u64 {
-        self.nodes.iter().map(|e| e.0.load(Ordering::Relaxed)).sum()
+        self.int_nodes
+            .iter()
+            .map(|e| e.0.load(Ordering::Relaxed))
+            .sum::<u64>()
+            + if self.include_q_nodes {
+                self.q_nodes
+                    .iter()
+                    .map(|e| e.0.load(Ordering::Relaxed))
+                    .sum::<u64>()
+            } else {
+                0
+            }
     }
 
     pub fn cumul_knps_all_threads(&self) -> u64 {
@@ -204,19 +241,33 @@ impl Clock {
     // }
 
     #[inline]
-    pub fn inc_nodes(&self) {
-        self.nodes[self.thread_index as usize]
+    pub fn inc_int_nodes(&self) {
+        self.int_nodes[self.thread_index as usize]
             .0
             .fetch_add(1, Ordering::Relaxed);
     }
 
     #[inline]
+    pub fn inc_q_nodes(&self) {
+        self.q_nodes[self.thread_index as usize]
+            .0
+            .fetch_add(1, Ordering::Relaxed);
+    }
+
+    #[inline]
+    pub fn q_nodes(&self) -> u64 {
+        self.q_nodes[self.thread_index as usize]
+            .0
+            .load(Ordering::Relaxed)
+    }
+
+    #[inline]
     pub fn elapsed(&self) -> Measure {
         let m = Measure {
-            time: self.timer.elapsed(),
-            nodes: self.cumul_nodes_this_thread(),
+            time:         self.timer.elapsed(),
+            nodes:        self.cumul_nodes_this_thread(),
             instructions: 0,
-            cycles: 0,
+            cycles:       0,
         };
         // if true {
         //     let mut prof = self.profiler.borrow_mut();

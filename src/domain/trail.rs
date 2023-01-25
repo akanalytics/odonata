@@ -391,7 +391,12 @@ impl Trail {
     }
 
     pub fn pv(&self, n: &Node) -> Variation {
-        self.pv_for_ply[n.ply as usize].skip(n.ply as usize)
+        let pv = &self.pv_for_ply[n.ply as usize];
+        if !pv.is_empty() {
+            pv.skip(n.ply as usize)
+        } else {
+            Variation::empty().clone()
+        }
     }
 
     pub fn root_pv(&self) -> &Variation {

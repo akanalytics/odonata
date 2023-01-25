@@ -408,7 +408,7 @@ impl Metrics {
 
 fn i(i: u64) -> String {
     if i > 0 {
-        Formatting::u128(i as u128)
+        Formatting::u64(i)
     } else {
         String::new()
     }

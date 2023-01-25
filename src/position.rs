@@ -399,7 +399,7 @@ impl Position {
     }
 
     // acd analysis count depth [3]
-    pub fn acn(&self) -> Result<u128> {
+    pub fn acn(&self) -> Result<u64> {
         if let Tag::AnalysisCountNodes(n) = self.tag(Tag::ACN) {
             Ok(*n)
         } else {

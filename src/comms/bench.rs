@@ -73,7 +73,7 @@ impl Bench {
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
-    pub fn search(tc: TimeControl, threads: Option<u32>) -> u128 {
+    pub fn search(tc: TimeControl, threads: Option<u32>) -> u64 {
         let mut engine = ThreadedSearch::new();
         if let Some(threads) = threads {
             engine.thread_count = threads;
@@ -130,7 +130,7 @@ impl Bench {
             total_time += elapsed;
             total_nodes += nodes;
             total_depth += depth;
-            let nodes = Formatting::u128(nodes);
+            let nodes = Formatting::u64(nodes);
             println!(
                 "{:>3} {:<6} {:>8} {:>2} {:>13} {:>7} {:>2}/{:<2} {:>5}  {:<85}",
                 i + 1,
@@ -153,7 +153,7 @@ impl Bench {
         println!("nodes/sec     : {}", Formatting::f64(nps));
         println!("average depth : {}", Formatting::decimal(2, average_depth));
         println!("average bf    : {}", Formatting::decimal(2, average_bf));
-        println!("total nodes   : {}", Formatting::u128(total_nodes));
+        println!("total nodes   : {}", Formatting::u64(total_nodes));
         println!("total time    : {}", Formatting::duration(total_time));
         println!("score         : {}", score);
         total_nodes
@@ -174,7 +174,7 @@ mod tests {
         let mut total_nodes = 0;
         let mut prof = PerfProfiler::new("bench_bratko".into());
         prof.benchmark(|| total_nodes += Bench::search(TimeControl::NodeCount(1000), None));
-        prof.set_iters((total_nodes / 1000) as u64);
+        prof.set_iters(total_nodes / 1000);
     }
 
     #[test]

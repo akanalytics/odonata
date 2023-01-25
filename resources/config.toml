@@ -23,6 +23,9 @@ max_eval = 10000
 enabled = true
 step_size = 1
 
+[clock]
+include_q_nodes = true
+
 
 [controller]
 show_refutations = false
