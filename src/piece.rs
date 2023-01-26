@@ -17,6 +17,13 @@ pub struct Chooser<T> {
     pub white: T,
 }
 
+pub fn move_number_from_ply(p: Ply) -> (i32, Color) {
+    ((p / 2) + 1, match p % 2 {
+        0 => Color::White,
+        _ => Color::Black,
+    })
+}
+
 // impl<T> Chooser<T> {
 #[inline]
 pub fn chooser_array<'a, T>(c: Color, white: &'a T, black: &'a T) -> &'a T {
@@ -51,7 +58,9 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     [&choices.white, &choices.black][c as usize]
 }
 
-#[derive(Copy, Clone, Default, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(
+    Copy, Clone, Default, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
+)]
 pub enum Color {
     #[default]
     #[serde(rename = "w")]
@@ -81,7 +90,6 @@ impl<T> std::ops::IndexMut<Color> for [T] {
         &mut self[c.index()]
     }
 }
-
 
 impl Color {
     pub const ALL: [Color; 2] = [Color::White, Color::Black];
@@ -327,7 +335,6 @@ impl Piece {
             bail!("Unknown piece '{s}'");
         }
     }
-
 }
 
 #[enumflags2::bitflags]
@@ -442,7 +449,7 @@ impl MoveType {
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Repeats {
-    pub in_total: u16,
+    pub in_total:  u16,
     pub in_search: u16, // exclusive of root
 }
 
@@ -476,7 +483,7 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        //let color = json!({"color" : "b"});
+        // let color = json!({"color" : "b"});
         assert_eq!(serde_json::to_string(&Color::Black).unwrap(), "\"b\"");
         assert_eq!(
             serde_json::from_str::<Color>("\"w\"").unwrap(),
