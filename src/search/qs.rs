@@ -105,12 +105,11 @@ impl RunQs<'_> {
 
     pub fn qsearch(&mut self, n: &Node, bd: &mut Board, lm: Option<Move>) -> Result<Score, Score> {
         debug_assert_eq!(n.depth, 0);
-        if n.depth == 0 {
-            Metrics::incr_node(&n, Event::NodeQsLeaf);
-            if n.is_zw() {
-                Metrics::incr_node(&n, Event::NodeQsLeafZw);
-            }
+        Metrics::incr_node(&n, Event::NodeQsLeaf);
+        if n.is_zw() {
+            Metrics::incr_node(&n, Event::NodeQsLeafZw);
         }
+
         let q_nodes = self.clock.q_nodes();
         let res = self.qs(*n, bd, lm);
         if cfg!(debug_assertions) && false {
@@ -178,7 +177,8 @@ impl RunQs<'_> {
             }
             // TODO: zugawang check
             // ?? you cant stand pat unless theres already a move/pv (alpha=finite)
-            if pat > n.alpha { // && n.alpha.is_finite() && n.ply >= 1 {
+            if pat > n.alpha {
+                // && n.alpha.is_finite() && n.ply >= 1 {
                 self.trail
                     .terminal(&n, pat, Event::QsStandingPatAlphaRaised);
                 n.alpha = pat;
@@ -227,11 +227,10 @@ impl RunQs<'_> {
         let mut bs = None; // Some(pat);
         for &mv in moves.iter() {
             Metrics::incr_node(&n, Event::QsMoveCount);
-            if !in_check && self.can_delta_prune_move(mv, &n, pat, bd) {
+            if !in_check && self.can_see_prune_move(mv, &n, pat, bd) {
                 continue;
             }
-
-            if !in_check && self.can_see_prune_move(mv, &n, pat, bd) {
+            if !in_check && self.can_delta_prune_move(mv, &n, pat, bd) {
                 continue;
             }
 
@@ -239,9 +238,10 @@ impl RunQs<'_> {
             self.child_move(&mut n, bd, mv, &mut bs, unpruned_move_count)?;
         }
 
-        if bs < Some(orig_alpha) {
+        if bs <= Some(orig_alpha) {
             self.trail.terminal(&n, n.alpha, Event::QsCatAll);
             Metrics::incr_node(&n, Event::QsCatAll);
+            Metrics::add_node(&n, Event::QsCountMovesAtAllNode, unpruned_move_count);
             if orig_alpha.is_numeric() && bs < Some(orig_alpha - 200.cp()) {
                 Metrics::incr_node(&n, Event::QsCatAllCp200);
             }
@@ -299,7 +299,7 @@ impl RunQs<'_> {
         Metrics::profile(t, Timing::TimingQsMoveSort);
     }
 
-    // delta prune
+    // delta prune caters for non-captures during evasions
     //
     fn can_delta_prune_move(&self, mv: Move, n: &Node, pat: Score, bd: &Board) -> bool {
         let margin = if mv.from().is_in(bd.pawns()) {
@@ -307,13 +307,14 @@ impl RunQs<'_> {
         } else {
             self.config.delta_prune_move_margin
         };
-        if pat.is_numeric()
-            && self.config.delta_prune
+        if self.config.delta_prune
+            && pat.is_numeric()
+            && !mv.is_capture()
             && (self.config.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
             && (self.config.delta_prune_gives_check || !bd.gives_check(mv))
             && (self.config.delta_prune_near_promos || !mv.is_near_promo(&bd))
             && bd.occupied().popcount() >= self.config.delta_prune_min_pieces
-            && pat + bd.eval_move_material(&self.eval, mv) + margin <= n.alpha
+            && pat + margin <= n.alpha
         {
             Metrics::incr_node(&n, Event::QsMovePruneDelta);
             true
@@ -338,6 +339,10 @@ impl RunQs<'_> {
             if score == 0.cp() && n.depth >= -self.config.even_exchange_max_ply || score < 0.cp() {
                 Metrics::incr_node(&n, Event::QsMovePruneSee);
                 true
+            // } else {
+            //     if pat + score + self.config.see_prune_margin <= n.alpha {
+            //         Metrics::incr_node(&n, Event::QsMovePruneSeeMargin);
+            //         true
             } else {
                 false
             }
@@ -413,9 +418,9 @@ impl RunQs<'_> {
         }
         // cutoffs before any pv recording
         if s >= n.beta {
-            Metrics::incr_node(&n, Event::QsCatCut);
+            Metrics::incr_node(&n, Event::QsCatCutMoveEval);
             Metrics::add_node(&n, Event::QsCountMovesAtCutNode, unpruned_move_count);
-            self.trail.fail(&n, s, mv, Event::QsCatCut);
+            self.trail.fail(&n, s, mv, Event::QsCatCutMoveEval);
             return Err(s.clamp_score());
         }
         if s > n.alpha {
@@ -499,9 +504,11 @@ mod tests {
 
     #[test]
     fn metrics_qs() {
-        let pos = Position::parse_epd("1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1").unwrap(); // Catalog::test_position();
+        // let pos = Position::parse_epd("1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1").unwrap();
+        let pos = Catalog::test_position();
         let mut eng = Algo::new();
-        let res = eng.search(pos.clone(), TimeControl::Depth(1)).unwrap();
+        let mut prof = PerfProfiler::new("qs: metrics".to_string());
+        let res = prof.benchmark(|| eng.search(pos.clone(), TimeControl::Depth(6)).unwrap());
         println!("{mets}", mets = res.metrics.unwrap().summary("Qs"));
         println!("{posits}", posits = res.positions.iter().format("\n"));
     }
