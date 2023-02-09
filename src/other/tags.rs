@@ -186,12 +186,22 @@ impl Tag {
             Self::TS => Tag::Timestamp("".to_string(), "".to_string()),
             _ if key.starts_with('D') => Tag::Perft(key[1..].parse::<u8>()?, v.parse::<u128>()?),
             _ if key.starts_with('c') => Tag::Comment(key[1..].parse::<u8>()?, v.to_string()),
-            _ => Tag::None,
+            tag => anyhow::bail!("Unknown tag {tag}"),
         })
     }
 
-    pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag> {
-        match Self::parse_internal(b, key, v) {
+    /// v can contain quoted (single or double)
+    pub fn parse_tag(bd: &Board, v: &str) -> Result<Tag> {
+        let words: Vec<&str> = Self::split_into_words(v);
+        match Self::parse_internal(bd, words[0], words[1..].join(" ").as_str()) {
+            Err(err) => Err(anyhow!("{} parsing tag '{}' from '{}'", err, words[0], v)),
+            Ok(tag) => Ok(tag),
+        }
+    }
+
+    pub fn parse(bd: &Board, key: &str, v: &str) -> Result<Tag> {
+        let words: Vec<&str> = Self::split_into_words(v);
+        match Self::parse_internal(bd, key, words.join(" ").as_str()) {
             Err(err) => Err(anyhow!("{} parsing tag '{}' from '{}'", err, key, v)),
             Ok(tag) => Ok(tag),
         }
@@ -274,6 +284,20 @@ impl Tag {
             _ => self.value_uci(),
         }
     }
+
+    fn split_into_words(s: &str) -> Vec<&str> {
+        REGEX_SPLIT_WORDS
+            .captures_iter(s)
+            .map(|cap| {
+                cap.get(1)
+                    .or_else(|| cap.get(2))
+                    .or_else(|| cap.get(3))
+                    .unwrap()
+                    .as_str()
+            })
+            .collect()
+    }
+
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -356,15 +380,14 @@ impl Tags {
         let mut tags = Tags::new();
         let ops: Vec<&str> = Self::split_into_tags(tags_str);
         for op in ops {
-            let words: Vec<&str> = Self::split_into_words(op);
+            let words: Vec<&str> = Tag::split_into_words(op);
             debug_assert!(
                 !words.is_empty(),
                 "no words parsing EPD operation '{}' from '{}'",
                 op,
                 tags_str
             );
-            let tag = Tag::parse(board, words[0], words[1..].join(" ").as_str())?;
-            // map.insert.to_string(), words[1..].join(" ").to_string());
+            let tag = Tag::parse_tag(board, words.join(" ").as_str())?;
             tags.set(tag);
         }
         Ok(tags)
@@ -407,18 +430,6 @@ impl Tags {
             .collect()
     }
 
-    fn split_into_words(s: &str) -> Vec<&str> {
-        REGEX_SPLIT_WORDS
-            .captures_iter(s)
-            .map(|cap| {
-                cap.get(1)
-                    .or_else(|| cap.get(2))
-                    .or_else(|| cap.get(3))
-                    .unwrap()
-                    .as_str()
-            })
-            .collect()
-    }
 }
 
 impl fmt::Display for Tags {
@@ -515,13 +526,13 @@ mod tests {
 
     #[test]
     fn test_split_words() {
-        let vec = Tags::split_into_words(r#"bm e4"#);
+        let vec = Tag::split_into_words(r#"bm e4"#);
         assert_eq!(vec, vec!["bm", "e4"]);
 
-        let vec = Tags::split_into_words(r#"id "my name is bob""#);
+        let vec = Tag::split_into_words(r#"id "my name is bob""#);
         assert_eq!(vec, vec!["id", "my name is bob"]);
 
-        let vec = Tags::split_into_words(r#"id 'my name is bob'"#);
+        let vec = Tag::split_into_words(r#"id 'my name is bob'"#);
         assert_eq!(vec, vec!["id", "my name is bob"]);
     }
 
@@ -535,7 +546,7 @@ mod tests {
         assert_eq!(tags.get("c1").value_uci(), "World");
         let b = Board::default();
         assert_eq!(
-            Tag::parse(&b, "c0", "Hello World").unwrap(),
+            Tag::parse_tag(&b, "c0 Hello World").unwrap(),
             Tag::Comment(0, "Hello World".to_string())
         );
     }

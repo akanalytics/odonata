@@ -53,8 +53,7 @@ impl Catalog {
     }
 
     pub fn test_position() -> Position {
-        let epd = r#"3r2k1/6p1/1p1q3p/1Q1prp1P/Pp6/1Pp1P3/2PnBPP1/3RR1K1 w - - 0 29 
-        bm Qd3;
+        let epd = r#"3r2k1/6p1/1p1q3p/1Q1prp1P/Pp6/1Pp1P3/2PnBPP1/3RR1K1 w - - 0 29 bm Qd3;
         id 'https://lichess.org/IieZFrPE#56'
         "#;
         Position::parse_epd(epd).unwrap()
