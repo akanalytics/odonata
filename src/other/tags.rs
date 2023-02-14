@@ -1,18 +1,19 @@
-use crate::bits::bitboard::Bitboard;
-use crate::boards::Board;
-use crate::infra::utils::{Displayable, Formatting};
-use crate::movelist::{MoveList, ScoredMoveList};
-use crate::mv::Move;
-use crate::piece::Ply;
-use crate::variation::Variation;
+use crate::{
+    bits::bitboard::Bitboard,
+    boards::Board,
+    domain::SearchResults,
+    infra::utils::Formatting,
+    movelist::{MoveList, ScoredMoveList},
+    mv::Move,
+    piece::Ply,
+    variation::Variation,
+    Position,
+};
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::Deserialize;
-use serde::{ser::SerializeMap, Serialize, Serializer};
-use std::collections::HashMap;
-use std::fmt;
-use std::time::Duration;
+use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
+use std::{collections::HashMap, fmt, time::Duration};
 // use serde_with::{DeserializeFromStr};
 
 // #[derive(Clone, Debug)]
@@ -69,8 +70,7 @@ impl TagUnion {
 
 #[cfg(test)]
 mod tests2 {
-    use serde_json::value::Value;
-    use serde_json::Map;
+    use serde_json::{value::Value, Map};
 
     use super::*;
 
@@ -108,7 +108,7 @@ pub enum Tag {
     Id(String),
     AnalysisCountDepth(Ply),
     AnalysisCountSelDepth(Ply),
-    AnalysisCountNodes(u64), 
+    AnalysisCountNodes(u64),
     AnalysisCountSeconds(u32),
     AnalysisCountMilliSeconds(u64),
     ChessClock(Duration),
@@ -127,6 +127,9 @@ pub enum Tag {
     Perft(u8, u128),
     Comment(u8, String),
 }
+
+
+
 
 impl Tag {
     pub const AM: &'static str = "am";
@@ -157,6 +160,19 @@ impl Tag {
     pub const DRAW_REJECT: &'static str = "draw_reject";
 
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
+    pub const ALL_TAGS: &'static [&'static str] = &[
+        Self::ACD,
+        Self::ACN,
+        Self::ACS,
+        Self::ACMS,
+        Self::ACSD,
+        Self::BF,
+        Self::BM,
+        Self::BSM,
+        Self::CE,
+        Self::PV,
+        Self::SM,
+    ];
 
     fn parse_internal(b: &Board, key: &str, v: &str) -> Result<Tag> {
         Ok(match key {
@@ -233,7 +249,7 @@ impl Tag {
             Tag::SuppliedMove(_) => Self::SM.to_string(),
             Tag::SuppliedVariation(_) => Self::SV.to_string(),
             Tag::Squares(_) => Self::SQ.to_string(),
-            Tag::Timestamp(_, _) => Self::TS.to_string(),
+            Tag::Timestamp(..) => Self::TS.to_string(),
             Tag::Perft(depth, _count) => format!("D{}", depth),
             Tag::Comment(n, _text) => format!("c{}", n),
         }
@@ -297,7 +313,6 @@ impl Tag {
             })
             .collect()
     }
-
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -317,6 +332,12 @@ impl Serialize for Tags {
             map.serialize_entry(k, &v.value_uci())?;
         }
         map.end()
+    }
+}
+
+impl From<SearchResults> for Tags {
+    fn from(sr: SearchResults) -> Self {
+        sr.to_position(Position::default(), &[""]).tags().clone()
     }
 }
 
@@ -393,28 +414,40 @@ impl Tags {
         Ok(tags)
     }
 
-    fn fmt_pgn(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+    pub fn to_pgn(&self, b: &Board) -> String {
+        use std::fmt::Write;
+        let mut s = String::new();
+        let mut entries = self.tags.iter().collect::<Vec<_>>();
+        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
+        for (key, t) in entries {
+            let v = t.value(b);
+            if v.is_empty() {
+                write!(s, "[%{key}]").unwrap();
+            } else if v.contains(char::is_whitespace) {
+                write!(s, "[%{key} \"{v}\"]").unwrap();
+            } else {
+                write!(s, "[%{key} {v}]").unwrap();
+            }
+        }
+        s
+    }
+
+    pub fn to_epd(&self, b: &Board) -> String {
+        use std::fmt::Write;
+        let mut s = String::new();
         let mut entries = self.tags.iter().collect::<Vec<_>>();
         entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
         for (k, t) in entries {
             let v = t.value(b);
             if v.is_empty() {
-                write!(f, " {};", k)?;
+                write!(s, " {};", k).unwrap();
             } else if v.contains(char::is_whitespace) {
-                write!(f, " {} \"{}\";", k, v)?;
+                write!(s, " {} \"{}\";", k, v).unwrap();
             } else {
-                write!(f, " {} {};", k, v)?;
+                write!(s, " {} {};", k, v).unwrap();
             }
         }
-        Ok(())
-    }
-
-    pub fn display_pgn<'a>(&'a self, b: &'a Board) -> impl fmt::Display + 'a {
-        Displayable(|f| self.fmt_pgn(f, b))
-    }
-
-    pub fn to_pgn(&self, b: &Board) -> String {
-        format!("{}", self.display_pgn(b))
+        s
     }
 
     fn split_into_tags(s: &str) -> Vec<&str> {
@@ -429,7 +462,6 @@ impl Tags {
             })
             .collect()
     }
-
 }
 
 impl fmt::Display for Tags {
@@ -490,7 +522,6 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
-//
 //  key1; key2; key3; key4 ABCD; key5 12345; key6 "ABC;DEF";
 //
 
@@ -501,16 +532,20 @@ mod tests {
     #[test]
     fn test_split_into_tags() {
         let vec = Tags::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
-        assert_eq!(
-            vec,
-            vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]
-        );
+        assert_eq!(vec, vec![
+            "cat\"meo;w\"",
+            "\"mouse\"",
+            "\"toad;;;;;;\" ",
+            "zebra"
+        ]);
 
         let vec = Tags::split_into_tags(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
-        assert_eq!(
-            vec,
-            vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]
-        );
+        assert_eq!(vec, vec![
+            "cat\'meo;w\'",
+            "\'mouse\'",
+            "\'toad;;;;;;\' ",
+            "zebra"
+        ]);
 
         let vec = Tags::split_into_tags(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
         assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
@@ -590,6 +625,10 @@ mod tests {
         assert_eq!(
             tags.to_string(),
             " acd 3; acs 4; c1 \"Hello World2\"; id \"Hello World\";"
+        );
+        assert_eq!(
+            tags.to_pgn(&Board::starting_pos()),
+            "[%acd 3][%acs 4][%c1 \"Hello World2\"][%id \"Hello World\"]"
         );
         assert_eq!(
             jsonrpc_core::to_string(&tags).unwrap(),

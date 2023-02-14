@@ -256,11 +256,11 @@ impl Position {
     pub const VERB_OPERATION_PURGE: &'static str = "pfop";
     pub const VERB_TARGET_SEARCH: &'static str = "pfts";
 
-    pub fn to_pgn(&self) -> String {
+    pub fn to_epd(&self) -> String {
         format!(
             "{fen}{tags}",
             fen = self.board().to_fen(),
-            tags = self.tags.to_pgn(self.board())
+            tags = self.tags.to_epd(self.board())
         )
     }
 

@@ -73,6 +73,8 @@ impl fmt::Display for SearchResults {
     }
 }
 
+
+
 pub struct SearchResultsWithExplanation<'a> {
     sr:    &'a SearchResults,
     eval:  &'a Eval,
@@ -496,6 +498,9 @@ impl SearchResults {
         }
         if tags.contains(&Tag::ACD) {
             pos.set(Tag::AnalysisCountDepth(self.depth));
+        }
+        if tags.contains(&Tag::ACSD) {
+            pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
         }
         if tags.contains(&Tag::ACS) {
             pos.set(Tag::AnalysisCountSeconds((self.time_millis / 1000) as u32));
