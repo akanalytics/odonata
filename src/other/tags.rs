@@ -1,13 +1,11 @@
 use crate::{
     bits::bitboard::Bitboard,
     boards::Board,
-    domain::SearchResults,
     infra::utils::Formatting,
     movelist::{MoveList, ScoredMoveList},
     mv::Move,
     piece::Ply,
     variation::Variation,
-    Position,
 };
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -261,7 +259,7 @@ impl Tag {
             Tag::None => "".to_string(),
             Tag::AvoidMoves(mvs) => mvs.uci(),
             Tag::BestMoves(mvs) => mvs.uci(),
-            Tag::BestScoredMoves(mvs) => format!("{:?}", mvs),
+            Tag::BestScoredMoves(mvs) => mvs.to_uci(),
             Tag::BranchingFactor(bf) => Formatting::decimal(2, *bf),
             Tag::Pv(variation) => variation.to_uci(),
             Tag::Id(s) => format!("{}", s),
@@ -293,10 +291,10 @@ impl Tag {
             Tag::AvoidMoves(mvs) => b.to_san_movelist(mvs),
             Tag::BestMoves(mvs) => b.to_san_movelist(mvs),
             Tag::BestScoredMoves(mvs) => mvs.to_san(b),
-            Tag::Pv(variation) => b.to_san_variation(variation, None),
+            Tag::Pv(var) => var.to_san(b),
             Tag::PredictedMove(mv) => b.to_san(*mv),
             Tag::SuppliedMove(mv) => b.to_san(*mv),
-            Tag::SuppliedVariation(variation) => b.to_san_variation(variation, None),
+            Tag::SuppliedVariation(var) => var.to_san(b),
             _ => self.value_uci(),
         }
     }
@@ -335,9 +333,14 @@ impl Serialize for Tags {
     }
 }
 
-impl From<SearchResults> for Tags {
-    fn from(sr: SearchResults) -> Self {
-        sr.to_position(Position::default(), &[""]).tags().clone()
+
+
+impl IntoIterator for Tags {
+    type Item = Tag;
+    type IntoIter = std::collections::hash_map::IntoValues<String, Tag>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tags.into_values()
     }
 }
 
@@ -345,6 +348,11 @@ impl Tags {
     pub fn new() -> Self {
         Tags::default()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.tags.is_empty()
+    }
+
     pub fn as_hash_map(&self, b: &Board) -> HashMap<String, String> {
         let mut map = HashMap::<String, String>::new();
         for (k, t) in self.tags.iter() {
@@ -352,6 +360,7 @@ impl Tags {
         }
         map
     }
+
 
     pub fn get(&self, key: &str) -> &Tag {
         let ov = self.tags.get(key);
@@ -415,21 +424,20 @@ impl Tags {
     }
 
     pub fn to_pgn(&self, b: &Board) -> String {
-        use std::fmt::Write;
-        let mut s = String::new();
         let mut entries = self.tags.iter().collect::<Vec<_>>();
         entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
+        let mut strings = vec![];
         for (key, t) in entries {
             let v = t.value(b);
             if v.is_empty() {
-                write!(s, "[%{key}]").unwrap();
+                strings.push(format!("[%{key}]"));
             } else if v.contains(char::is_whitespace) {
-                write!(s, "[%{key} \"{v}\"]").unwrap();
+                strings.push(format!("[%{key} \"{v}\"]"));
             } else {
-                write!(s, "[%{key} {v}]").unwrap();
+                strings.push(format!("[%{key} {v}]"));
             }
         }
-        s
+        strings.join(" ")
     }
 
     pub fn to_epd(&self, b: &Board) -> String {

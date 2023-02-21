@@ -1,12 +1,12 @@
-use crate::boards::Board;
-use crate::eval::score::{Score, ToScore};
-use crate::infra::utils::Displayable;
-use crate::mv::Move;
-use crate::other::Parse;
-use crate::piece::MAX_LEGAL_MOVES;
-use crate::piece::{Color, Piece};
-use crate::other::Tags;
-use crate::variation::Variation;
+use crate::{
+    boards::Board,
+    eval::score::{Score, ToScore},
+    infra::utils::{Displayable, Uci},
+    mv::Move,
+    other::{Parse, Tags},
+    piece::{Color, Piece, MAX_LEGAL_MOVES},
+    variation::Variation,
+};
 use anyhow::{anyhow, Result};
 use arrayvec::ArrayVec;
 use itertools::Itertools;
@@ -213,6 +213,16 @@ impl ScoredMoveList {
 
     pub fn to_san(&self, b: &Board) -> String {
         format!("{}", self.display_san(b))
+    }
+
+    pub fn to_uci(&self) -> String {
+        format!(
+            "{}",
+            self.moves
+                .iter()
+                .map(|(mv, s)| { format!("{mv}:{score}", mv = mv.to_uci(), score = s.to_uci()) })
+                .join(" ")
+        )
     }
 
     pub fn parse_san(s: &str, b: &Board) -> anyhow::Result<Self> {
@@ -601,21 +611,21 @@ impl Board {
         for (i, mv) in var.moves().enumerate() {
             debug_assert!(
                 mv.is_valid(&board),
-                "mv {} is illegal for board {}",
-                mv,
-                board.to_fen()
+                "mv {mv} of var {var} is illegal for board {board}",
             );
-            if i % 2 == 0 {
-                if i != 0 {
-                    s += "\n";
+            if false {
+                if i % 2 == 0 {
+                    if i != 0 {
+                        s += "\n";
+                    }
+                    s += &board.fullmove_number().to_string();
+                    s += ".";
                 }
-                s += &board.fullmove_number().to_string();
-                s += ".";
+                if i == 0 && board.color_us() == Color::Black {
+                    s += "..";
+                }
+                s += " ";
             }
-            if i == 0 && board.color_us() == Color::Black {
-                s += "..";
-            }
-            s += " ";
             s += &board.to_san(mv);
             // if let Some(vec) = vec_tags {
             //     let tags = &vec[i];
@@ -644,8 +654,7 @@ pub fn strip_move_numbers(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
-    use crate::globals::constants::*;
+    use crate::{catalog::Catalog, globals::constants::*};
 
     #[test]
     fn test_movelist() -> Result<()> {

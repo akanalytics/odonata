@@ -136,7 +136,7 @@ impl Info {
     }
 
     fn set(&mut self, name: &str, value: &str, b: &Board) -> anyhow::Result<()> {
-        debug!("setting info.{name} = _{value}_");
+        trace!("setting info.{name} = _{value}_");
         match name {
             "depth" => self.depth = Some(value.parse()?),
             "seldepth" => self.seldepth = Some(value.parse()?),

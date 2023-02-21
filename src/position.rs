@@ -40,6 +40,16 @@ pub struct Position {
     tags: Tags,
 }
 
+
+impl Extend<Tag> for Position {
+    fn extend<T: IntoIterator<Item = Tag>>(&mut self, iter: T) {
+        for tag in iter {
+            self.tags.set(tag);
+        }
+    }
+}
+
+
 impl TryFrom<HashMap<String, String>> for Position {
     type Error = anyhow::Error;
 

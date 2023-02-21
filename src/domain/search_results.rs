@@ -7,7 +7,7 @@ use crate::{
     },
     movelist::ScoredMoveList,
     mv::Move,
-    other::{outcome::Outcome, Tag},
+    other::{outcome::Outcome, Tag, Tags},
     piece::Ply,
     search::timecontrol::TimeControl,
     variation::Variation,
@@ -42,6 +42,7 @@ pub struct SearchResults {
     pub pos:                Option<Position>,
     pub multi_pv:           Vec<(Variation, Score)>,
     pub infos:              Vec<Info>,
+
     pub tree:               Option<ChessTree>,
     pub metrics:            Option<Metrics>,
     pub positions:          Vec<Position>,
@@ -478,6 +479,12 @@ impl SearchResults {
         Tag::BF,
     ];
 
+
+    pub fn to_tags(&self, tags: &[&str]) -> Tags {
+        let board = self.pos.clone().unwrap_or_default().board_after();
+        self.to_position(Position::from_board(board), tags).tags().clone()
+    }
+    
     pub fn to_position(&self, mut pos: Position, tags: &[&str]) -> Position {
         let var = self.pv();
         if tags.contains(&Tag::PV) {

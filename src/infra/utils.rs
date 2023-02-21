@@ -26,6 +26,10 @@ where
     }
 }
 
+
+
+
+
 // /// things that can be used to lookup in an array
 // pub trait Indexer<'t, T> {
 //     fn index(self) -> usize;
