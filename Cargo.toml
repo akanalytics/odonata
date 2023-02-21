@@ -55,7 +55,7 @@ thread_local = "1.1.4"
 toml = "0.5.8"
 tracing = { version = "0.1.37", features = ["max_level_trace", "release_max_level_debug", "log"] }
 
-[target.'cfg(not(windows))'.dependencies]
+[target.'cfg(target_os="linux")'.dependencies]
 pprof = { version = "0.11", features = ["flamegraph"]}
 perf-event = {version = "0.4.7"}
 

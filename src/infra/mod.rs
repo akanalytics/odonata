@@ -9,7 +9,7 @@ pub mod utils;
 pub mod version;
 
 
-#[cfg(not(windows))]
+#[cfg(target_os="linux")]
 pub mod profiler;
 
 // from iai/bencher/criterion etc - the "standard" black_box def

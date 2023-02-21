@@ -7,7 +7,10 @@ use std::backtrace::Backtrace;
 use std::panic;
 
 use crate::comms::uci_server::UciServer;
+
+#[cfg(target_os="linux")]
 use crate::infra::profiler::Flamegraph;
+
 use crate::infra::utils::ToStringOr;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;

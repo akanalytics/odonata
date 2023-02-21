@@ -1,13 +1,15 @@
+#[cfg(target_os="linux")]
 use perf_event::{events::Hardware, Builder, Counter, Group};
+
 use std::{fmt, sync::Mutex};
 
 use super::{black_box, utils::IntegerFormatter};
 
 pub struct Flamegraph<'a> {
-    #[cfg(not(windows))]
+    #[cfg(target_os="linux")]
     guard: Option<pprof::ProfilerGuard<'a>>,
 
-    #[cfg(windows)]
+    #[cfg(not(target_os="linux"))]
     guard: Option<&str<'a>>,
     name:  Option<String>,
 }
@@ -42,7 +44,7 @@ impl<'a> Flamegraph<'a> {
 
     pub fn enable(&mut self, name: String) {
         if self.guard.is_none() {
-            #[cfg(not(windows))]
+            #[cfg(target_os="linux")]
             {
                 self.guard = Some(
                     pprof::ProfilerGuardBuilder::default()
@@ -56,13 +58,13 @@ impl<'a> Flamegraph<'a> {
         }
     }
 
-    #[cfg(windows)]
+    #[cfg(not(target_os="linux"))]
     pub fn report(&mut self) -> anyhow::Result<Vec<String>> {
         Ok(Vec::new())
     }
 
     /// returns the filenames created
-    #[cfg(not(windows))]
+    #[cfg(target_os="linux")]
     pub fn report(&mut self) -> anyhow::Result<()> {
         // the call stack is in reverse item [0][0] is the most nested call
         fn remove_recursion(stacks: &mut Vec<Vec<pprof::Symbol>>) {
