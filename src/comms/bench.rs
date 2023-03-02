@@ -1,4 +1,5 @@
 use crate::catalog::*;
+use crate::domain::engine::Engine;
 use crate::infra::component::{Component, State};
 use crate::other::Perft;
 use crate::search::engine::ThreadedSearch;
@@ -93,17 +94,7 @@ impl Bench {
             let t = Instant::now();
 
             engine.set_state(State::NewGame);
-            engine.set_position(pos.clone());
-            if tc == TimeControl::DefaultTime {
-                let suggested_depth = pos.acd().unwrap();
-                engine
-                    .algo
-                    .set_timing_method(TimeControl::Depth(suggested_depth));
-            } else {
-                engine.algo.set_timing_method(tc);
-            }
-
-            engine.search_sync();
+            let _res = engine.search(pos.clone(), tc).unwrap();
             let elapsed = t.elapsed();
             let bm = &engine.algo.results.best_move().unwrap_or_default();
             let correct = if pos

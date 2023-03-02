@@ -260,6 +260,7 @@ impl ScoredMoveList {
             _ => None,
         }
     }
+
 }
 
 #[cfg(test)]
@@ -478,7 +479,7 @@ impl Board {
                 return Ok(m);
             }
         }
-        Err(anyhow!("Move {mv} is not legal for board {self}",))
+        Err(anyhow!("Move '{mv}' is not legal for board {self}",))
     }
 
     pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList> {

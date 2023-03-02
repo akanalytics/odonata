@@ -1,47 +1,39 @@
-use crate::boards::Board;
-use crate::cache::tt2::TranspositionTable2;
-use crate::clock::Clock;
-use crate::domain::engine::Engine;
-use crate::domain::info::{Info, InfoKind};
-use crate::eval::eval::Eval;
-use crate::eval::recognizer::Recognizer;
-use crate::eval::score::Score;
-use crate::infra::component::{Component, State};
-use crate::infra::metric::Metrics;
-use crate::mv::Move;
-use crate::piece::Ply;
-use crate::position::Position;
-use crate::boards::Repetition;
-use crate::search::aspiration::Aspiration;
-use crate::search::extensions::Extensions;
-use crate::search::futility::Futility;
-use crate::search::history_heuristic::HistoryHeuristic;
-use crate::search::iterative_deepening::IterativeDeepening;
-use crate::search::killers::Killers;
-use crate::search::lmr::Lmr;
-use crate::search::move_orderer::MoveOrderer;
-use crate::search::move_time_estimator::MoveTimeEstimator;
-use crate::search::nmp::NullMovePruning;
-use crate::search::node::Node;
-use crate::search::pvs::Pvs;
-use crate::search::razor::Razor;
-use crate::search::restrictions::Restrictions;
-use crate::search::taskcontrol::TaskControl;
-use crate::search::timecontrol::TimeControl;
-use crate::trace::logger::LoggingSystem;
-use crate::variation::Variation;
+use crate::{
+    boards::{Board, Repetition},
+    cache::tt2::TranspositionTable2,
+    clock::Clock,
+    domain::{
+        engine::Engine,
+        info::{Info, InfoKind},
+    },
+    eval::{eval::Eval, recognizer::Recognizer, score::Score},
+    infra::{
+        component::{Component, State},
+        metric::Metrics,
+    },
+    mv::Move,
+    piece::Ply,
+    position::Position,
+    search::{
+        aspiration::Aspiration, extensions::Extensions, futility::Futility,
+        history_heuristic::HistoryHeuristic, iterative_deepening::IterativeDeepening,
+        killers::Killers, lmr::Lmr, move_orderer::MoveOrderer,
+        move_time_estimator::MoveTimeEstimator, nmp::NullMovePruning, node::Node, pvs::Pvs,
+        razor::Razor, restrictions::Restrictions, taskcontrol::TaskControl,
+        timecontrol::TimeControl,
+    },
+    trace::logger::LoggingSystem,
+    variation::Variation,
+};
+use anyhow::anyhow;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::counter_move::CounterMove;
-use super::engine::ThreadedSearch;
-use super::lmp::Lmp;
-use super::mate_distance::MateDistance;
-use super::node::Event;
-use super::qs::Qs;
-use super::reverse_futility::ReverseFutility;
-use super::search_explainer::Explainer;
+use super::{
+    counter_move::CounterMove, engine::ThreadedSearch, lmp::Lmp, mate_distance::MateDistance,
+    node::Event, qs::Qs, reverse_futility::ReverseFutility, search_explainer::Explainer,
+};
 use crate::domain::{SearchResults, Trail};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -49,34 +41,34 @@ use crate::domain::{SearchResults, Trail};
 pub struct Algo {
     pub analyse_mode: bool, // tries to find full PV etc
 
-    pub ids: IterativeDeepening,
-    pub eval: Eval,
-    pub nmp: NullMovePruning,
-    pub futility: Futility,
-    pub rev_fut: ReverseFutility,
+    pub ids:       IterativeDeepening,
+    pub eval:      Eval,
+    pub nmp:       NullMovePruning,
+    pub futility:  Futility,
+    pub rev_fut:   ReverseFutility,
     pub mate_dist: MateDistance,
 
-    pub pvs: Pvs,
-    pub ext: Extensions,
-    pub lmr: Lmr,
-    pub mte: MoveTimeEstimator,
+    pub pvs:          Pvs,
+    pub ext:          Extensions,
+    pub lmr:          Lmr,
+    pub mte:          MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
 
     pub repetition: Repetition,
-    pub tt: TranspositionTable2,
-    pub killers: Killers,
-    pub history: HistoryHeuristic,
-    pub explainer: Explainer,
+    pub tt:         TranspositionTable2,
+    pub killers:    Killers,
+    pub history:    HistoryHeuristic,
+    pub explainer:  Explainer,
 
     pub restrictions: Restrictions,
-    pub razor: Razor,
-    pub recognizer: Recognizer,
-    pub aspiration: Aspiration,
-    pub clock: Clock,
+    pub razor:        Razor,
+    pub recognizer:   Recognizer,
+    pub aspiration:   Aspiration,
+    pub clock:        Clock,
 
-    pub controller: TaskControl<Info>,
-    pub lmp: Lmp,
-    pub qs: Qs,
+    pub controller:   TaskControl<Info>,
+    pub lmp:          Lmp,
+    pub qs:           Qs,
     pub counter_move: CounterMove,
 
     #[serde(skip)]
@@ -89,7 +81,7 @@ pub struct Algo {
     pub results: SearchResults,
 
     #[serde(skip)]
-    pub board: Board,
+    pub board:     Board,
     #[serde(skip)]
     pub max_depth: Ply,
 
@@ -115,7 +107,14 @@ impl Engine for Algo {
         self.controller
             .register_callback(|i| info!(target: "eng", "<- info {i}"));
         self.controller.set_running();
-        self.set_timing_method(tc);
+        if let TimeControl::DefaultTime = tc {
+            let suggested_depth = pos.acd().map_err(|_| {
+                anyhow!("tc default specified but position has no depth (acd): {pos}")
+            })?;
+            self.set_timing_method(TimeControl::Depth(suggested_depth));
+        } else {
+            self.set_timing_method(tc);
+        }
         self.set_position(pos);
         self.run_search();
         info!(target: "eng", " <- results {res}", res = self.results);
@@ -458,9 +457,7 @@ impl Algo {
 mod tests {
 
     use super::*;
-    use crate::catalog::*;
-    use crate::comms::uci_server::UciServer;
-    use crate::piece::*;
+    use crate::{catalog::*, comms::uci_server::UciServer, piece::*};
     use anyhow::*;
     use test_log::test;
     use toml;
@@ -622,7 +619,7 @@ mod tests {
             let pv3 = algo.results_as_position().pv().unwrap();
             println!("{:<40} - {}\n", pv3.to_uci(), algo.results_as_position());
 
-            //assert_eq!(pv1, pv2, "{}", p );
+            // assert_eq!(pv1, pv2, "{}", p );
         }
     }
 }

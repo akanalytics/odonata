@@ -1,41 +1,34 @@
-use crate::bits::square::Square;
-use crate::boards::Board;
-use crate::cache::lockless_hashmap::UnsharedTable;
-use crate::eval::material_balance::MaterialBalance;
-use crate::eval::pst::Pst;
-use crate::eval::score::Score;
-use crate::eval::see::See;
-use crate::eval::weight::Weight;
-use crate::infra::component::Component;
-use crate::infra::component::State;
-use crate::infra::metric::Metrics;
-use crate::mv::Move;
-use crate::other::Phaser;
-use crate::piece::{Color, Piece};
-use crate::search::node::Counter;
-use crate::search::node::Event;
-use crate::search::node::Node;
+use crate::{
+    bits::square::Square,
+    boards::Board,
+    cache::lockless_hashmap::UnsharedTable,
+    eval::{material_balance::MaterialBalance, pst::Pst, score::Score, see::See, weight::Weight},
+    infra::{
+        component::{Component, State},
+        metric::Metrics,
+    },
+    mv::Move,
+    other::Phaser,
+    piece::{Color, Piece},
+    search::node::{Counter, Event, Node},
+};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
-use std::collections::HashMap;
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use super::calc::Calc;
 
-use super::score::WhiteScore;
-use super::scorer::ExplainScore;
-use super::scorer::TotalScore;
+use super::{
+    score::WhiteScore,
+    scorer::{ExplainScore, TotalScore},
+};
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 
-use strum_macros::Display;
-use strum_macros::EnumCount;
-use strum_macros::EnumDiscriminants;
-use strum_macros::EnumIter;
-use strum_macros::IntoStaticStr;
+use strum_macros::{Display, EnumCount, EnumDiscriminants, EnumIter, IntoStaticStr};
 
 #[derive(
     Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Debug, IntoStaticStr, EnumCount, EnumIter, Display,
@@ -256,7 +249,7 @@ impl Feature {
                         features.push(Feature::Discrete(a));
                     }
                 }
-                Feature::Pst(_, _) => {
+                Feature::Pst(..) => {
                     for p in Piece::ALL {
                         for sq in Square::all() {
                             features.push(Feature::Pst(p, sq));
@@ -289,7 +282,7 @@ impl Feature {
             Feature::Discrete(x) if x <= &Attr::QueenEarlyDevelop => "Position".to_string(),
             Feature::Discrete(x) if x <= &Attr::DiscoveredChecks => "Safety".to_string(),
             Feature::Piece(_) => "Material".to_string(),
-            Feature::Pst(_, _) => "Position".to_string(),
+            Feature::Pst(..) => "Position".to_string(),
             _ => "Tempo".to_string(),
         }
     }
@@ -298,7 +291,7 @@ impl Feature {
 #[derive(Default, Clone, Debug)]
 pub struct WeightsVector {
     pub weights: Vec<Weight>,
-    pub names: Vec<String>,
+    pub names:   Vec<String>,
 }
 
 impl fmt::Display for WeightsVector {
@@ -314,17 +307,17 @@ impl fmt::Display for WeightsVector {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Eval {
-    pub phasing: bool,
+    pub phasing:                bool,
     pub mobility_phase_disable: u8,
-    pub quantum: i32,
-    cache_size: usize,
-    pub draw_scaling: f32,
-    pub draw_scaling_noisy: f32,
+    pub quantum:                i32,
+    cache_size:                 usize,
+    pub draw_scaling:           f32,
+    pub draw_scaling_noisy:     f32,
 
-    pub pst: Pst,
-    pub phaser: Phaser,
-    pub see: See,
-    pub mb: MaterialBalance,
+    pub pst:      Pst,
+    pub phaser:   Phaser,
+    pub see:      See,
+    pub mb:       MaterialBalance,
     pub discrete: HashMap<String, Weight>,
 
     #[serde(skip)]
@@ -338,19 +331,19 @@ impl Default for Eval {
     fn default() -> Self {
         const DEFAULT_CACHE_SIZE: usize = 10_000;
         let mut s = Self {
-            mb: MaterialBalance::default(),
-            pst: Pst::default(),
-            feature_weights: Vec::new(),
-            draw_scaling: 1.,
-            draw_scaling_noisy: 1.,
-            discrete: HashMap::new(),
-            phaser: Phaser::default(),
-            see: See::default(),
-            phasing: true,
+            mb:                     MaterialBalance::default(),
+            pst:                    Pst::default(),
+            feature_weights:        Vec::new(),
+            draw_scaling:           1.,
+            draw_scaling_noisy:     1.,
+            discrete:               HashMap::new(),
+            phaser:                 Phaser::default(),
+            see:                    See::default(),
+            phasing:                true,
             mobility_phase_disable: 101,
-            quantum: 1,
-            cache_size: DEFAULT_CACHE_SIZE,
-            eval_cache: UnsharedTable::with_size(DEFAULT_CACHE_SIZE),
+            quantum:                1,
+            cache_size:             DEFAULT_CACHE_SIZE,
+            eval_cache:             UnsharedTable::with_size(DEFAULT_CACHE_SIZE),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -439,7 +432,7 @@ impl Eval {
 impl Eval {
     pub fn weights_vector(&self) -> WeightsVector {
         WeightsVector {
-            names: Feature::all().iter().map(|f| f.name()).collect_vec(),
+            names:   Feature::all().iter().map(|f| f.name()).collect_vec(),
             weights: self.feature_weights.clone(),
         }
     }
@@ -604,12 +597,13 @@ impl Board {
 
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
-    use crate::infra::black_box;
-    use crate::infra::profiler::*;
-    use crate::search::engine::ThreadedSearch;
-    use crate::test_log::test;
-    use crate::Position;
+    use crate::{
+        catalog::Catalog,
+        infra::{black_box, profiler::*},
+        search::engine::ThreadedSearch,
+        test_log::test,
+        Position,
+    };
     use anyhow::Result;
     use toml;
 
@@ -742,10 +736,27 @@ mod tests {
 
     #[test]
     fn test_eval_indexing() {
-        let eng = ThreadedSearch::new();
+        let mut eng = ThreadedSearch::new();
+        eng.algo.eval.populate_feature_weights();
         for i in Feature::all().iter() {
             let wt = eng.algo.eval.weight(i);
             println!("{} {:<20} = {}", i.index(), i.name(), wt);
+        }
+        for se in 0..=1 {
+            for p in Piece::ALL {
+                println!("Piece {p}.. s/e={se}");
+                for r in 0..8 {
+                    print!("r{r} ");
+                    for c in 0..8 {
+                        let sq = Square::from_xy(c, r);
+                        let f = Feature::Pst(p, sq);
+                        let wt = eng.algo.eval.weight(&f);
+                        let w = if se == 0 { wt.s() } else { wt.e() };
+                        print!("{w:>5} ", w = (w as i32).to_string());
+                    }
+                    println!();
+                }
+            }
         }
     }
 

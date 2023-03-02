@@ -2,12 +2,18 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{boards::Board, mv::Move, piece::Ply};
-use std::fmt;
+use std::fmt::{self, Debug};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Variation {
     moves: Vec<Move>,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct MultiVariation {
+    vars: Vec<Variation>,
 }
 
 impl Default for Variation {
@@ -114,6 +120,10 @@ impl Variation {
             variation.push(mv)
         }
         Ok(variation)
+    }
+
+    pub fn parse_san(s: &str, bd: &Board) -> anyhow::Result<Variation> {
+        bd.parse_san_variation(s)
     }
 
     /// variation without last move or None if empty
@@ -263,9 +273,74 @@ impl fmt::Display for Variation {
             }
         } else {
             let strings = self.moves().map(|m| m.to_string()).collect_vec();
-            f.write_str(&strings.join(", "))?
+            f.write_str(&strings.join("."))?
         }
         Ok(())
+    }
+}
+
+impl fmt::Display for MultiVariation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            for (i, var) in self.vars.iter().enumerate() {
+                writeln!(f, "{i} {var}")?;
+            }
+        } else {
+            write!(f, "{}", self.vars.iter().map(|v| v.to_string()).join(", "))?;
+        }
+        Ok(())
+    }
+}
+
+impl FromIterator<Variation> for MultiVariation {
+    fn from_iter<T: IntoIterator<Item = Variation>>(iter: T) -> Self {
+        Self {
+            vars: iter.into_iter().collect(),
+        }
+    }
+}
+
+// impl IntoIterator for MultiVariation {
+//     type Item = Variation;
+//     type IntoIter = IntoIter<Variation>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.vars.into_iter()
+//     }
+// }
+
+impl MultiVariation {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn len(&self) -> usize {
+        self.vars.len()
+    }
+
+    pub fn to_uci(&self) -> String {
+        self.vars.iter().map(|var| var.to_uci()).join(", ")
+    }
+
+    pub fn to_san(&self, bd: &Board) -> String {
+        self.vars.iter().map(|var| var.to_san(bd)).join(", ")
+    }
+
+    pub fn parse_uci(s: &str, bd: &Board) -> anyhow::Result<Self> {
+        let vars = s
+            .split(",")
+            .map(|s| Variation::parse_uci(s.trim(), bd))
+            .collect::<anyhow::Result<Vec<Variation>>>()?;
+        Ok(Self { vars })
+    }
+
+    pub fn parse_san(s: &str, bd: &Board) -> anyhow::Result<Self> {
+        let vars = s
+            .split(",")
+            .map(|s| Variation::parse_san(s.trim(), bd))
+            .collect::<anyhow::Result<Vec<Variation>>>()?;
+        Ok(Self { vars })
     }
 }
 
@@ -285,5 +360,31 @@ mod tests {
             "a2a3 a7a6"
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_multi_variation() {
+        let bd = Board::starting_pos();
+        assert_eq!(
+            MultiVariation::parse_uci("a2a3, a2a4", &bd)
+                .unwrap()
+                .to_uci(),
+            "a2a3, a2a4"
+        );
+        assert_eq!(
+            MultiVariation::parse_uci("a2a3, a2a4", &bd)
+                .unwrap()
+                .to_san(&bd),
+            "a3, a4"
+        );
+        let mvar = MultiVariation::parse_uci("a2a3 a7a6, a2a4,", &bd).unwrap();
+        assert_eq!(mvar.len(), 3);
+        assert_eq!(mvar.to_uci(), "a2a3 a7a6, a2a4, ");
+        assert_eq!(
+            MultiVariation::parse_san("a3 a6, a4", &bd)
+                .unwrap()
+                .to_uci(),
+            "a2a3 a7a6, a2a4"
+        );
     }
 }

@@ -10,7 +10,7 @@ use crate::{
     other::{outcome::Outcome, Tag, Tags},
     piece::Ply,
     search::timecontrol::TimeControl,
-    variation::Variation,
+    variation::{MultiVariation, Variation},
     Algo, MoveList, Position,
 };
 use anyhow::Context;
@@ -43,16 +43,16 @@ pub struct SearchResults {
     pub multi_pv:           Vec<(Variation, Score)>,
     pub infos:              Vec<Info>,
 
-    pub tree:               Option<ChessTree>,
-    pub metrics:            Option<Metrics>,
-    pub positions:          Vec<Position>,
+    pub tree:      Option<ChessTree>,
+    pub metrics:   Option<Metrics>,
+    pub positions: Vec<Position>,
 }
 
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "bm={bm} sc={sc} depth={d} seldepth={sd} ms={ms} nodes={nodes} pv={pv}",
+            "bm={bm} sc={sc} depth={d} seldepth={sd} ms={ms} nodes={nodes} pv={pv} mpv={mpv}",
             d = self.depth,
             sd = self.seldepth,
             ms = self.time_millis,
@@ -60,6 +60,7 @@ impl fmt::Display for SearchResults {
             bm = self.best_move().unwrap_or_default(),
             sc = self.score().unwrap_or_default(),
             pv = self.pv(),
+            mpv = self.multi_variation(),
         )?;
         if f.alternate() {
             for (bmv, sc) in &self.multi_pv {
@@ -73,8 +74,6 @@ impl fmt::Display for SearchResults {
         Ok(())
     }
 }
-
-
 
 pub struct SearchResultsWithExplanation<'a> {
     sr:    &'a SearchResults,
@@ -262,13 +261,14 @@ impl SearchResults {
             .iter()
             .rev() // look backwards
             .filter(|i| i.depth == max_depth)
+            .filter(|i| i.pv.is_some())
             .map(|i| {
                 (
                     i.pv.clone().unwrap_or_default(),
                     i.score.unwrap_or_default(),
                 )
             })
-            // we see duplicate moves with diferent hashfulls (and scores)
+            // we see duplicate moves with different hashfulls (and scores)
             .unique_by(|(pv, _sc)| pv.first()) // so we remove duplicate moves
             .collect_vec();
         multi_pv.sort_by_key(|(_pv, sc)| sc.negate());
@@ -319,12 +319,14 @@ impl SearchResults {
                 Err(anyhow::anyhow!("info did not contain depth needed for bf"))
             };
 
+            let multi_pv = Self::extract_multi_pv(&infos);
+            assert!(depth== Some(0) || multi_pv.iter().filter(|pv| pv.0.is_empty()).count() == 0, "Found empty pv parsing\n{}", infos.iter().join("\n"));
             // null best move => no multipv set and score of zero
-            let multi_pv = if !bm.is_null() {
-                Self::extract_multi_pv(&infos)
-            } else {
-                vec![(Variation::new(), Score::zero())]
-            };
+            // let multi_pv = if !bm.is_null() {
+            //     Self::extract_multi_pv(&infos)
+            // } else {
+            //     vec![(Variation::new(), Score::zero())]
+            // };
             SearchResults {
                 bm,
                 depth: depth.unwrap_or_default(),
@@ -452,6 +454,15 @@ impl SearchResults {
             .collect_vec()
     }
 
+    // filter out empty variations
+    pub fn multi_variation(&self) -> MultiVariation {
+        self.multi_pv
+            .iter()
+            .map(|(var, _sc)| var.clone())
+            .filter(|var| !var.is_empty())
+            .collect()
+    }
+
     pub fn scored_move_list(&self) -> ScoredMoveList {
         let mut list = ScoredMoveList::new();
         self.multi_pv
@@ -479,16 +490,20 @@ impl SearchResults {
         Tag::BF,
     ];
 
-
     pub fn to_tags(&self, tags: &[&str]) -> Tags {
         let board = self.pos.clone().unwrap_or_default().board_after();
-        self.to_position(Position::from_board(board), tags).tags().clone()
+        self.to_position(Position::from_board(board), tags)
+            .tags()
+            .clone()
     }
-    
+
     pub fn to_position(&self, mut pos: Position, tags: &[&str]) -> Position {
         let var = self.pv();
         if tags.contains(&Tag::PV) {
             pos.set(Tag::Pv(var));
+        }
+        if tags.contains(&Tag::MPV) {
+            pos.set(Tag::MultiPv(self.multi_variation()));
         }
         if let Some(mv) = self.pv().first() {
             if tags.contains(&Tag::SM) {
@@ -618,7 +633,7 @@ bestmove 0000
         let sr = SearchResults::parse_uci(s, &b).unwrap();
         assert_eq!(sr.nodes, 100000);
         assert_eq!(sr.best_move().is_err(), true);
-        assert_eq!(sr.pv(), Variation::new());
+        assert_eq!(sr.pv(), b.var("e2e4 e7e5 a2a3"));
 
         let mut sr2 = sr.clone();
         assert_eq!(SearchResults::diff(&sr, &sr2), Ok(()));
@@ -626,6 +641,16 @@ bestmove 0000
         sr2.infos[0].depth = Some(5);
         let diff = SearchResults::diff(&sr, &sr2).unwrap_err();
         assert_eq!(diff.starts_with("depth"), true);
+
+        let s = r#"info depth 0 seldepth 0 multipv 1 score cp -717 nodes 2 nps 2000 hashfull 0 time 0 pv
+bestmove 0000
+"#;
+        let sr = SearchResults::parse_uci(s, &b).unwrap();
+        dbg!(&sr);
+        assert_eq!(sr.score(), Some(Score::from_cp(-717)));
+        assert_eq!(sr.nodes, 2);
+        assert_eq!(sr.best_move().is_err(), true);
+        assert_eq!(sr.pv(), Variation::new());
 
         Ok(())
     }

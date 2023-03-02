@@ -5,7 +5,7 @@ use crate::{
     movelist::{MoveList, ScoredMoveList},
     mv::Move,
     piece::Ply,
-    variation::Variation,
+    variation::{MultiVariation, Variation},
 };
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -30,13 +30,14 @@ use std::{collections::HashMap, fmt, time::Duration};
 //     }
 // }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub struct TagUnion {
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct Tags2 {
     avoid_moves: Option<Box<MoveList>>,
     best_moves: Option<Box<MoveList>>,
     best_scored_moves: Option<ScoredMoveList>,
     branching_factor: Option<f64>,
     pv: Option<Variation>,
+    multi_pv: Option<MultiVariation>,
     id: Option<String>,
     analysis_count_depth: Option<Ply>,
     analysis_count_sel_depth: Option<Ply>,
@@ -56,26 +57,27 @@ pub struct TagUnion {
     supplied_variation: Option<Variation>,
     squares: Option<Bitboard>,
     timestamp: Option<(String, String)>,
-    perft: Option<(u8, u128)>,
-    comment: Option<(u8, String)>,
+    perft: Option<Vec<u128>>,
+    comment: Option<Vec<String>>,
 }
 
-impl TagUnion {
-    pub fn parse_tag(_kind: &str, _value: &str) -> anyhow::Result<TagUnion> {
-        Ok(TagUnion::default())
+impl Tags2 {
+    pub fn parse_tag(_kind: &str, _value: &str) -> anyhow::Result<Tags2> {
+        Ok(Tags2::default())
     }
 }
 
 #[cfg(test)]
 mod tests2 {
-    use serde_json::{value::Value, Map};
-
     use super::*;
+    use serde_json::{value::Value, Map};
+    use std::mem::size_of;
+    use test_log::test;
 
     #[ignore]
     #[test]
     fn tags_x() {
-        let mut tags = TagUnion::default();
+        let mut tags = Tags2::default();
         tags.result = Some("Hello Word".to_owned());
         let value = serde_json::to_value(tags).unwrap();
         dbg!(std::mem::size_of_val(&value));
@@ -90,8 +92,21 @@ mod tests2 {
             Value::String("Hello World2".to_owned()),
         );
 
-        let tags2: TagUnion = serde_json::from_value(Value::Object(map)).unwrap();
+        let tags2: Tags2 = serde_json::from_value(Value::Object(map)).unwrap();
         dbg!(tags2);
+    }
+
+    fn compare(s1: usize, s2: usize, s: &str) {
+        if s1 != s2 {
+            warn!("{s} actual {s1} != expected {s2}");
+        }
+    }
+
+    // RUST_LOG=warn cargo t test_tag_sizes --nocapture
+    #[test]
+    fn test_tag_sizes() {
+        warn!("Testing sizes...");
+        compare(size_of::<Tags2>(), 432, "TagUnion");
     }
 }
 
@@ -101,10 +116,13 @@ pub enum Tag {
     AvoidMoves(MoveList),
     BestMoves(MoveList),
     BestScoredMoves(ScoredMoveList),
+    EngScoredMoves(ScoredMoveList),
     BranchingFactor(f64), // 100x
     Pv(Variation),
+    MultiPv(MultiVariation),
     Id(String),
     AnalysisCountDepth(Ply),
+    AnnotatorDepth(Ply),
     AnalysisCountSelDepth(Ply),
     AnalysisCountNodes(u64),
     AnalysisCountSeconds(u32),
@@ -126,17 +144,17 @@ pub enum Tag {
     Comment(u8, String),
 }
 
-
-
-
 impl Tag {
     pub const AM: &'static str = "am";
     pub const BM: &'static str = "bm";
     pub const BSM: &'static str = "Bsm"; // best scored moves "Bsm a4:+45 Nf6:-56;"
+    pub const ESM: &'static str = "Esm"; // eng scored moves "Bsm a4:+45 Nf6:-56;"
     pub const BF: &'static str = "Bf";
     pub const PV: &'static str = "pv";
+    pub const MPV: &'static str = "Mpv";
     pub const ID: &'static str = "id";
     pub const ACD: &'static str = "acd";
+    pub const AD: &'static str = "Ad";
     pub const ACSD: &'static str = "acsd";
     pub const ACN: &'static str = "acn";
     pub const ACS: &'static str = "acs";
@@ -177,10 +195,13 @@ impl Tag {
             Self::AM => Tag::AvoidMoves(b.parse_san_movelist(v)?),
             Self::BM => Tag::BestMoves(b.parse_san_movelist(v)?),
             Self::BSM => Tag::BestScoredMoves(ScoredMoveList::parse_san(v, b)?),
+            Self::ESM => Tag::EngScoredMoves(ScoredMoveList::parse_san(v, b)?),
             Self::BF => Tag::BranchingFactor(v.parse::<f64>()?),
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
+            Self::MPV => Tag::MultiPv(MultiVariation::parse_san(v, b)?),
             Self::ID => Tag::Id(v.to_string()),
             Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>()?),
+            Self::AD => Tag::AnnotatorDepth(v.parse::<Ply>()?),
             Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>()?),
             Self::ACN => Tag::AnalysisCountNodes(v.parse::<u64>()?),
             Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>()?),
@@ -227,10 +248,13 @@ impl Tag {
             Tag::AvoidMoves(_) => Self::AM.to_string(),
             Tag::BestMoves(_) => Self::BM.to_string(),
             Tag::BestScoredMoves(_) => Self::BSM.to_string(),
+            Tag::EngScoredMoves(_) => Self::ESM.to_string(),
             Tag::BranchingFactor(_) => Self::BF.to_string(),
             Tag::Pv(_) => Self::PV.to_string(),
+            Tag::MultiPv(_) => Self::MPV.to_string(),
             Tag::Id(_) => Self::ID.to_string(),
             Tag::AnalysisCountDepth(_) => Self::ACD.to_string(),
+            Tag::AnnotatorDepth(_) => Self::AD.to_string(),
             Tag::AnalysisCountSelDepth(_) => Self::ACSD.to_string(),
             Tag::AnalysisCountNodes(_) => Self::ACN.to_string(),
             Tag::AnalysisCountSeconds(_) => Self::ACS.to_string(),
@@ -260,10 +284,13 @@ impl Tag {
             Tag::AvoidMoves(mvs) => mvs.uci(),
             Tag::BestMoves(mvs) => mvs.uci(),
             Tag::BestScoredMoves(mvs) => mvs.to_uci(),
+            Tag::EngScoredMoves(mvs) => mvs.to_uci(),
             Tag::BranchingFactor(bf) => Formatting::decimal(2, *bf),
             Tag::Pv(variation) => variation.to_uci(),
+            Tag::MultiPv(variations) => variations.to_uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),
+            Tag::AnnotatorDepth(n) => format!("{}", n),
             Tag::AnalysisCountSelDepth(n) => format!("{}", n),
             Tag::AnalysisCountNodes(n) => format!("{}", n),
             Tag::AnalysisCountSeconds(n) => format!("{}", n),
@@ -291,7 +318,9 @@ impl Tag {
             Tag::AvoidMoves(mvs) => b.to_san_movelist(mvs),
             Tag::BestMoves(mvs) => b.to_san_movelist(mvs),
             Tag::BestScoredMoves(mvs) => mvs.to_san(b),
+            Tag::EngScoredMoves(mvs) => mvs.to_san(b),
             Tag::Pv(var) => var.to_san(b),
+            Tag::MultiPv(vars) => vars.to_san(b),
             Tag::PredictedMove(mv) => b.to_san(*mv),
             Tag::SuppliedMove(mv) => b.to_san(*mv),
             Tag::SuppliedVariation(var) => var.to_san(b),
@@ -333,8 +362,6 @@ impl Serialize for Tags {
     }
 }
 
-
-
 impl IntoIterator for Tags {
     type Item = Tag;
     type IntoIter = std::collections::hash_map::IntoValues<String, Tag>;
@@ -361,6 +388,23 @@ impl Tags {
         map
     }
 
+    pub fn to_annotator(&self) -> Tags {
+        Tags {
+            tags: self
+                .tags
+                .iter()
+                .filter_map(|(k, v)| match v {
+                    Tag::AnalysisCountDepth(d) => {
+                        Some((Tag::AD.to_string(), Tag::AnnotatorDepth(*d)))
+                    }
+                    Tag::Pv(pv) => Some((Tag::SV.to_string(), Tag::SuppliedVariation(pv.clone()))),
+                    Tag::BestScoredMoves(_bsm) => Some((k.clone(), v.clone())),
+                    Tag::MultiPv(_pvs) => Some((k.clone(), v.clone())),
+                    _ => None,
+                })
+                .collect(),
+        }
+    }
 
     pub fn get(&self, key: &str) -> &Tag {
         let ov = self.tags.get(key);
@@ -597,7 +641,7 @@ mod tests {
     #[test]
     fn test_tags() {
         use std::mem::size_of;
-        println!("{} {}", size_of::<TagUnion>(), "<TagUnion>()");
+        println!("{} {}", size_of::<Tags2>(), "<TagUnion>()");
         println!("{} {}", size_of::<MoveList>(), "<MoveList>()");
         println!("{} {}", size_of::<Variation>(), "<Variation>()");
         println!("{} {}", size_of::<Duration>(), "<Duration>()");

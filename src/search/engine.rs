@@ -1,32 +1,38 @@
-use crate::cache::tt2::TranspositionTable2;
-use crate::domain::engine::Engine;
-use crate::domain::SearchResults;
-use crate::infra::component::{Component, State, FEATURE};
-use crate::infra::resources::RESOURCE_DIR;
-use crate::infra::utils::{Displayable, DurationFormatter, Formatting};
-use crate::position::Position;
-use crate::search::algo::Algo;
-use crate::search::timecontrol::TimeControl;
-use crate::tune::Tuning;
-use anyhow::{Context, Result};
-use figment::providers::{Env, Format, Toml};
-use figment::value::{Dict, Map};
-use figment::{Error, Figment, Metadata, Profile, Provider};
+use crate::{
+    cache::tt2::TranspositionTable2,
+    domain::{engine::Engine, SearchResults},
+    infra::{
+        component::{Component, State, FEATURE},
+        resources::RESOURCE_DIR,
+        utils::{Displayable, DurationFormatter, Formatting},
+    },
+    position::Position,
+    search::{algo::Algo, timecontrol::TimeControl},
+    tune::Tuning,
+};
+use anyhow::{anyhow, Context, Result};
+use figment::{
+    providers::{Env, Format, Toml},
+    value::{Dict, Map},
+    Error, Figment, Metadata, Profile, Provider,
+};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::atomic::Ordering;
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
-use std::{fmt, mem, panic};
+use std::{
+    collections::HashMap,
+    fmt, mem, panic,
+    sync::atomic::Ordering,
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ThreadedSearch {
-    pub shared_tt: bool,
-    pub thread_count: u32,
+    pub shared_tt:       bool,
+    pub thread_count:    u32,
     pub config_filename: String,
-    pub feature: bool,
+    pub feature:         bool,
 
     #[serde(flatten)]
     pub algo: Algo,
@@ -48,15 +54,15 @@ const DEFAULT_CONFIG_FILE: &str = "config.toml";
 impl Default for ThreadedSearch {
     fn default() -> Self {
         ThreadedSearch {
-            config_filename: DEFAULT_CONFIG_FILE.to_string(),
-            shared_tt: true,
-            feature: false,
-            tuner: Tuning::default(),
-            algo: Algo::default(),
+            config_filename:  DEFAULT_CONFIG_FILE.to_string(),
+            shared_tt:        true,
+            feature:          false,
+            tuner:            Tuning::default(),
+            algo:             Algo::default(),
             engine_init_time: Instant::now().elapsed(),
             search_init_time: Duration::default(),
-            thread_count: 1,
-            threads: vec![],
+            thread_count:     1,
+            threads:          vec![],
         }
     }
 }
@@ -77,7 +83,15 @@ impl Engine for ThreadedSearch {
             .controller
             .register_callback(|i| debug!(target: "eng", "<- info {i}"));
 
-        self.algo.set_timing_method(tc);
+        if let TimeControl::DefaultTime = tc {
+            let suggested_depth = pos.acd().map_err(|_| {
+                anyhow!("tc default specified but position has no depth (acd): {pos}")
+            })?;
+            self.algo
+                .set_timing_method(TimeControl::Depth(suggested_depth));
+        } else {
+            self.algo.set_timing_method(tc);
+        }
         self.set_position(pos);
         self.search_sync();
         debug!(target: "eng", " <- results {res}", res = self.algo.results);
@@ -361,10 +375,11 @@ impl ThreadedSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
-    use crate::comms::uci_server::UciServer;
-    use crate::infra::black_box;
-    use crate::infra::utils::Formatting;
+    use crate::{
+        catalog::*,
+        comms::uci_server::UciServer,
+        infra::{black_box, utils::Formatting},
+    };
     use std::time;
     use test_log::test;
 
