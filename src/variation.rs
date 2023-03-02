@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{boards::Board, mv::Move, piece::Ply};
 use std::fmt::{self, Debug};
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Hash, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Variation {
     moves: Vec<Move>,
@@ -317,6 +317,12 @@ impl MultiVariation {
 
     pub fn len(&self) -> usize {
         self.vars.len()
+    }
+
+    pub fn find_first(&self, mv: Move) -> Option<&Variation> {
+        self.vars
+            .iter()
+            .find_map(|v| if v.first() == Some(mv) { Some(v) } else { None })
     }
 
     pub fn to_uci(&self) -> String {

@@ -406,6 +406,20 @@ impl Tags {
         }
     }
 
+    pub fn pv(&self) -> Option<&Variation> {
+        self.tags.values().find_map(|v| match v {
+            Tag::Pv(var) => Some(var),
+            _ => None,
+        })
+    }
+
+    pub fn multi_pv(&self) -> Option<&MultiVariation> {
+        self.tags.values().find_map(|v| match v {
+            Tag::MultiPv(vars) => Some(vars),
+            _ => None,
+        })
+    }
+
     pub fn get(&self, key: &str) -> &Tag {
         let ov = self.tags.get(key);
         match ov {

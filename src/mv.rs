@@ -301,6 +301,17 @@ impl fmt::Debug for Move {
     }
 }
 
+
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_uci())?;
+        if f.alternate() {}
+        Ok(())
+    }
+}
+
+
+
 // 16 - less 2x6 for from/to = 4 bits = 16 things
 #[derive(Copy, Clone, Debug)]
 enum MoveFlag {
@@ -815,13 +826,7 @@ impl Move {
     }
 }
 
-impl fmt::Display for Move {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_uci())?;
-        if f.alternate() {}
-        Ok(())
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
