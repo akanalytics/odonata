@@ -685,11 +685,11 @@ mod tests {
 
         moves.set_last_move(1, move_a1b2);
         moves.set_last_move(2, promo_a7a8);
-        assert_eq!(moves.to_string(), "a1b2, a7a8q");
+        assert_eq!(moves.to_string(), "a1b2.a7a8q");
 
         moves.set_last_move(0, promo_a7a8);
         moves.set_last_move(2, move_a1b2);
-        assert_eq!(moves.to_string(), "a1b2, a1b2");
+        assert_eq!(moves.to_string(), "a1b2.a1b2");
 
         let s = strip_move_numbers("1. .. c4c5 2. c6c7 3.");
         assert_eq!(s, "c4c5 c6c7 ");
@@ -709,13 +709,13 @@ mod tests {
         assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
 
         let list = board.parse_uci_variation("1. a2a3 h7h6 2. b2b3 h6h5")?;
-        assert_eq!(list.to_string(), "a2a3, h7h6, b2b3, h6h5");
+        assert_eq!(list.to_string(), "a2a3.h7h6.b2b3.h6h5");
 
         let mv = board.parse_uci_move("a2a3")?;
         let board2 = board.make_move(mv);
         let list = board2.parse_uci_variation("1. .. h7h6 2. b2b3 h6h5")?;
 
-        assert_eq!(list.to_string(), "h7h6, b2b3, h6h5");
+        assert_eq!(list.to_string(), "h7h6.b2b3.h6h5");
 
         let list = board.parse_san_movelist("Nc3, c3  Pc2c3")?;
         assert_eq!(list.to_string(), "b1c3, c2c3, c2c3");
@@ -733,22 +733,22 @@ mod tests {
             19. Kd2 O-O-O 20. Ne3 e6 21. Rh1 b5";
 
         let mut s = String::new();
-        s += "d2d4, c7c6, c1f4, d7d6, b1d2, h7h6, ";
-        s += "g1f3, g7g5, f4g3, d8b6, d2c4, b6b4, ";
+        s += "d2d4.c7c6.c1f4.d7d6.b1d2.h7h6.";
+        s += "g1f3.g7g5.f4g3.d8b6.d2c4.b6b4.";
 
-        s += "f3d2, c8e6, c2c3, b4b5, e2e3, e6c4, ";
-        s += "d2c4, b5d5, d1f3, d5f3, g2f3, b8d7, ";
+        s += "f3d2.c8e6.c2c3.b4b5.e2e3.e6c4.";
+        s += "d2c4.b5d5.d1f3.d5f3.g2f3.b8d7.";
 
-        s += "h2h4, f8g7, e3e4, g8f6, f1d3, f6h5, ";
-        s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
+        s += "h2h4.f8g7.e3e4.g8f6.f1d3.f6h5.";
+        s += "h4g5.h5g3.f2g3.h6g5.h1h8.g7h8.";
 
-        s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
+        s += "e1d2.e8c8.c4e3.e7e6.a1h1.b7b5";
         assert_eq!(board.parse_san_variation(san)?.to_string(), s);
         let s1: String = board
             .to_san_variation(&board.parse_san_variation(san)?, None)
             .split_whitespace()
             .collect();
-        let s2: String = san.split_whitespace().collect();
+        let s2: String = strip_move_numbers(san).split_whitespace().collect();
         assert_eq!(s1, s2);
 
         let board =

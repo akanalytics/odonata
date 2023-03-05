@@ -29,6 +29,7 @@ include_q_nodes = true
 
 [controller]
 show_refutations = false
+analyse_mode = false
 
 [eval]
 quantum = 1

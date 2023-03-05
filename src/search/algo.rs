@@ -19,7 +19,7 @@ use crate::{
         history_heuristic::HistoryHeuristic, iterative_deepening::IterativeDeepening,
         killers::Killers, lmr::Lmr, move_orderer::MoveOrderer,
         move_time_estimator::MoveTimeEstimator, nmp::NullMovePruning, node::Node, pvs::Pvs,
-        razor::Razor, restrictions::Restrictions, taskcontrol::TaskControl,
+        razor::Razor, restrictions::Restrictions, controller::Controller,
         timecontrol::TimeControl,
     },
     trace::logger::LoggingSystem,
@@ -39,8 +39,6 @@ use crate::domain::{SearchResults, Trail};
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Algo {
-    pub analyse_mode: bool, // tries to find full PV etc
-
     pub ids:       IterativeDeepening,
     pub eval:      Eval,
     pub nmp:       NullMovePruning,
@@ -66,7 +64,7 @@ pub struct Algo {
     pub aspiration:   Aspiration,
     pub clock:        Clock,
 
-    pub controller:   TaskControl<Info>,
+    pub controller:   Controller,
     pub lmp:          Lmp,
     pub qs:           Qs,
     pub counter_move: CounterMove,
@@ -127,6 +125,7 @@ impl Engine for Algo {
         map.insert("MultiPV".into(), String::new());
         map.insert("Debug_Log_File".into(), String::new());
         map.insert("UCI_AnalyseMode".into(), String::new());
+        map.insert("Analyse_Mode".into(), String::new());
         map.insert("nodestime".into(), String::new());
         map.insert("Show_Config".into(), String::new());
         map
@@ -139,7 +138,8 @@ impl Engine for Algo {
             "Debug_Log_File" => {
                 LoggingSystem::instance()?.set_log_filename(&value, &self.name())?
             }
-            "UCI_AnalyseMode" => self.analyse_mode = value.parse()?,
+            "UCI_AnalyseMode" => self.controller.analyse_mode = value.parse()?,
+            "Analyse_Mode" => self.controller.analyse_mode = value.parse()?,
             "nodestime" => self.mte.set_nodestime(value.parse()?),
             "Show_Config" => self.show_config()?,
             _ => anyhow::bail!("Algo does not support set option '{name}'"),
@@ -173,6 +173,10 @@ impl Algo {
     }
 
     pub fn set_timing_method(&mut self, tm: TimeControl) -> &mut Self {
+        // match tm.is_time_sensitive() {
+        //     true => self.controller.analyse_mode = false,
+        //     false => self.controller.analyse_mode = true,
+        // };
         self.mte.set_time_control(tm);
         self
     }
@@ -256,7 +260,6 @@ impl fmt::Debug for Algo {
         f.debug_struct("Algo")
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("board", &self.board)
-            .field("analyse_mode", &self.analyse_mode)
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
             .field("eval", &self.eval)
@@ -307,7 +310,6 @@ impl fmt::Display for Algo {
         )?;
         // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
-        writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, ".\n.\n[controller]\n{}", self.controller)?;

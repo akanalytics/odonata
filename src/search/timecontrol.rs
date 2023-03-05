@@ -3,19 +3,19 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 
-use crate::infra::utils::{KeywordIter, Uci};
-use crate::piece::{Color, Ply};
-use std::fmt;
-use std::str::FromStr;
-use std::time::Duration;
+use crate::{
+    infra::utils::{KeywordIter, Uci},
+    piece::{Color, Ply},
+};
+use std::{fmt, str::FromStr, time::Duration};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RemainingTime {
-    pub our_color: Color,
-    pub wtime: Duration,
-    pub btime: Duration,
-    pub winc: Duration,
-    pub binc: Duration,
+    pub our_color:   Color,
+    pub wtime:       Duration,
+    pub btime:       Duration,
+    pub winc:        Duration,
+    pub binc:        Duration,
     pub moves_to_go: u16,
 }
 
@@ -33,7 +33,6 @@ impl RemainingTime {
 }
 
 /// https://en.wikipedia.org/wiki/Time_control
-///
 #[derive(Copy, Clone, Debug, PartialEq, SerializeDisplay, DeserializeFromStr)]
 pub enum TimeControl {
     DefaultTime,          // depth "recommended" by EPD position or otherwise
@@ -186,20 +185,21 @@ impl Uci for TimeControl {
 
 impl TimeControl {
     pub fn fmt_option(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TimeControl::*;
         match self {
-            TimeControl::Infinite => write!(f, "inf")?,
-            TimeControl::DefaultTime => write!(f, "def")?,
-            TimeControl::SearchTime(dur) => write!(f, "st={d:.3}", d = dur.as_secs_f64())?,
-            TimeControl::MateIn(depth) => write!(f, "mate={depth}")?,
-            TimeControl::Depth(d) => write!(f, "depth={d}")?,
-            TimeControl::NodeCount(nodes) => write!(f, "nodes={nodes}")?,
-            TimeControl::Cycles(n) => write!(f, "cycles={n}")?,
-            TimeControl::Instructions(n) => write!(f, "ins={n}")?,
-            TimeControl::UciFischer(rt) => {
+            Infinite => write!(f, "inf")?,
+            DefaultTime => write!(f, "def")?,
+            SearchTime(dur) => write!(f, "st={d:.3}", d = dur.as_secs_f64())?,
+            MateIn(depth) => write!(f, "mate={depth}")?,
+            Depth(d) => write!(f, "depth={d}")?,
+            NodeCount(nodes) => write!(f, "nodes={nodes}")?,
+            Cycles(n) => write!(f, "cycles={n}")?,
+            Instructions(n) => write!(f, "ins={n}")?,
+            UciFischer(rt) => {
                 // let duration = rt.our_time_and_inc().0;
                 write!(f, "tc=(rt={rt:?})")?;
             }
-            &TimeControl::FischerMulti { moves, secs, inc } => {
+            &FischerMulti { moves, secs, inc } => {
                 if moves > 0 {
                     write!(f, "{moves}/",)?;
                 }
@@ -214,7 +214,25 @@ impl TimeControl {
         Ok(())
     }
 
-    pub fn mul_f32(&self, scaling: f32) -> TimeControl{
+    /// For some time controls we aren't worried about node counts or search times, so we
+    /// can avoid optimizations elsewhere
+    pub fn is_time_sensitive(&self) -> bool {
+        use TimeControl::*;
+        match self {
+            DefaultTime => true,
+            SearchTime(_duration) => true,
+            UciFischer { .. } => true,
+            Depth(_max_ply) => false,
+            NodeCount(_max_nodes) => false,
+            Instructions(_) => true,
+            Cycles(_) => true,
+            Infinite => false,
+            MateIn(_) => false,
+            FischerMulti { .. } => panic!("FischerMulti"),
+        }
+    }
+
+    pub fn mul_f32(&self, scaling: f32) -> TimeControl {
         use TimeControl::*;
 
         let tc = match &self {
@@ -235,17 +253,17 @@ impl TimeControl {
                 moves_to_go,
                 our_color: color,
             }) => UciFischer(RemainingTime {
-                wtime: wtime.mul_f32(scaling),
-                btime: btime.mul_f32(scaling),
-                winc: winc.mul_f32(scaling),
-                binc: binc.mul_f32(scaling),
+                wtime:       wtime.mul_f32(scaling),
+                btime:       btime.mul_f32(scaling),
+                winc:        winc.mul_f32(scaling),
+                binc:        binc.mul_f32(scaling),
                 moves_to_go: *moves_to_go,
-                our_color: *color,
+                our_color:   *color,
             }),
             FischerMulti { moves, secs, inc } => FischerMulti {
                 moves: *moves,
-                secs: secs * scaling,
-                inc: inc * scaling,
+                secs:  secs * scaling,
+                inc:   inc * scaling,
             },
         };
         tc
@@ -391,30 +409,24 @@ mod tests {
         assert_eq!(T::parse_option("mate=3")?, T::MateIn(3));
         println!("{}", T::parse_option("mate=3")?);
 
-        assert_eq!(
-            T::parse_option("tc=5/60")?,
-            T::FischerMulti {
-                moves: 5,
-                secs: 60.,
-                inc: 0.
-            }
-        );
+        assert_eq!(T::parse_option("tc=5/60")?, T::FischerMulti {
+            moves: 5,
+            secs:  60.,
+            inc:   0.,
+        });
 
-        assert_eq!(
-            T::parse_option("tc=5+.1")?,
-            T::FischerMulti {
-                moves: 0,
-                secs: 5.,
-                inc: 0.1
-            }
-        );
+        assert_eq!(T::parse_option("tc=5+.1")?, T::FischerMulti {
+            moves: 0,
+            secs:  5.,
+            inc:   0.1,
+        });
 
         assert_eq!(
             T::parse_option("tc=40/960:40/960:40/960")?,
             T::FischerMulti {
                 moves: 40,
-                secs: 960.,
-                inc: 0.
+                secs:  960.,
+                inc:   0.,
             }
         );
 

@@ -20,7 +20,10 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::{Event, Timing};
+use super::{
+    node::{Event, Timing},
+    controller::Controller,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -89,11 +92,12 @@ impl fmt::Display for Qs {
 }
 
 pub struct RunQs<'a> {
-    pub eval:   &'a Eval,
-    pub clock:  &'a Clock,
-    pub tt:     &'a TranspositionTable2,
-    pub config: &'a Qs,
-    pub trail:  &'a mut Trail,
+    pub controller: &'a Controller,
+    pub eval:       &'a Eval,
+    pub clock:      &'a Clock,
+    pub tt:         &'a TranspositionTable2,
+    pub config:     &'a Qs,
+    pub trail:      &'a mut Trail,
 }
 
 impl RunQs<'_> {
@@ -362,7 +366,7 @@ impl RunQs<'_> {
             Metrics::incr_node(&n, Event::QsTtHit);
             match ttn.nt {
                 NodeType::ExactPv => {
-                    if self.tt.allow_truncated_pv {
+                    if self.tt.allow_truncated_pv && !self.controller.analyse_mode {
                         // let mv = tt.validate_move(&bd);
                         self.trail.terminal(&n, s, Event::TtPv);
                         return Err(s);
@@ -491,11 +495,12 @@ mod tests {
             let node = Node::root(0);
             let mut board = pos.board().clone();
             let mut qs = RunQs {
-                eval:   &eng.eval,
-                clock:  &eng.clock,
-                tt:     &eng.tt,
-                config: &eng.qs,
-                trail:  &mut trail,
+                controller: &eng.controller,
+                eval:       &eng.eval,
+                clock:      &eng.clock,
+                tt:         &eng.tt,
+                config:     &eng.qs,
+                trail:      &mut trail,
             };
             let _score = prof.benchmark(|| qs.qsearch(&node, &mut board, None));
             trace!("{pos}\n{trail}\n");

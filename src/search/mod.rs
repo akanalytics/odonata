@@ -22,5 +22,5 @@ pub mod restrictions;
 pub mod reverse_futility;
 pub mod search_explainer;
 pub mod stack;
-pub mod taskcontrol;
+pub mod controller;
 pub mod timecontrol;

@@ -521,6 +521,7 @@ impl UciServer {
         ));
         ops.push("option name Debug_Log_File type string default \"\"".to_string());
         ops.push("option name UCI_AnalyseMode type check default false".to_string());
+        ops.push("option name Analyse_Mode type check default false".to_string());
         ops.push("option name UCI_Opponent type string default \"\"".to_string());
         ops.push("option name Ponder type check default false".to_string());
         ops.push("option name Clear Hash type button".to_string());

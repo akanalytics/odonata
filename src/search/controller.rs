@@ -1,23 +1,30 @@
-use crate::infra::component::{Component, State};
+use crate::{
+    domain::info::Info,
+    infra::component::{Component, State},
+};
 use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display};
-use std::sync::atomic::{self, AtomicBool};
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::{
+    fmt,
+    sync::{
+        atomic::{self, AtomicBool},
+        Arc, Mutex,
+    },
+};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct TaskControl<TTaskProgress> {
+pub struct Controller {
     pub show_refutations: bool,
+    pub analyse_mode:     bool, // tries to find full PV etc
 
     #[serde(skip)]
-    pub progress_callback: Option<Arc<Mutex<dyn Fn(&TTaskProgress) + Send + Sync>>>,
+    pub progress_callback: Option<Arc<Mutex<dyn Fn(&Info) + Send + Sync>>>,
 
     #[serde(skip)]
     kill_switch: Arc<AtomicBool>,
 }
 
-impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
+impl fmt::Display for Controller {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(
             f,
@@ -38,10 +45,7 @@ impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
     }
 }
 
-impl<TTaskProgress> Component for TaskControl<TTaskProgress>
-where
-    TTaskProgress: Default + Display,
-{
+impl Component for Controller {
     fn new_iter(&mut self) {}
 
     fn new_position(&mut self) {}
@@ -61,10 +65,7 @@ where
     }
 }
 
-impl<TTaskProgress> TaskControl<TTaskProgress>
-where
-    TTaskProgress: Default + Display,
-{
+impl Controller {
     #[inline]
     pub fn cancel(&mut self) {
         self.kill_switch.store(true, atomic::Ordering::SeqCst);
@@ -77,13 +78,13 @@ where
 
     #[inline]
     pub fn is_cancelled(&mut self) -> bool {
-        //if !self.has_been_cancelled {
+        // if !self.has_been_cancelled {
         self.kill_switch.load(atomic::Ordering::SeqCst)
         //}
         // self.has_been_cancelled
     }
 
-    pub fn invoke_callback(&self, data: &TTaskProgress) {
+    pub fn invoke_callback(&self, data: &Info) {
         trace!("callback with {data}");
         if let Some(callback) = &self.progress_callback {
             let callback = callback.lock().unwrap();
@@ -91,7 +92,7 @@ where
         }
     }
 
-    pub fn register_callback(&mut self, callback: impl Fn(&TTaskProgress) + Send + Sync + 'static) {
+    pub fn register_callback(&mut self, callback: impl Fn(&Info) + Send + Sync + 'static) {
         self.progress_callback = Some(Arc::new(Mutex::new(callback)));
     }
 }

@@ -178,7 +178,7 @@ impl MoveTimeEstimator {
 
         // if its not time sensive then always check (=> exact node counts for instance)
         // only do this every 128th call to avoid expensive time computation
-        if self.time_sensitive() && !force_check && self.clock_checks % self.check_every != 0 {
+        if self.time_control.is_time_sensitive() && !force_check && self.clock_checks % self.check_every != 0 {
             return false;
         }
 
@@ -207,23 +207,6 @@ impl MoveTimeEstimator {
 
     fn pondering(&self) -> bool {
         self.pondering.load(atomic::Ordering::SeqCst)
-    }
-
-    /// For some time controls we aren't worried about node counts or search times, so we
-    /// can avoid optimizations elsewhere
-    pub fn time_sensitive(&self) -> bool {
-        match self.time_control {
-            TimeControl::DefaultTime => true,
-            TimeControl::SearchTime(_duration) => true,
-            TimeControl::UciFischer { .. } => true,
-            TimeControl::Depth(_max_ply) => false,
-            TimeControl::NodeCount(_max_nodes) => false,
-            TimeControl::Instructions(_) => true,
-            TimeControl::Cycles(_) => true,
-            TimeControl::Infinite => false,
-            TimeControl::MateIn(_) => false,
-            TimeControl::FischerMulti { .. } => panic!("FischerMulti"),
-        }
     }
 
     pub fn estimate_iteration(&mut self, ply: Ply, clock: &mut Clock) {

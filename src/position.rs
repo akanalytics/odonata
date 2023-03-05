@@ -569,7 +569,7 @@ mod tests {
         pos.set_operation(Position::BM, "e4, c4, a4")?;
         pos.set_operation(Position::PV, "e4, e5, d3")?;
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
-        assert_eq!(pos.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
+        assert_eq!(pos.pv().unwrap().to_string(), "e2e4.e7e5.d2d3");
         Ok(())
     }
 

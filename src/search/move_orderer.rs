@@ -977,11 +977,11 @@ mod tests {
     fn test_ordering_node_count() {
         let mut engine = ThreadedSearch::new();
         engine.new_game();
-        engine.algo.analyse_mode = false;
+        engine.algo.controller.analyse_mode = false;
         run_one_game(&mut engine);
 
         engine.new_game();
-        engine.algo.analyse_mode = true;
+        engine.algo.controller.analyse_mode = true;
         run_one_game(&mut engine);
     }
 

@@ -94,7 +94,7 @@ impl Algo {
                             return (Some(score), None);
                         }
 
-                        if self.tt.allow_truncated_pv
+                        if self.tt.allow_truncated_pv && !self.controller.analyse_mode
                             // && self.mte.time_sensitive()
                             && score > n.alpha
                         {

@@ -694,7 +694,7 @@ mod tests {
         );
         assert_eq!(
             tags.to_pgn(&Board::starting_pos()),
-            "[%acd 3][%acs 4][%c1 \"Hello World2\"][%id \"Hello World\"]"
+            "[%acd 3] [%acs 4] [%c1 \"Hello World2\"] [%id \"Hello World\"]"
         );
         assert_eq!(
             jsonrpc_core::to_string(&tags).unwrap(),

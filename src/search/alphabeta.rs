@@ -1,17 +1,20 @@
 use tracing::{event, instrument, Level};
 
-use crate::boards::Board;
-use crate::domain::NodeType;
-use crate::cache::tt2::{TtNode, TtScore};
-use crate::domain::Trail;
-use crate::eval::score::Score;
-use crate::infra::metric::Metrics;
-use crate::mv::Move;
-use crate::piece::Ply;
-use crate::search::algo::Algo;
-use crate::search::node::{Counter, Node, Timing};
-use crate::search::qs::RunQs;
-use crate::variation::Variation;
+use crate::{
+    boards::Board,
+    cache::tt2::{TtNode, TtScore},
+    domain::{NodeType, Trail},
+    eval::score::Score,
+    infra::metric::Metrics,
+    mv::Move,
+    piece::Ply,
+    search::{
+        algo::Algo,
+        node::{Counter, Node, Timing},
+        qs::RunQs,
+    },
+    variation::Variation,
+};
 
 use super::node::Event;
 
@@ -164,6 +167,7 @@ impl Algo {
         if n.is_qs() {
             let t = Metrics::timing_start();
             let mut qs = RunQs {
+                controller: &self.controller,
                 eval: &self.eval,
                 clock: &self.clock,
                 tt: &self.tt,
@@ -314,10 +318,10 @@ impl Algo {
                         &child_board,
                         eval,
                         &Node {
-                            ply: ply + 1,
+                            ply:   ply + 1,
                             depth: depth + ext - lmr - 1,
                             alpha: n.alpha,
-                            beta: n.alpha + Score::from_cp(1),
+                            beta:  n.alpha + Score::from_cp(1),
                         },
                         ext,
                     ) {
@@ -519,9 +523,7 @@ impl Algo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
-    use crate::domain::engine::Engine;
-    use crate::search::timecontrol::*;
+    use crate::{catalog::*, domain::engine::Engine, search::timecontrol::*};
     use anyhow::Result;
 
     #[test]
