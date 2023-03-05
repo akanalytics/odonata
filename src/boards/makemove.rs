@@ -1,11 +1,12 @@
-use crate::boards::Board;
-use crate::cache::hasher::Hasher;
-use crate::infra::black_box;
-use crate::infra::metric::Metrics;
-use crate::mv::Move;
-use crate::piece::{Piece, Repeats};
-use crate::search::node::{Counter, Timing};
-use crate::variation::Variation;
+use crate::{
+    boards::Board,
+    cache::hasher::Hasher,
+    infra::{black_box, metric::Metrics},
+    mv::Move,
+    piece::{Piece, Repeats},
+    search::node::{Counter, Timing},
+    variation::Variation,
+};
 
 use std::cell::Cell;
 
@@ -49,22 +50,22 @@ impl Board {
         );
 
         let mut b = Board {
-            en_passant: self.en_passant_square(),
-            turn: self.turn,
-            fullmove_number: self.fullmove_number,
-            half_move_clock: self.half_move_clock,
+            en_passant:       self.en_passant_square(),
+            turn:             self.turn,
+            fullmove_number:  self.fullmove_number,
+            half_move_clock:  self.half_move_clock,
             repetition_count: Cell::new(Repeats::default()),
-            threats_to: Default::default(),
-            checkers_of: Default::default(),
-            pinned: Default::default(),
-            discoverer: Default::default(),
+            threats_to:       Default::default(),
+            checkers_of:      Default::default(),
+            pinned:           Default::default(),
+            discoverer:       Default::default(),
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
-            pieces: self.pieces.clone(),
-            colors: self.colors.clone(),
-            castling: self.castling,
-            hash: self.hash,
-            ply: self.ply,
+            pieces:           self.pieces.clone(),
+            colors:           self.colors.clone(),
+            castling:         self.castling,
+            hash:             self.hash,
+            ply:              self.ply,
         };
         self.make_move_into(m, &mut b);
         b
@@ -76,8 +77,8 @@ impl Board {
         self.fullmove_number = b.fullmove_number;
         self.half_move_clock = b.half_move_clock;
         self.repetition_count = Cell::new(Repeats::default());
-        self.threats_to =  Default::default();
-        self.checkers_of =  Default::default();
+        self.threats_to = Default::default();
+        self.checkers_of = Default::default();
         self.pinned = Default::default();
         self.discoverer = Default::default();
         // material: Cell::<_>::new(b.material()),
@@ -95,7 +96,7 @@ impl Board {
         bds[i].fullmove_number = bds[j].fullmove_number;
         bds[i].half_move_clock = bds[j].half_move_clock;
         bds[i].repetition_count = Cell::new(Repeats::default());
-        bds[i].threats_to =  Default::default();
+        bds[i].threats_to = Default::default();
         bds[i].checkers_of = Default::default();
         bds[i].pinned = Default::default();
         bds[i].discoverer = Default::default();
@@ -129,9 +130,7 @@ impl Board {
             ep = m.is_ep_capture(&b)
         );
 
-
         b.apply_move(m);
-
 
         #[cfg(debug_assertions)]
         debug_assert!(
@@ -206,10 +205,8 @@ impl Board {
         }
 
         // clear one bit and set another for the move using xor
-        if !m.is_null() {
-            // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.move_piece(m.from().as_bb(), m.to().as_bb(), mover, b.turn.opposite());
-        }
+        // let from_to_bits = m.from().as_bb() | m.to().as_bb();
+        b.move_piece(m.from().as_bb(), m.to().as_bb(), mover, b.turn.opposite());
 
         if let Some(promo) = m.promo_piece() {
             // fifty clock handled by pawn move above;
@@ -304,9 +301,7 @@ impl Board {
 
 mod tests {
     use super::*;
-    use crate::{catalog::*, Bitboard};
-    use crate::globals::constants::*;
-    use crate::infra::profiler::PerfProfiler;
+    use crate::{catalog::*, globals::constants::*, infra::profiler::PerfProfiler, Bitboard};
     use anyhow::Result;
 
     #[test]
