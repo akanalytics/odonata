@@ -23,6 +23,7 @@ pub struct TtNode {
     pub depth: Ply,
     pub nt:    NodeType,
     pub bm:    BareMove,
+    pub eval:  Score,
 }
 
 /// TtScore has mate scores relative to current ply, NOT to root board
@@ -64,27 +65,46 @@ impl TtScore {
 }
 
 impl BareMove {
-    pub fn pack_20bits(&self) -> u64 {
+    pub fn pack_14bits(&self) -> u64 {
         if self.is_null() {
             return 0;
         }
         self.from.index() as u64
             + ((self.to.index() as u64) << 6)
             + if let Some(p) = self.promo {
-                (p.index() as u64) << 12
+                (Self::pack_promo_2bits(p) & 3) << 12
             } else {
                 0
             }
     }
+    fn pack_promo_2bits(p: Piece) -> u64 {
+        match p {
+            Piece::Knight => 0,
+            Piece::Bishop => 1,
+            Piece::Rook => 2,
+            Piece::Queen => 3,
+            _ => unreachable!(),
+        }
+    }
 
-    pub fn unpack_20bits(bits: u64) -> BareMove {
+    fn unpack_promo_2bits(index: u64) -> Piece {
+        match index {
+            0 => Piece::Knight,
+            1 => Piece::Bishop,
+            2 => Piece::Rook,
+            3 => Piece::Queen,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn unpack_14bits(bits: u64) -> BareMove {
         // works for null move
         let from = Square::from_u32(bits as u32 & 63);
         let to = Square::from_u32((bits >> 6) as u32 & 63);
-        let piece_index = (bits >> 12) & 7;
+        let piece_index = (bits >> 12) & 3;
         let promo = match piece_index {
             0 => None,
-            pi => Some(Piece::from_index(pi as usize)),
+            pi => Some(Self::unpack_promo_2bits(pi)),
         };
         BareMove {
             mover: None,
@@ -137,21 +157,25 @@ impl TtNode {
         bits |= ((node.depth & 255) as u64) << 8; // bits 8-15
         bits |= (node.nt as u64 & 3) << 16; // bits 16 and 17
         bits |= (node.score.pack_16bits()) << 18; // bits 18-33
-        bits |= (node.bm.pack_20bits()) << 34; // bits 34+
+        bits |= (node.bm.pack_14bits()) << 34; // bits 34-47
+        bits |= (TtScore::new(node.eval, 0).pack_16bits()) << 48; // bits 48-63
         bits
     }
 
     pub fn unpack(bits: u64) -> (TtNode, u8) {
+        // age 
         let draft = (bits >> 8) & 255;
         let node_type = NodeType::unpack_2bits((bits >> 16) & 3);
         let score = TtScore::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
-        let bm = BareMove::unpack_20bits(bits >> 34);
+        let bm = BareMove::unpack_14bits(bits >> 34);
+        let eval = TtScore::unpack_16bits((bits >> 48) & ((2 << 16) - 1)).as_score(0);
         (
             TtNode {
                 depth: draft as i32,
                 nt: node_type,
                 bm,
                 score,
+                eval,
             },
             (bits & 255) as u8,
         )
@@ -626,7 +650,7 @@ impl TranspositionTable2 {
         }
         let t = Metrics::timing_start();
         let tt_node = self.probe_by_hash(board.hash());
-        Metrics::profile(t, Timing::TimingTtProbe);
+        Metrics::profile(t, Timing::TimingTtProbe);        
         tt_node
     }
 
@@ -734,6 +758,7 @@ mod tests {
             depth: 2,
             nt:    NodeType::ExactPv,
             bm:    Move::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
+            eval: Score::from_cp(123)
         }
     }
 
@@ -743,6 +768,7 @@ mod tests {
             depth: 3,
             nt:    NodeType::ExactPv,
             bm:    Move::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
+            eval: Score::from_cp(456),
         }
     }
 
@@ -752,6 +778,7 @@ mod tests {
             depth: 4,
             nt:    NodeType::ExactPv,
             bm:    Move::new_quiet(Piece::Rook, a1.square(), a2.square()).to_inner(),
+            eval: Score::zero(),
         }
     }
 

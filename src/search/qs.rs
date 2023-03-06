@@ -21,8 +21,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::{
-    node::{Event, Timing},
     controller::Controller,
+    node::{Event, Timing},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -161,17 +161,21 @@ impl RunQs<'_> {
 
         Metrics::incr_node(&n, Event::QsEvalStatic);
         let t = Metrics::timing_start();
-        let mut pat = bd.static_eval(&self.eval);
+        // let mut pat = bd.static_eval(&self.eval);
+        // if self.tt.use_tt_for_eval {
+        //     if let Some(entry) = self.tt.probe_by_hash(b.hash()) {
+
         Metrics::profile(t, Timing::TimingQsEval);
+
+        let in_check = bd.is_in_check(bd.color_us());
+
+        let mut pat = Score::zero();
+        let hm = self.probe_tt(&mut n, bd, &mut pat)?;
 
         if !self.config.enabled {
             self.trail.terminal(&n, pat, Event::QsEvalStatic);
             return Err(pat);
         }
-
-        let in_check = bd.is_in_check(bd.color_us());
-
-        let hm = self.probe_tt(&mut n, bd, &mut pat)?;
 
         if !in_check {
             if pat >= n.beta {
@@ -361,6 +365,15 @@ impl RunQs<'_> {
         };
         Metrics::incr_node(&n, Event::QsTtProbe);
         if let Some(ttn) = self.tt.probe_by_hash(bd.hash()) {
+            if self.tt.use_tt_for_eval {
+                *pat = ttn.eval;
+                if *pat != bd.static_eval(&self.eval) {
+                    println!("\n\n\n\n{tt} != {s} for board {bd} node {n}\n\n\n\n\n", tt=*pat, s = bd.static_eval(&self.eval))
+                }
+
+            } else {
+                *pat = bd.static_eval(&self.eval);
+            }
             let s = ttn.score.as_score(n.ply);
             debug_assert!(s.is_finite());
             Metrics::incr_node(&n, Event::QsTtHit);
@@ -391,6 +404,8 @@ impl RunQs<'_> {
             if self.config.use_hash_move {
                 return Ok(ttn.validate_move(bd));
             }
+        } else {
+            *pat = bd.static_eval(&self.eval);
         }
         Ok(Move::new_null())
     }

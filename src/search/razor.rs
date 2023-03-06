@@ -200,6 +200,7 @@ impl Algo {
                         depth: 1,
                         nt: NodeType::UpperAll,
                         bm: Move::new_null().to_inner(),
+                        eval,
                     };
                     self.tt.store(b.hash(), entry);
                 }

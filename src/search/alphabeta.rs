@@ -94,33 +94,38 @@ impl Algo {
     #[inline]
     fn static_eval(&mut self, b: &Board, n: &Node) -> Score {
         Metrics::incr_node(n, Event::InteriorEvalStatic);
-        let old = self.eval.draw_scaling;
-        self.eval.draw_scaling = self.eval.draw_scaling_noisy;
-        let mut score = b.static_eval(&self.eval);
-        self.eval.draw_scaling = old;
+        // let mut score = b.static_eval(&self.eval);
 
-        if self.tt.use_tt_for_eval {
-            if let Some(entry) = self.tt.probe_by_hash(b.hash()) {
-                let lookup_score = entry.score.as_score(n.ply);
-                if entry.depth >= self.tt.tt_for_eval_depth {
-                    if entry.nt == NodeType::ExactPv {
-                        Metrics::incr_node(n, Event::TtHitEvalNode);
-                        score = lookup_score;
-                    } else if entry.nt == NodeType::LowerCut && lookup_score > score {
-                        Metrics::incr_node(n, Event::TtHitEvalNode);
-                        score = lookup_score;
-                    } else if entry.nt == NodeType::UpperAll && lookup_score < score {
-                        Metrics::incr_node(n, Event::TtHitEvalNode);
-                        score = lookup_score;
-                    } else {
-                        Metrics::incr_node(n, Event::TtMissEvalNode);
-                    }
-                    // }
-                    // eval = eval.clamp_score();
+        if let Some(entry) = self.tt.probe_by_hash(b.hash()) {
+            if self.tt.use_tt_for_eval {
+                let lookup_score = entry.eval;
+                if lookup_score != b.static_eval(&self.eval) {
+                    println!("\n\n\n\n{lookup_score} != {s} for board {b} node {n}\n\n\n\n\n", s = b.static_eval(&self.eval))
                 }
+
+                return lookup_score;
+            }else {
+                return b.static_eval(&self.eval);
             }
+                // // let lookup_score = entry.score.as_score(n.ply);
+                // if entry.depth >= self.tt.tt_for_eval_depth {
+                //     if entry.nt == NodeType::ExactPv {
+                //         Metrics::incr_node(n, Event::TtHitEvalNode);
+                //         score = lookup_score;
+                //     } else if entry.nt == NodeType::LowerCut && lookup_score > score {
+                //         Metrics::incr_node(n, Event::TtHitEvalNode);
+                //         score = lookup_score;
+                //     } else if entry.nt == NodeType::UpperAll && lookup_score < score {
+                //         Metrics::incr_node(n, Event::TtHitEvalNode);
+                //         score = lookup_score;
+                //     } else {
+                //         Metrics::incr_node(n, Event::TtMissEvalNode);
+                //     }
+                //     // }
+                //     // eval = eval.clamp_score();
+                // }
         }
-        score
+        b.static_eval(&self.eval)
     }
 
     #[instrument(target="tree",level="debug", "", skip_all, fields(k=kind,a=%alpha,b=%beta,t=?trail))]
@@ -490,6 +495,7 @@ impl Algo {
                 depth,
                 nt,
                 bm: bm.unwrap_or_default().to_inner(),
+                eval,
             };
             Metrics::incr_node(&n, Event::TtStoreNode);
             self.tt.store(b.hash(), entry);

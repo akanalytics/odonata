@@ -230,6 +230,7 @@ impl Algo {
                     depth: reduced_depth + 1,
                     nt: NodeType::LowerCut,
                     bm: Move::new_null().to_inner(),
+                    eval,
                 };
                 // remember this is the child board hash with child score,
                 // but we store it as parent board and negative score and bound,
