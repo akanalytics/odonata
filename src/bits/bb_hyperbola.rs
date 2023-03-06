@@ -1,7 +1,8 @@
-use crate::bits::bb_sliders::SlidingPieceAttacks;
-use crate::bits::bitboard::{Bitboard, Dir};
-use crate::bits::square::Square;
-use static_init::dynamic;
+use crate::bits::{
+    bb_sliders::SlidingPieceAttacks,
+    bitboard::{Bitboard, Dir},
+    square::Square,
+};
 
 // #[ctor]
 // fn init_module() {
@@ -28,8 +29,8 @@ use static_init::dynamic;
 
 // }
 
-#[dynamic]
-static STATIC_INSTANCE: Box<Hyperbola> = Hyperbola::new();
+// #[dynamic]
+static STATIC_INSTANCE: Hyperbola = Hyperbola::new();
 
 impl Hyperbola {
     // doesnt impl Default as too large to copy by value
@@ -50,51 +51,89 @@ impl Hyperbola {
 
 #[derive(Copy, Clone, Debug, Default)]
 struct HyperbolaMask {
-    diag: Bitboard,
+    diag:      Bitboard,
     anti_diag: Bitboard,
-    file: Bitboard,
+    file:      Bitboard,
     // rank: Bitboard,
+}
+
+impl HyperbolaMask {
+    const fn new() -> Self {
+        Self {
+            diag:      Bitboard::empty(),
+            anti_diag: Bitboard::empty(),
+            file:      Bitboard::empty(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct Hyperbola {
-    mask: [HyperbolaMask; 64],
-    rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
+    mask:         [HyperbolaMask; 64],
+    rank_attacks: [[Bitboard; 8]; 64], /* for perm of 6 bit-occupancy (64) and for each rook square (8) */
 }
 
 impl Hyperbola {
-    fn pop_rank_attacks(rank_attacks: &mut [[Bitboard; 8]; 64]) {
-        for occupancy_bits in 0..64 {
+    const fn new() -> Self {
+        let mut me = Self {
+            mask:         [HyperbolaMask {
+                diag:      Bitboard::EMPTY,
+                anti_diag: Bitboard::EMPTY,
+                file:      Bitboard::EMPTY,
+            }; 64],
+            rank_attacks: [[Bitboard::EMPTY; 8]; 64],
+        };
+
+        me.mask = Self::init_mask();
+        me.rank_attacks = Self::init_rank_attacks();
+        me
+    }
+
+    const fn init_rank_attacks() -> [[Bitboard; 8]; 64] {
+        let mut rank_attacks = [[Bitboard::empty(); 8]; 64];
+        let mut occupancy_bits = 0;
+        while occupancy_bits < 64 {
             let occ_incl_rook = Bitboard::from_u64(occupancy_bits).shift(Dir::E);
-            for rook_sq in Bitboard::RANK_1.squares() {
+            // for rook_sq in Bitboard::RANK_1.squares() {
+            let mut rook_sq_index = 0;
+            while rook_sq_index < 8 {
+                let rook_sq = Square::from_u32(rook_sq_index); // iters thru RANK_1
                 let occ = occ_incl_rook.exclude(rook_sq);
 
                 let east_of_rook = rook_sq.as_bb().rays(Dir::E);
-                let blockers = east_of_rook & occ;
+                let blockers = east_of_rook.and(occ);
                 let east_att = if blockers.is_empty() {
                     east_of_rook
                 } else {
-                    east_of_rook - blockers.first().rays(Dir::E)
+                    east_of_rook.sub(blockers.first().rays(Dir::E))
                 };
 
                 let west_of_rook = rook_sq.as_bb().rays(Dir::W);
-                let blockers = west_of_rook & occ;
+                let blockers = west_of_rook.and(occ);
                 let west_att = if blockers.is_empty() {
                     west_of_rook
                 } else {
-                    west_of_rook - blockers.last().rays(Dir::W)
+                    west_of_rook.sub(blockers.last().rays(Dir::W))
                 };
-                rank_attacks[occupancy_bits as usize][rook_sq.file_index()] = east_att | west_att;
+                rank_attacks[occupancy_bits as usize][rook_sq.file_index()] = east_att.or(west_att);
+                rook_sq_index += 1;
             }
+            occupancy_bits += 1;
         }
+        rank_attacks
     }
 
-    fn pop_mask(mask: &mut [HyperbolaMask; 64]) {
-        Bitboard::all().squares().for_each(|s| {
+    const fn init_mask() -> [HyperbolaMask; 64] {
+        let mut mask = [HyperbolaMask::new(); 64];
+        let mut a = 0;
+        while a < 64 {
+            let s = Square::from_u32(a);
             mask[s.index()].diag = s.as_bb().diag_flood().exclude(s);
             mask[s.index()].anti_diag = s.as_bb().anti_diag_flood().exclude(s);
             mask[s.index()].file = s.as_bb().file_flood().exclude(s);
-        });
+            a += 1;
+        }
+        mask
     }
 
     #[inline]
@@ -132,16 +171,16 @@ impl Hyperbola {
 impl SlidingPieceAttacks for Hyperbola {
     fn new() -> Box<Self> {
         let mut me = Box::new(Self {
-            mask: [HyperbolaMask {
-                diag: Bitboard::EMPTY,
+            mask:         [HyperbolaMask {
+                diag:      Bitboard::EMPTY,
                 anti_diag: Bitboard::EMPTY,
-                file: Bitboard::EMPTY,
+                file:      Bitboard::EMPTY,
             }; 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
         });
 
-        Self::pop_mask(&mut me.mask);
-        Self::pop_rank_attacks(&mut me.rank_attacks);
+        me.mask = Self::init_mask();
+        me.rank_attacks = Self::init_rank_attacks();
         me
     }
 
@@ -162,8 +201,7 @@ impl SlidingPieceAttacks for Hyperbola {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::bb_classical::ClassicalBitboard;
-    use crate::globals::constants::*;
+    use crate::{bits::bb_classical::ClassicalBitboard, globals::constants::*};
 
     #[test]
     fn test_size() {
