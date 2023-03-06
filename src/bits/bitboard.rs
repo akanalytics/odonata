@@ -667,23 +667,23 @@ impl Bitboard {
 
     /// rays exclude the src squares themselves, but includes edge squares
     #[inline]
-    pub fn rays(self, dir: Dir) -> Bitboard {
+    pub const fn rays(self, dir: Dir) -> Bitboard {
         let mut sqs = self;
         let mut bb = Bitboard::EMPTY;
         while !sqs.is_empty() {
             sqs = sqs.shift(dir);
-            bb |= sqs;
+            bb = bb.or(sqs);
         }
         bb
     }
 
     /// fills are inclusive of source square, f/aster than ray - works on empty set
     #[inline]
-    pub fn fill_north(self) -> Bitboard {
+    pub const fn fill_north(self) -> Bitboard {
         let mut bb = self;
-        bb |= Bitboard(bb.0 << 32);
-        bb |= Bitboard(bb.0 << 16);
-        bb |= Bitboard(bb.0 << 8);
+        bb = bb.or(Bitboard(bb.0 << 32));
+        bb = bb.or(Bitboard(bb.0 << 16));
+        bb = bb.or(Bitboard(bb.0 << 8));
         bb
         // let bb32 = self.0 | self.0 << 32;
         // let bb16 = bb32 | bb32 << 16;
@@ -693,11 +693,11 @@ impl Bitboard {
 
     /// fills are inclusive of source square, f/aster than ray - works on empty set
     #[inline]
-    pub fn fill_south(self) -> Bitboard {
+    pub const fn fill_south(self) -> Bitboard {
         let mut bb = self;
-        bb |= Bitboard(bb.0 >> 32);
-        bb |= Bitboard(bb.0 >> 16);
-        bb |= Bitboard(bb.0 >> 8);
+        bb = bb.or(Bitboard(bb.0 >> 32));
+        bb = bb.or(Bitboard(bb.0 >> 16));
+        bb = bb.or(Bitboard(bb.0 >> 8));
         bb
     }
 
@@ -720,19 +720,20 @@ impl Bitboard {
 
     // the set of files containing the bitboard
     #[inline]
-    pub fn file_flood(self) -> Bitboard {
-        self.fill_north() | self.fill_south() | self
+    pub const fn file_flood(self) -> Bitboard {
+        self.fill_north().or(self.fill_south()).or(self)
     }
 
     #[inline]
-    pub fn diag_flood(self) -> Bitboard {
-        self.rays(Dir::NE) | self.rays(Dir::SW) | self
+    pub const fn diag_flood(self) -> Bitboard {
+        self.rays(Dir::NE).or(self.rays(Dir::SW)).or(self)
     }
 
     #[inline]
-    pub fn anti_diag_flood(self) -> Bitboard {
-        self.rays(Dir::NW) | self.rays(Dir::SE) | self
+    pub const fn anti_diag_flood(self) -> Bitboard {
+        self.rays(Dir::NW).or(self.rays(Dir::SE)).or(self)
     }
+
     // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn or(self, other: Self) -> Self {
@@ -1059,7 +1060,6 @@ impl ExactSizeIterator for BitIterator {
     // fn is_empty(&self) -> bool {
     //     self.bb.is_empty()
     // }
-
 }
 
 impl fmt::Display for Bitboard {
@@ -1083,6 +1083,7 @@ impl fmt::Display for Bitboard {
 pub struct Squares {
     bb: Bitboard,
 }
+
 
 impl Iterator for Squares {
     type Item = Square;
