@@ -1,32 +1,35 @@
-use crate::boards::Board;
-use crate::clock::Clock;
-use crate::infra::component::Component;
-use crate::infra::metric::Metrics;
-use crate::infra::utils::Formatting;
-use crate::piece::Ply;
-use crate::search::timecontrol::TimeControl;
+use crate::{
+    boards::Board,
+    clock::Clock,
+    infra::{component::Component, metric::Metrics, utils::Formatting},
+    piece::Ply,
+    search::timecontrol::TimeControl,
+};
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::sync::atomic::{self, AtomicBool};
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    fmt,
+    sync::{
+        atomic::{self, AtomicBool},
+        Arc,
+    },
+    time::Duration,
+};
 
-use super::node::Event;
-use super::timecontrol::RemainingTime;
+use super::{node::Event, timecontrol::RemainingTime};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct MoveTimeEstimator {
-    branching_factor: f32,
-    move_overhead_ms: u64,
+    branching_factor:       f32,
+    move_overhead_ms:       u64,
     min_ply_for_estimation: Ply,
-    perc_of_time_adv: u32,
-    moves_rem: u16,
-    deterministic: bool,
-    nodestime: u64,
-    check_every: u64,
-    use_last_2_iters: bool,
-    use_moves_to_go: bool,
+    perc_of_time_adv:       u32,
+    moves_rem:              u16,
+    deterministic:          bool,
+    nodestime:              u64,
+    check_every:            u64,
+    use_last_2_iters:       bool,
+    use_moves_to_go:        bool,
 
     #[serde(skip)]
     time_control: TimeControl,
@@ -75,26 +78,26 @@ impl Component for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            move_overhead_ms: 20,
+            move_overhead_ms:       20,
             min_ply_for_estimation: 3,
-            branching_factor: 12.625,
-            perc_of_time_adv: 62,
-            moves_rem: 8,
-            deterministic: false,
-            nodestime: 0,
-            use_last_2_iters: true,
-            use_moves_to_go: false,
+            branching_factor:       12.625,
+            perc_of_time_adv:       62,
+            moves_rem:              8,
+            deterministic:          false,
+            nodestime:              0,
+            use_last_2_iters:       true,
+            use_moves_to_go:        false,
 
             estimate_move_time: Duration::default(),
-            elapsed_search: Duration::default(),
-            elapsed_iter: Duration::default(),
+            elapsed_search:     Duration::default(),
+            elapsed_iter:       Duration::default(),
 
-            time_control: TimeControl::default(),
-            fischer_increment: None,
-            pondering: Arc::new(AtomicBool::from(false)),
-            board: Board::default(),
-            check_every: 128,
-            clock_checks: 0,
+            time_control:       TimeControl::default(),
+            fischer_increment:  None,
+            pondering:          Arc::new(AtomicBool::from(false)),
+            board:              Board::default(),
+            check_every:        128,
+            clock_checks:       0,
             prior_elapsed_iter: Duration::default(),
         }
     }
@@ -178,13 +181,16 @@ impl MoveTimeEstimator {
 
         // if its not time sensive then always check (=> exact node counts for instance)
         // only do this every 128th call to avoid expensive time computation
-        if self.time_control.is_time_sensitive() && !force_check && self.clock_checks % self.check_every != 0 {
+        if self.time_control.is_time_sensitive()
+            && !force_check
+            && self.clock_checks % self.check_every != 0
+        {
             return false;
         }
 
         match self.time_control {
             TimeControl::DefaultTime => false,
-            TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
+            TimeControl::Depth(_max_ply) => false, /* ply > max_ply,  // dont cause an abort on last iteration */
             TimeControl::SearchTime(duration) => {
                 10 * self.elapsed_with_margin(c) > duration * 9 && !self.pondering()
             }
@@ -279,8 +285,9 @@ impl MoveTimeEstimator {
             //     Formatting::duration(winc),
             //     Formatting::duration(binc),
             // );
-            (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc
-                - Duration::from_millis(self.move_overhead_ms)
+            let rem =
+                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc;
+            rem.saturating_sub(Duration::from_millis(self.move_overhead_ms))
         } else {
             let remaining = time_us + time_adv * self.perc_of_time_adv / 100;
             // let per_move_a = remaining / u32::max(u32::min(rt.moves_to_go as u32 / 2, 1), self.moves_rem as u32);
@@ -299,7 +306,8 @@ impl MoveTimeEstimator {
             //     Formatting::duration(per_move_a),
             //     Formatting::duration(per_move_b)
             // );
-            per_move + inc - Duration::from_millis(self.move_overhead_ms)
+            let rem = per_move + inc;
+            rem.saturating_sub(Duration::from_millis(self.move_overhead_ms))
         }
     }
 
