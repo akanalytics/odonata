@@ -7,6 +7,7 @@ impl Version {
     pub const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
     pub const NAME: &'static str = env!("CARGO_PKG_NAME");
     pub const HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
+    pub const GIT_COMMIT_MSG: &'static str = env!("GIT_COMMIT_MSG");
     pub const SMALL_IMAGE: &'static str = r##"
  ()
 %=====
@@ -71,6 +72,11 @@ impl Version {
             built_info::GIT_VERSION.to_string_or("")
         );
         s += &format!(
+            "git commit   : {}\n",
+            built_info::GIT_COMMIT_HASH_SHORT.to_string_or("")
+        );
+        s += &format!("git message  : {}\n", Self::GIT_COMMIT_MSG);
+        s += &format!(
             "uncommitted  : {}\n",
             built_info::GIT_DIRTY.to_string_or("")
         );
@@ -111,7 +117,6 @@ mod tests {
 
     #[test]
     fn test_version() {
-
         assert_eq!(Version::VERSION.is_empty(), false);
         assert_eq!(Version::AUTHORS.is_empty(), false);
         assert_eq!(Version::NAME, "odonata");
