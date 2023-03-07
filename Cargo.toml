@@ -70,7 +70,7 @@ env_logger = "0.9"
 tracing-subscriber = {version = "0.3", default-features = false, features = ["env-filter", "fmt"]}
 
 [build-dependencies]
-built = {version = "0.5", features = ["chrono", "semver", "git2"]}
+built = {version = "0.6", features = ["chrono", "semver", "git2"]}
 include_dir = "0.6"
 
 [[bench]]
