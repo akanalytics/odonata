@@ -1,14 +1,14 @@
-use crate::boards::Board;
-use crate::domain::NodeType;
-use crate::cache::tt2::{TtNode, TtScore};
-use crate::domain::Trail;
-use crate::eval::score::{Score, ToScore};
-use crate::infra::component::Component;
-use crate::infra::metric::Metrics;
-use crate::mv::Move;
-use crate::piece::{MoveType, MoveTypes, Ply};
-use crate::search::node::{Event, Node};
-use crate::Algo;
+use crate::{
+    boards::Board,
+    cache::tt2::{TtNode, TtScore},
+    domain::{NodeType, Trail},
+    eval::score::{Score, ToScore},
+    infra::{component::Component, metric::Metrics},
+    mv::Move,
+    piece::{MoveType, MoveTypes, Ply},
+    search::node::{Event, Node},
+    Algo,
+};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -21,7 +21,6 @@ use std::fmt;
 // CLOP - linear
 // 2+0.02 94/431/865 - 90/381/873 at 362k iters
 
-//
 // http://talkchess.com/forum3/viewtopic.php?f=7&t=41597
 //
 // Similar code appears in Jury Osipov's open source engine Strelka 2.0 [12] , failing a bit harder.
@@ -46,17 +45,17 @@ use std::fmt;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Razor {
-    enabled: bool,
-    beta_enabled: bool,
-    store_tt: bool,
-    pv_nodes: bool,
-    min_opponents: i32,
-    min_pieces: i32,
-    min_pieces_depth: Ply,
-    max_depth: Ply,
-    margin1: i32,
-    margin2: i32,
-    margin3: i32,
+    enabled:              bool,
+    beta_enabled:         bool,
+    store_tt:             bool,
+    pv_nodes:             bool,
+    min_opponents:        i32,
+    min_pieces:           i32,
+    min_pieces_depth:     Ply,
+    max_depth:            Ply,
+    margin1:              i32,
+    margin2:              i32,
+    margin3:              i32,
     move_types_forbidden: MoveTypes,
 }
 
@@ -71,17 +70,17 @@ impl Component for Razor {
 impl Default for Razor {
     fn default() -> Self {
         Self {
-            enabled: true,
-            beta_enabled: true,
-            store_tt: true,
-            pv_nodes: false,
-            min_opponents: 4,
-            min_pieces: 0,
-            min_pieces_depth: 0,
-            max_depth: 3, // 1 means we still prune at frontier (depth=1)
-            margin1: 94,
-            margin2: 381,
-            margin3: 873,
+            enabled:              true,
+            beta_enabled:         true,
+            store_tt:             true,
+            pv_nodes:             false,
+            min_opponents:        4,
+            min_pieces:           0,
+            min_pieces_depth:     0,
+            max_depth:            3, // 1 means we still prune at frontier (depth=1)
+            margin1:              94,
+            margin2:              381,
+            margin3:              873,
             move_types_forbidden: MoveType::Hash
                 | MoveType::Killer
                 | MoveType::Promo
@@ -178,7 +177,19 @@ impl Algo {
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
-                let (score, _event) = self.alphabeta("rz", trail, b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                let (score, _event) = self.alphabeta(
+                    "rz",
+                    trail,
+                    b,
+                    Node {
+                        zw:    n.zw,
+                        ply:   n.ply,
+                        depth: 0,
+                        alpha: n.alpha,
+                        beta:  n.beta,
+                    },
+                    last_move,
+                )?;
                 Metrics::incr_node(n, Event::RazorSuccess);
                 Metrics::incr_node(n, event);
                 return Ok(Some(score));
@@ -186,12 +197,15 @@ impl Algo {
                 // pvs search around {alpha - margin}
                 let (score, _event) = self.alphabeta(
                     "rzzw",
-                    trail, 
+                    trail,
                     b,
-                    n.ply,
-                    0,
-                    n.alpha - margin,
-                    n.alpha - margin + 1.cp(),
+                    Node {
+                        zw:    true,
+                        ply:   n.ply,
+                        depth: 0,
+                        alpha: n.alpha - margin,
+                        beta:  n.alpha - margin + 1.cp(),
+                    },
                     last_move,
                 )?;
                 if self.razor.store_tt {
@@ -232,7 +246,7 @@ impl fmt::Display for Razor {
 mod tests {
     use super::*;
     // use crate::catalog::*;
-    //use crate::comms::uci::*;
+    // use crate::comms::uci::*;
     // use crate::eval::eval::*;
 
     #[test]

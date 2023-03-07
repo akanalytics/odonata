@@ -420,16 +420,10 @@ impl Trail {
         self.path.push(mv);
         self.pv_for_ply[ply + 1].clear();
         self.seldepth = self.seldepth.max(self.path.len() as Ply);
-        let n = Node {
-            ply:   n.ply + 1,
-            depth: n.depth - 1,
-            alpha: -n.beta,
-            beta:  -n.alpha,
-        };
 
         if self.tree_crit.accept(&self.path) {
             self.chess_tree.merge(&self.path, NodeDetails {
-                n,
+                n: n.new_child(),
                 e: Event::MovePush,
                 sc: Score::INFINITY,
                 nt: NodeType::Unused,

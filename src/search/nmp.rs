@@ -1,20 +1,21 @@
-use crate::boards::Board;
-use crate::domain::NodeType;
-use crate::cache::tt2::{TtNode, TtScore};
-use crate::domain::Trail;
-use crate::eval::score::{Score, ToScore};
-use crate::infra::metric::Metrics;
-use crate::mv::Move;
-use crate::search::algo::Algo;
-use crate::search::node::{Event, Node};
+use crate::{
+    boards::Board,
+    cache::tt2::{TtNode, TtScore},
+    domain::{NodeType, Trail},
+    eval::score::{Score, ToScore},
+    infra::metric::Metrics,
+    mv::Move,
+    search::{
+        algo::Algo,
+        node::{Event, Node},
+    },
+};
 // use crate::eval::score::Score;
-use crate::infra::component::Component;
-use crate::variation::Variation;
+use crate::{infra::component::Component, variation::Variation};
 // use crate::{debug, logger::LogInit};
 use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
-use std::cmp::min;
-use std::fmt;
+use std::{cmp::min, fmt};
 use tracing::instrument;
 
 // CLOP
@@ -26,18 +27,18 @@ use tracing::instrument;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NullMovePruning {
-    pub enabled: bool,
-    pub recursive: bool,
-    pub successive: bool,
-    pub margin: Score,
-    pub min_depth: Ply,
-    pub store_tt: bool,
+    pub enabled:               bool,
+    pub recursive:             bool,
+    pub successive:            bool,
+    pub margin:                Score,
+    pub min_depth:             Ply,
+    pub store_tt:              bool,
     pub depth_reduction_strat: i64,
-    prune_alpha_mate: bool,
-    prune_beta_mate: bool,
-    pub a: f32,
-    pub b: f32,
-    pub c: f32,
+    prune_alpha_mate:          bool,
+    prune_beta_mate:           bool,
+    pub a:                     f32,
+    pub b:                     f32,
+    pub c:                     f32,
 }
 
 impl Component for NullMovePruning {
@@ -51,18 +52,18 @@ impl Component for NullMovePruning {
 impl Default for NullMovePruning {
     fn default() -> Self {
         Self {
-            enabled: true,
-            recursive: true,
-            successive: true,
-            margin: Score::from_cp(-10000),
-            min_depth: 2, // 1 means we still prune at frontier (depth=1)
-            store_tt: true,
+            enabled:               true,
+            recursive:             true,
+            successive:            true,
+            margin:                Score::from_cp(-10000),
+            min_depth:             2, // 1 means we still prune at frontier (depth=1)
+            store_tt:              true,
             depth_reduction_strat: 100,
-            prune_alpha_mate: false,
-            prune_beta_mate: false,
-            a: 2.7,
-            b: 0.198,
-            c: 0.00017,
+            prune_alpha_mate:      false,
+            prune_beta_mate:       false,
+            a:                     2.7,
+            b:                     0.198,
+            c:                     0.00017,
         }
     }
 }
@@ -205,10 +206,13 @@ impl Algo {
                 "nmp",
                 trail,
                 &mut child_board,
-                n.ply + 1,
-                reduced_depth,
-                -n.beta,
-                -n.beta + 1.cp(),
+                Node {
+                    zw:    true,
+                    ply:   n.ply + 1,
+                    depth: reduced_depth,
+                    alpha: -n.beta,
+                    beta:  -n.beta + 1.cp(),
+                },
                 mv,
             )?
             .0;
@@ -257,7 +261,7 @@ impl fmt::Display for NullMovePruning {
 mod tests {
     use super::*;
     // use crate::catalog::*;
-    //use crate::comms::uci::*;
+    // use crate::comms::uci::*;
     // use crate::eval::eval::*;
 
     #[test]

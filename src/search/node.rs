@@ -1,14 +1,11 @@
-use crate::domain::NodeType;
-use crate::eval::score::Score;
+use crate::{domain::NodeType, eval::score::Score};
 // use crate::boards::Board;
 
 use crate::piece::Ply;
 
-use std::convert::AsRef;
-use std::fmt;
+use std::{convert::AsRef, fmt};
 use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::{AsRefStr, EnumMessage};
-use strum_macros::{Display, EnumCount, EnumIter};
+use strum_macros::{AsRefStr, Display, EnumCount, EnumIter, EnumMessage};
 
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
@@ -105,7 +102,6 @@ pub enum Event {
     UserCancelled,
 
     MovePush,
-
 
     HashProbe,
     HashHit,
@@ -350,7 +346,6 @@ pub enum Event {
     QsCatInsufficientMaterial,
 }
 
-
 impl Default for Event {
     fn default() -> Self {
         Event::Unknown
@@ -382,18 +377,19 @@ impl Event {
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Node {
-    pub ply: Ply,
+    pub zw:    bool,
+    pub ply:   Ply,
     pub depth: Ply,
     pub alpha: Score,
-    pub beta: Score,
+    pub beta:  Score,
 }
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "P:{} D:{} a:{} b:{}",
-            self.ply, self.depth, self.alpha, self.beta
+            "P:{} D:{} a:{} b:{} {}",
+            self.ply, self.depth, self.alpha, self.beta, self.zw
         )
     }
 }
@@ -402,6 +398,7 @@ impl Node {
     #[inline]
     pub fn root(depth: Ply) -> Node {
         Node {
+            zw: false,
             ply: 0,
             depth,
             alpha: -Score::INFINITY,
@@ -412,10 +409,28 @@ impl Node {
     #[inline]
     pub fn new_child(&self) -> Node {
         Node {
+            zw:    self.zw,
             alpha: -self.beta,
             depth: self.depth - 1,
-            beta: -self.alpha,
-            ply: self.ply + 1,
+            beta:  -self.alpha,
+            ply:   self.ply + 1,
+        }
+    }
+
+    #[inline]
+    pub fn ext(&self, ext: Ply) -> Node {
+        Node {
+            depth: self.depth + ext,
+            ..*self
+        }
+    }
+
+    #[inline]
+    pub fn zw(&self) -> Node {
+        Node {
+            zw: true,
+            alpha: self.beta + Score::from_cp(-1),
+            ..*self
         }
     }
 
@@ -426,6 +441,11 @@ impl Node {
 
     #[inline]
     pub fn is_zw(&self) -> bool {
+        self.alpha.is_numeric() && self.beta.is_numeric() && self.zw
+    }
+
+    // cases when zw and fw are actually the same
+    pub fn is_fw_equal_zw(&self) -> bool {
         self.alpha.is_numeric()
             && self.beta.is_numeric()
             && self.alpha.as_i16() + 1 == self.beta.as_i16()
@@ -445,7 +465,7 @@ impl Node {
         match score {
             s if s <= self.alpha => NodeType::UpperAll,
             s if s >= self.beta => NodeType::LowerCut,
-            _ => NodeType::ExactPv  // alpha < score < beta
+            _ => NodeType::ExactPv, // alpha < score < beta
         }
     }
 }

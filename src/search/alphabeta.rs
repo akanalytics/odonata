@@ -7,7 +7,6 @@ use crate::{
     eval::score::Score,
     infra::metric::Metrics,
     mv::Move,
-    piece::Ply,
     search::{
         algo::Algo,
         node::{Counter, Node, Timing},
@@ -41,16 +40,7 @@ impl Algo {
         // self.stats.depth = depth;
         debug_assert!(self.current_variation.len() == 0);
 
-        let (score, category) = match self.alphabeta(
-            "begin",
-            trail,
-            board,
-            n.ply,
-            self.max_depth,
-            n.alpha,
-            n.beta,
-            Move::new_null(),
-        ) {
+        let (score, category) = match self.alphabeta("begin", trail, board, *n, Move::new_null()) {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category),
         };
@@ -100,60 +90,60 @@ impl Algo {
             if self.tt.use_tt_for_eval {
                 let lookup_score = entry.eval;
                 if lookup_score != b.static_eval(&self.eval) {
-                    println!("\n\n\n\n{lookup_score} != {s} for board {b} node {n}\n\n\n\n\n", s = b.static_eval(&self.eval))
+                    println!(
+                        "\n\n\n\n{lookup_score} != {s} for board {b} node {n}\n\n\n\n\n",
+                        s = b.static_eval(&self.eval)
+                    )
                 }
 
                 return lookup_score;
-            }else {
+            } else {
                 return b.static_eval(&self.eval);
             }
-                // // let lookup_score = entry.score.as_score(n.ply);
-                // if entry.depth >= self.tt.tt_for_eval_depth {
-                //     if entry.nt == NodeType::ExactPv {
-                //         Metrics::incr_node(n, Event::TtHitEvalNode);
-                //         score = lookup_score;
-                //     } else if entry.nt == NodeType::LowerCut && lookup_score > score {
-                //         Metrics::incr_node(n, Event::TtHitEvalNode);
-                //         score = lookup_score;
-                //     } else if entry.nt == NodeType::UpperAll && lookup_score < score {
-                //         Metrics::incr_node(n, Event::TtHitEvalNode);
-                //         score = lookup_score;
-                //     } else {
-                //         Metrics::incr_node(n, Event::TtMissEvalNode);
-                //     }
-                //     // }
-                //     // eval = eval.clamp_score();
-                // }
+            // // let lookup_score = entry.score.as_score(n.ply);
+            // if entry.depth >= self.tt.tt_for_eval_depth {
+            //     if entry.nt == NodeType::ExactPv {
+            //         Metrics::incr_node(n, Event::TtHitEvalNode);
+            //         score = lookup_score;
+            //     } else if entry.nt == NodeType::LowerCut && lookup_score > score {
+            //         Metrics::incr_node(n, Event::TtHitEvalNode);
+            //         score = lookup_score;
+            //     } else if entry.nt == NodeType::UpperAll && lookup_score < score {
+            //         Metrics::incr_node(n, Event::TtHitEvalNode);
+            //         score = lookup_score;
+            //     } else {
+            //         Metrics::incr_node(n, Event::TtMissEvalNode);
+            //     }
+            //     // }
+            //     // eval = eval.clamp_score();
+            // }
         }
         b.static_eval(&self.eval)
     }
 
-    #[instrument(target="tree",level="debug", "", skip_all, fields(k=kind,a=%alpha,b=%beta,t=?trail))]
+    #[instrument(target="tree",level="debug", "", skip_all, fields(k=kind,n=%n,t=?trail))]
     pub fn alphabeta(
         &mut self,
         kind: &str,
         trail: &mut Trail,
         b: &mut Board,
-        ply: Ply,
-        depth: Ply,
-        alpha: Score,
-        beta: Score,
+        mut n: Node,
         last_move: Move,
     ) -> Result<(Score, Event), Event> {
-        debug_assert!(alpha < beta);
-        debug_assert!(ply >= 0);
+        debug_assert!(n.alpha < n.beta);
+        debug_assert!(n.ply >= 0);
 
         self.report_progress();
 
-        let mut n = Node {
-            ply,
-            depth,
-            alpha,
-            beta,
-        };
+        // if n.alpha.is_numeric() && n.beta.is_numeric() && n.zw != n.alpha.is_numeric() && n.beta.is_numeric() && 
+        // n.alpha.as_i16() + 1 == n.beta.as_i16() {
+        //     println!("Node {n}")
+        // }
+
+
         debug_assert!(n.alpha < n.beta, "alpha={}, beta={}", n.alpha, n.beta,);
 
-        let (cancelled, mut cat) = self.time_up_or_cancelled(ply, false);
+        let (cancelled, mut cat) = self.time_up_or_cancelled(n.ply, false);
         if cancelled {
             return Err(cat);
         }
@@ -192,7 +182,7 @@ impl Algo {
         let mut nt = NodeType::UpperAll;
 
         // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
-        if ply > 0 && b.draw_outcome().is_some() {
+        if n.ply > 0 && b.draw_outcome().is_some() {
             Metrics::incr_node(&n, Event::NodeLeafDraw);
             return Ok((b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw)); // will return a draw score
         }
@@ -243,7 +233,7 @@ impl Algo {
             if trail.path().len() < 2 {
                 event!(target:"ab",Level::DEBUG, "Trying move {mv} of kind {mt}");
             }
-            if self.restrictions.skip_move(ply, &mv) {
+            if self.restrictions.skip_move(n.ply, &mv) {
                 continue;
             }
             Metrics::incr_node(&n, Event::MoveCount);
@@ -288,16 +278,8 @@ impl Algo {
             let lmr = self.lmr(b, mv, count, quiets, mt, &child_board, &n, nt, ext, tt_mv);
             if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
                 Metrics::incr_node(&n, Event::SearchFwFd);
-                (s, ev) = self.alphabeta(
-                    "!pvs",
-                    trail,
-                    &mut child_board,
-                    ply + 1,
-                    depth + ext - 1,
-                    -n.beta,
-                    -n.alpha,
-                    mv,
-                )?;
+                (s, ev) =
+                    self.alphabeta("!pvs", trail, &mut child_board, n.new_child().ext(ext), mv)?;
                 s = -s;
                 // // full depth
                 // if s > n.alpha && !(lmr == 0) {
@@ -323,8 +305,9 @@ impl Algo {
                         &child_board,
                         eval,
                         &Node {
-                            ply:   ply + 1,
-                            depth: depth + ext - lmr - 1,
+                            zw:    true,
+                            ply:   n.ply + 1,
+                            depth: n.depth + ext - lmr - 1,
                             alpha: n.alpha,
                             beta:  n.alpha + Score::from_cp(1),
                         },
@@ -337,10 +320,7 @@ impl Algo {
                             "zwrd",
                             trail,
                             &mut child_board,
-                            ply + 1,
-                            depth + ext - lmr - 1,
-                            -n.alpha + Score::from_cp(-1),
-                            -n.alpha,
+                            n.new_child().ext(ext - lmr).zw(),
                             mv,
                         )?;
                         s = -s;
@@ -351,10 +331,7 @@ impl Algo {
                         "zwfd",
                         trail,
                         &mut child_board,
-                        ply + 1,
-                        depth + ext - 1,
-                        -n.alpha + Score::from_cp(-1),
-                        -n.alpha,
+                        n.new_child().ext(ext).zw(),
                         mv,
                     )?;
                     s = -s;
@@ -380,26 +357,20 @@ impl Algo {
                         "zwfd",
                         trail,
                         &mut child_board,
-                        ply + 1,
-                        depth + ext - 1,
-                        -n.alpha + Score::from_cp(-1),
-                        -n.alpha,
+                        n.new_child().ext(ext).zw(),
                         mv,
                     )?;
                     s = -s;
                 }
 
-                // full window
-                if s > n.alpha && !(lmr == 0 && n.is_zw()) {
+                // research at full window if fw != zw
+                if s > n.alpha && !(lmr == 0 && n.is_fw_equal_zw() ) {
                     Metrics::incr_node(&n, Event::ReSearchFwFd);
                     (s, ev) = self.alphabeta(
                         "fwfd",
                         trail,
                         &mut child_board,
-                        ply + 1,
-                        depth + ext - 1,
-                        -n.beta,
-                        -n.alpha,
+                        n.new_child().ext(ext),
                         mv,
                     )?;
                     s = -s;
@@ -492,7 +463,7 @@ impl Algo {
         if score > -Score::INFINITY && score < Score::INFINITY {
             let entry = TtNode {
                 score: TtScore::new(score, n.ply),
-                depth,
+                depth: n.depth,
                 nt,
                 bm: bm.unwrap_or_default().to_inner(),
                 eval,

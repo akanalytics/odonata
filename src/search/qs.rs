@@ -359,6 +359,16 @@ impl RunQs<'_> {
         }
     }
 
+    // Either:
+    //   sets score, hash move, narrows window
+    // Or:
+    //   returns fail low/high with score
+    //
+
+    // SearchResult
+    // enum Score, HintMove, Eval
+    // new Window
+
     fn probe_tt(&mut self, n: &mut Node, bd: &Board, pat: &mut Score) -> Result<Move, Score> {
         if !self.config.probe_tt {
             return Ok(Move::new_null());
@@ -368,9 +378,12 @@ impl RunQs<'_> {
             if self.tt.use_tt_for_eval {
                 *pat = ttn.eval;
                 if *pat != bd.static_eval(&self.eval) {
-                    println!("\n\n\n\n{tt} != {s} for board {bd} node {n}\n\n\n\n\n", tt=*pat, s = bd.static_eval(&self.eval))
+                    println!(
+                        "\n\n\n\n{tt} != {s} for board {bd} node {n}\n\n\n\n\n",
+                        tt = *pat,
+                        s = bd.static_eval(&self.eval)
+                    )
                 }
-
             } else {
                 *pat = bd.static_eval(&self.eval);
             }
@@ -423,6 +436,7 @@ impl RunQs<'_> {
         self.trail.push_move(n, mv);
         // self.current_variation.push(mv);
         let qsn = Node {
+            zw:    n.zw,
             ply:   n.ply + 1,
             depth: n.depth - 1,
             alpha: -n.beta,
