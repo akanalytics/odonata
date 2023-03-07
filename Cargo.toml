@@ -72,6 +72,7 @@ tracing-subscriber = {version = "0.3", default-features = false, features = ["en
 [build-dependencies]
 built = {version = "0.6", features = ["chrono", "semver", "git2"]}
 include_dir = "0.6"
+# vergen = {git = "https://github.com/rustyhorde/vergen.git", tag="8.0.0-beta.8", features = ["build", "cargo", "git", "git2", "rustc", "si"]}
 
 [[bench]]
 test = false
