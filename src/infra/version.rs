@@ -72,6 +72,10 @@ impl Version {
             built_info::GIT_VERSION.to_string_or("")
         );
         s += &format!(
+            "git branch   : {}\n",
+            built_info::GIT_HEAD_REF.to_string_or("")
+        );
+        s += &format!(
             "git commit   : {}\n",
             built_info::GIT_COMMIT_HASH_SHORT.to_string_or("")
         );
