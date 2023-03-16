@@ -10,7 +10,7 @@ keywords = ["chess"]
 license = "GPL-3.0+"
 name = "odonata"
 repository = "https://github.com/akanalytics/odonata"
-version = "0.6.44"
+version = "0.6.45"
 
 # for built dependency
 build = "build.rs"

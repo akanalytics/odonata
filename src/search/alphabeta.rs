@@ -135,11 +135,10 @@ impl Algo {
 
         self.report_progress();
 
-        // if n.alpha.is_numeric() && n.beta.is_numeric() && n.zw != n.alpha.is_numeric() && n.beta.is_numeric() && 
+        // if n.alpha.is_numeric() && n.beta.is_numeric() && n.zw != n.alpha.is_numeric() && n.beta.is_numeric() &&
         // n.alpha.as_i16() + 1 == n.beta.as_i16() {
         //     println!("Node {n}")
         // }
-
 
         debug_assert!(n.alpha < n.beta, "alpha={}, beta={}", n.alpha, n.beta,);
 
@@ -276,119 +275,91 @@ impl Algo {
 
             count += 1;
             let lmr = self.lmr(b, mv, count, quiets, mt, &child_board, &n, nt, ext, tt_mv);
-            if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
-                Metrics::incr_node(&n, Event::SearchFwFd);
-                (s, ev) =
-                    self.alphabeta("!pvs", trail, &mut child_board, n.new_child().ext(ext), mv)?;
-                s = -s;
-                // // full depth
-                // if s > n.alpha && !(lmr == 0) {
-                // Metric::incr_node(&n, Event::SearchFwFd);
-                //     (s, ev) = self.alphabeta(
-                //         &mut child_board,
-                //         ply + 1,
-                //         depth + ext - 1,
-                //         -n.beta,
-                //         -n.alpha,
-                //         mv,
-                //     )?;
-                //     s = -s;
-                // }
-            } else {
-                if lmr > 0 {
-                    ev = Event::FutilityD0;
-                    if let Some(est) = self.can_futility_prune_move(
-                        mv,
-                        count,
-                        mt,
-                        b,
-                        &child_board,
-                        eval,
-                        &Node {
-                            zw:    true,
-                            ply:   n.ply + 1,
-                            depth: n.depth + ext - lmr - 1,
-                            alpha: n.alpha,
-                            beta:  n.alpha + Score::from_cp(1),
-                        },
-                        ext,
-                    ) {
-                        s = est;
-                    } else {
-                        Metrics::incr_node(&n, Event::SearchZwRd);
+
+            // ONLY do fw if
+            // we are on PV trail (=fw) otherwise we should narrow/reduce
+            // and pvs not permitted perhaps due to depth
+            ev = Event::FutilityD0;
+            let cb = &mut child_board;
+            s = Score::INFINITY;
+            if !(n.is_fw() && !self.pvs_permitted(nt, b, &n, count)) && lmr > 0 {
+                if let Some(est) = self.can_futility_prune_move(
+                    mv,
+                    count,
+                    mt,
+                    b,
+                    cb,
+                    eval,
+                    &Node {
+                        zw:    true,
+                        ply:   n.ply + 1,
+                        depth: n.depth + ext - lmr - 1,
+                        alpha: n.alpha,
+                        beta:  n.alpha + Score::from_cp(1),
+                    },
+                    ext,
+                ) {
+                    s = est;
+                }
+            }
+
+            if s == Score::INFINITY {
+                match (lmr > 0, n.is_fw_equal_zw()) {
+                    (..) if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) => {
+                        Metrics::incr_node(&n, Event::SearchFwFd);
+                        (s, ev) = self.alphabeta("!pvs", trail, cb, n.new_child().ext(ext), mv)?;
+                        s = -s;
+                    }
+                    (true, false) => {
                         (s, ev) = self.alphabeta(
                             "zwrd",
                             trail,
-                            &mut child_board,
+                            cb,
                             n.new_child().ext(ext - lmr).zw(),
                             mv,
                         )?;
                         s = -s;
+                        if s > n.alpha {
+                            (s, ev) =
+                                self.alphabeta("zwfd", trail, cb, n.new_child().ext(ext).zw(), mv)?;
+                            s = -s;
+                        }
+                        if s > n.alpha {
+                            (s, ev) =
+                                self.alphabeta("fwfd", trail, cb, n.new_child().ext(ext), mv)?;
+                            s = -s;
+                        }
                     }
-                } else {
-                    Metrics::incr_node(&n, Event::SearchZwFd);
-                    (s, ev) = self.alphabeta(
-                        "zwfd",
-                        trail,
-                        &mut child_board,
-                        n.new_child().ext(ext).zw(),
-                        mv,
-                    )?;
-                    s = -s;
-                }
-                // // adds nothing!
-                // // full width, red dep
-                // if s > n.alpha && !(lmr == 0) {
-                //     (s, ev) = self.alphabeta(
-                //         &mut child_board,
-                //         ply + 1,
-                //         depth + ext - lmr - 1,
-                //         -n.beta,
-                //         -n.alpha,
-                //         mv,
-                //     )?;
-                //     s = -s;
-                // }
-
-                // full depth, zw
-                if s > n.alpha && !(lmr == 0) {
-                    Metrics::incr_node(&n, Event::ReSearchZwFd);
-                    (s, ev) = self.alphabeta(
-                        "zwfd",
-                        trail,
-                        &mut child_board,
-                        n.new_child().ext(ext).zw(),
-                        mv,
-                    )?;
-                    s = -s;
-                }
-
-                // research at full window if fw != zw
-                if s > n.alpha && !(lmr == 0 && n.is_fw_equal_zw() ) {
-                    Metrics::incr_node(&n, Event::ReSearchFwFd);
-                    (s, ev) = self.alphabeta(
-                        "fwfd",
-                        trail,
-                        &mut child_board,
-                        n.new_child().ext(ext),
-                        mv,
-                    )?;
-                    s = -s;
-                }
+                    (true, true) => {
+                        (s, ev) =
+                            self.alphabeta("fwrd", trail, cb, n.new_child().ext(ext - lmr), mv)?;
+                        s = -s;
+                        if s > n.alpha {
+                            (s, ev) =
+                                self.alphabeta("fwfd", trail, cb, n.new_child().ext(ext), mv)?;
+                            s = -s;
+                        }
+                    }
+                    (false, false) => {
+                        // (s, ev) =
+                        //     self.alphabeta("zwrd", trail, cb, n.new_child().ext(ext - lmr).zw(), mv)?;
+                        // s = -s;
+                        (s, ev) =
+                            self.alphabeta("zwfd", trail, cb, n.new_child().ext(ext).zw(), mv)?;
+                        s = -s;
+                        if s > n.alpha {
+                            (s, ev) =
+                                self.alphabeta("fwfd", trail, cb, n.new_child().ext(ext), mv)?;
+                            s = -s;
+                        }
+                    }
+                    (false, true) => {
+                        (s, ev) = self.alphabeta("fwfd", trail, cb, n.new_child().ext(ext), mv)?;
+                        s = -s;
+                    }
+                };
             }
-            //     // using [alpha, alpha + 1]
-            //     debug_assert!(n.alpha.is_numeric());
-            //     self.stats.inc_pvs_move(ply);
-            //     (s, ev) = self.alphabeta(
-            //         &mut child_board,
-            //         ply + 1,
-            //         depth + ext - lmr - 1,
-            //         -n.alpha - Score::from_cp(1),
-            //         -n.alpha,
-            //         mv,
-            //     )?;
-            //     s = -s;
-            // }
+
 
             let cat = ev;
 
