@@ -204,10 +204,18 @@ impl TimeControl {
                     write!(f, "{moves}/",)?;
                 }
                 if secs > 0. {
-                    write!(f, "{s:.3}", s = secs)?;
+                    if secs.fract() == 0.0 {
+                        write!(f, "{secs:.0}")?;
+                    } else {
+                        write!(f, "{secs:.3}")?;
+                    }
                 }
                 if inc > 0. {
-                    write!(f, "+{i:.3}", i = inc)?;
+                    if inc.fract() == 0.0 {
+                        write!(f, "+{inc:.0}")?;
+                    } else {
+                        write!(f, "+{inc:.3}")?;
+                    }
                 }
             }
         };
@@ -414,6 +422,8 @@ mod tests {
             secs:  60.,
             inc:   0.,
         });
+        assert_eq!(T::parse_option("tc=5/60")?.to_string(), "5/60");
+        assert_eq!(T::parse_option("tc=5/60.5")?.to_string(), "5/60.500");
 
         assert_eq!(T::parse_option("tc=5+.1")?, T::FischerMulti {
             moves: 0,
