@@ -10,7 +10,7 @@ keywords = ["chess"]
 license = "GPL-3.0+"
 name = "odonata"
 repository = "https://github.com/akanalytics/odonata"
-version = "0.6.45"
+version = "0.6.46"
 
 # for built dependency
 build = "build.rs"
@@ -83,26 +83,26 @@ name = "benchmark"
 debug = true
 # lto = true
 
-[profile.dev]
-codegen-units = 256 
-debug = true # allow profiling of the  main executable 
-incremental = true 
-opt-level = 3 
-split-debuginfo = "unpacked" 
+# [profile.dev]
+# codegen-units = 256 
+# debug = true # allow profiling of the  main executable 
+# incremental = true 
+# opt-level = 3 
+# split-debuginfo = "unpacked" 
 
-[profile.test]
-codegen-units = 256 
-debug = true # allow profiling of the  main executable 
-incremental = true 
-opt-level = 2 
-split-debuginfo = "off" # for hotspot profiler disassembly
+# [profile.test]
+# codegen-units = 256 
+# debug = true # allow profiling of the  main executable 
+# incremental = true 
+# opt-level = 2 
+# split-debuginfo = "off" # for hotspot profiler disassembly
 
-[profile.release]
-codegen-units = 256
-debug = 1 #true # allow profiling of the  main executable 
-incremental = false
-opt-level = 3 
-split-debuginfo = "unpacked" 
+# [profile.release]
+# codegen-units = 256
+# debug = 1 #true # allow profiling of the  main executable 
+# incremental = false
+# opt-level = 3 
+# split-debuginfo = "unpacked" 
 # lto = true
 # debug-assertions = true
 
