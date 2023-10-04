@@ -62,7 +62,7 @@ Hoarfrost | https://github.com/Ravenslofty/Hoarfrost | Used for magic bitboard b
 
 
 ## License
-The software licence is [AGPL-3](../license.txt), though libraries used are MIT licensed. Trial or experimental versions may lag in terms of source code publication, and the author reserves the right to release versions of the software which are not open source. The intention though, is to give back and share with the community which has helped me learn. Other libraries are listed in the Cargo.toml, with licenses availale on Rust's https://crates.io .
+The software licence is [AGPL-3](../license.txt), though libraries used are MIT licensed. Trial or experimental versions may lag in terms of source code publication, and the author reserves the right to release versions of the software which are not open source. The intention though, is to give back, and share with the community. Other libraries are listed in the Cargo.toml, with licenses available on Rust's https://crates.io .
 
 
 
