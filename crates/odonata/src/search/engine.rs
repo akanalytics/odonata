@@ -1,0 +1,534 @@
+use crate::{
+    cache::tt2::TranspositionTable2,
+    domain::{engine::Engine, SearchResults},
+    infra::{
+        component::{Component, State},
+        config::{Config, Format},
+        resources::RESOURCE_DIR,
+        utils::{DurationFormatter, Formatting},
+    },
+    position::Position,
+    prelude::*,
+    search::{algo::Algo, timecontrol::TimeControl},
+    tune::Tuning,
+};
+use anyhow::{anyhow, Result};
+// use figment::{
+//     providers::{Env, Toml},
+//     value::{Dict, Map},
+//     Error, Figment, Metadata, Profile, Provider,
+// };
+use indexmap::map::IndexMap;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    fmt, panic,
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+};
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThreadedSearch {
+    pub shared_tt:       bool,
+    pub thread_count:    u32,
+    pub config_filename: String,
+    pub feature:         bool,
+
+    #[serde(flatten)]
+    pub algo: Algo,
+
+    pub tuner: Tuning,
+
+    #[serde(skip, default = "default_engine_init")]
+    pub engine_init_time: Duration,
+
+    #[serde(skip)]
+    pub search_init_time: Duration,
+
+    #[serde(skip)]
+    thread_handles: Vec<JoinHandle<Result<Algo>>>,
+}
+
+const DEFAULT_CONFIG_FILE: &str = "config.toml";
+
+fn default_engine_init() -> Duration {
+    Instant::now().elapsed()
+}
+
+impl Default for ThreadedSearch {
+    fn default() -> Self {
+        ThreadedSearch {
+            config_filename:  DEFAULT_CONFIG_FILE.to_string(),
+            shared_tt:        true,
+            feature:          false,
+            tuner:            Tuning::default(),
+            algo:             Algo::default(),
+            engine_init_time: Instant::now().elapsed(),
+            search_init_time: Duration::default(),
+            thread_count:     1,
+            thread_handles:   vec![],
+        }
+    }
+}
+
+impl Engine for ThreadedSearch {
+    fn name(&self) -> String {
+        self.algo.name() + " (mt)"
+    }
+
+    fn set_name(&mut self, name: String) {
+        self.algo.set_name(name);
+    }
+
+    fn eval(&mut self, pos: Position) -> anyhow::Result<Score> {
+        self.search_with_options(pos, TimeControl::Depth(0), SearchOptions::none())?
+            .score()
+            .ok_or_else(|| anyhow::anyhow!("failed to get score"))
+    }
+
+    fn search_with_options(
+        &mut self,
+        pos: Position,
+        tc: TimeControl,
+        opts: SearchOptions,
+    ) -> anyhow::Result<SearchResults> {
+        debug!(target: "eng","-> search on {n}", n = self.name());
+        debug!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
+        self.algo
+            .controller
+            .register_callback(|i| debug!(target: "eng", "<- info {i}"));
+
+        if let TimeControl::DefaultTime = tc {
+            let suggested_depth = pos.acd().map_err(|_| {
+                anyhow!("tc default specified but position has no depth (acd): {pos}")
+            })?;
+            self.algo
+                .set_timing_method(TimeControl::Depth(suggested_depth));
+        } else {
+            self.algo.set_timing_method(tc);
+        }
+        self.set_position(pos);
+        self.algo.restrictions.search_moves = opts.root_moves;
+        self.search_sync();
+        debug!(target: "eng", " <- results {res}", res = self.algo.results);
+        Ok(self.algo.results.clone())
+    }
+
+    fn options(&self) -> IndexMap<String, String> {
+        let mut map = IndexMap::new();
+        let tc = format!("type spin default {} min 1 max 16", self.thread_count);
+        map.insert("Ponder", "type check default false");
+        map.insert("Threads", &tc);
+
+        let mut map: IndexMap<String, String> = map
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        map.extend(self.algo.options());
+        map
+    }
+
+    fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
+        debug!(target: "eng", "-> set option '{name}' = '{value}'");
+        match name {
+            "Threads" => self.thread_count = value.parse()?,
+            "Ponder" => {} // pondering determined by "go ponder", so no variable to track
+
+            _ => {
+                if self.algo.options().contains_key(name) {
+                    self.algo.set_option(name, value)?;
+                } else {
+                    anyhow::bail!("ThreadedSearch does not support set option '{name}'");
+                }
+            }
+        };
+        Ok(())
+    }
+
+    fn start_game(&mut self) -> anyhow::Result<()> {
+        self.set_state(State::NewGame);
+        Ok(())
+    }
+}
+
+// impl Clone for Engine {
+//     fn clone(&self) -> Self {
+//         Self {
+//             config_filename: self.config_filename.clone(),
+//             threads: Vec::new(),
+//             tuner: self.tuner,  //mv
+//             algo: self.algo.clone(),
+//             ..*self
+//         }
+//     }
+// }
+
+impl fmt::Display for ThreadedSearch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.config_filename)
+    }
+}
+
+impl ThreadedSearch {
+    fn fmt_metrics(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "config filename  : {}", self.config_filename)?;
+        writeln!(f, "threads          : {}", self.thread_count)?;
+        writeln!(f, "shared tt        : {}", self.shared_tt)?;
+        writeln!(f, "feature          : {}", self.feature)?;
+        writeln!(f, "tuner            : {}", self.tuner)?;
+        writeln!(
+            f,
+            "engine init time : {}",
+            Formatting::duration(self.engine_init_time)
+        )?;
+        writeln!(
+            f,
+            "search init time : {}",
+            Formatting::duration(self.search_init_time)
+        )?;
+        write!(f, "\n[algo]\n{}", self.algo)?;
+        Ok(())
+    }
+
+    pub fn display_metrics(&self) -> impl fmt::Display + '_ {
+        Displayable(|f| self.fmt_metrics(f))
+    }
+}
+
+impl Component for ThreadedSearch {
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame | SetPosition => self.thread_handles.clear(),
+            StartSearch => {}
+            EndSearch => {}
+            StartDepthIteration(_) => {}
+            Shutdown => {}
+        }
+        self.algo.set_state(s);
+        self.tuner.set_state(s);
+    }
+
+    fn new_game(&mut self) {}
+
+    fn new_position(&mut self) {}
+}
+
+// impl Provider for ThreadedSearch {
+//     fn metadata(&self) -> Metadata {
+//         Metadata::named("Engine default config")
+//     }
+
+//     fn data(&self) -> Result<Map<Profile, Dict>, Error> {
+//         figment::providers::Serialized::defaults(self).data()
+//     }
+
+//     fn profile(&self) -> Option<Profile> {
+//         // Optionally, a profile that's selected by default.
+//         None
+//     }
+// }
+
+impl ThreadedSearch {
+    pub fn configure(mut settings: HashMap<String, String>) -> Self {
+        let toml = RESOURCE_DIR
+            .get_file("config.toml")
+            .unwrap()
+            .contents_utf8()
+            .unwrap();
+        let mut config = Config::default().include_text(toml, Format::Toml);
+
+        if let Some(filename) = settings.get("config") {
+            config = config.include_file(filename);
+            settings.remove("config");
+        }
+
+        let mut me: ThreadedSearch = config
+            .include_settings(settings)
+            .deserialize()
+            .expect("could not initilize");
+
+        me.algo.eval.populate_feature_weights();
+        me
+    }
+
+    pub fn new() -> Self {
+        Self::configure(HashMap::new())
+    }
+
+    pub fn set_position(&mut self, pos: Position) {
+        self.algo.set_position(pos);
+    }
+
+    pub fn ponder_hit(&mut self) {
+        self.algo.mte.set_shared_ponder(false);
+        self.algo.clock.restart_elapsed_search_clock();
+    }
+
+    pub fn search_sync(&mut self) {
+        self.search_start();
+        self.wait();
+    }
+
+    pub fn search_start(&mut self) {
+        // debug!("resize?? {}", self.algo.tt.requires_resize());
+        let t = Instant::now();
+        for i in 0..self.thread_count {
+            let builder = thread::Builder::new()
+                .name(format!("S{}", i))
+                .stack_size(1_000_000);
+            let mut algo = self.algo.clone();
+            if !self.shared_tt {
+                algo.tt = TranspositionTable2::default();
+                warn!("tt not shared accross threads");
+                algo.tt.enabled = self.algo.tt.enabled;
+            }
+            algo.set_thread_index(i);
+            algo.move_orderer.thread = i;
+
+            if i == 0 {
+                algo.controller.set_running();
+            }
+            if i >= 1 {
+                algo.max_depth += 8;
+                algo.controller.progress_callback = None;
+                algo.set_timing_method(TimeControl::Infinite);
+            }
+            if i == 1 {
+                algo.ids.step_size = 2;
+            }
+            if i == 2 {
+                algo.ids.step_size = 3;
+            }
+            if i == 3 {
+                algo.ids.step_size = 2;
+                algo.ids.start_ply = 2;
+            }
+            let cl = move || {
+                // let result = panic::catch_unwind(|| {
+                //     Stat::set_this_thread_index(i as usize);
+                algo.run_search();
+                Ok(algo)
+                // });
+                // if let Err(ref error) = result {
+                //     if let Some(e) = error.downcast_ref::<anyhow::Error>() {
+                //         error!("Thread panic returned {:?}", e);
+                //         error!("Backtrace {:?}", e.source());
+                //     }
+                // }
+                // result.map_err(|e| anyhow!("Anyhow {:?}", e))
+            };
+            self.thread_handles.push(builder.spawn(cl).unwrap());
+        }
+        self.search_init_time = t.elapsed();
+    }
+
+    pub fn search_stop(&mut self) {
+        self.algo.controller.cancel();
+        self.wait();
+    }
+
+    pub fn wait(&mut self) {
+        let mut nodes = 0;
+        for (i, t) in self.thread_handles.drain(..).enumerate() {
+            let algo = t.join().unwrap();
+            let algo = match algo {
+                Ok(algo) => algo,
+                Err(e) => {
+                    warn!("Thread returned {:?}", e); // t.thread().name().unwrap(),
+                    panic!("Thread returned {:?}", e);
+                }
+            };
+            debug!(
+                "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
+                i, // thread::current().name().unwrap(),
+                algo.results.supplied_move().unwrap_or_default().to_string(),
+                algo.score().to_string(),
+                algo.clock.cumul_nodes_this_thread(),
+                algo.clock.cumul_knps_this_thread(),
+                algo.clock.elapsed_search().time.human(),
+                algo.pv().to_string(),
+            );
+            // knps += algo.search_stats.cumulative_knps();
+            nodes += algo.clock.cumul_nodes_all_threads();
+            if i == 0 {
+                self.algo = algo;
+                // self.algo.results = algo.results().clone();
+                self.algo.controller.cancel();
+            }
+        }
+        let knps = self.algo.clock.cumul_knps_all_threads();
+        debug!(
+            "{:>3} {:>5} {:>8}        {:>10}      {:>5}     {:5}   {:>48}",
+            "", "", "", "---------", "-----", "", "",
+        );
+        debug!(
+            "{:>3} {:>5} {:>8}   nodes{:>10} knps {:>5} (avg knps {})",
+            "",
+            "",
+            "",
+            nodes,
+            knps,
+            knps as u32 / self.thread_count,
+        );
+        // crate::globals::counts::LEGAL_MOVE_COUNT.print_all()        ;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        catalog::*,
+        comms::uci_server::UciServer,
+        infra::{black_box, utils::Formatting},
+    };
+    use std::time;
+    use test_log::test;
+
+    #[test]
+    fn engine_serde_test() {
+        let engine1 = ThreadedSearch::new();
+        let text1 = toml::Value::try_from(&engine1).unwrap();
+        println!("toml\n{:#?}", text1);
+
+        toml::to_string(&engine1.algo.qs).unwrap();
+        let text1 = toml::to_string(&engine1).unwrap();
+        println!("toml\n{:?}", text1);
+
+        let engine2: ThreadedSearch = toml::from_str(&text1).unwrap();
+        let _text2 = toml::to_string(&engine2).unwrap();
+        // assert_eq!(text1, text2);
+
+        let engine3 = ThreadedSearch::new();
+        let text3 = toml::to_string(&engine3).unwrap();
+        println!("toml\n{}", text3);
+    }
+
+    #[test]
+    fn engine_init_test() {
+        let engine = ThreadedSearch::new();
+        assert_eq!(engine.algo.eval.quantum, 1);
+        println!("{}", toml::to_string(&engine).unwrap());
+
+        let engine = ThreadedSearch::configure([("eval.quantum".into(), "2".into())].into());
+        // engine.configment("eval.quantum", "1").unwrap();
+        println!("{}", engine);
+        assert_eq!(engine.algo.eval.quantum, 2);
+        // engine.configment("eval.quantum", "2").unwrap();
+        // assert_eq!(engine.algo.eval.quantum, 2);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_threading() {
+        for &i in [1, 2, 3, 4, 8, 16, 32].iter() {
+            let mut eng = ThreadedSearch::new();
+            eng.algo.set_timing_method(TimeControl::Depth(7));
+            eng.algo.tt.enabled = true;
+            eng.thread_count = i;
+
+            let b = Catalog::test_position().board().clone();
+            let start = time::Instant::now();
+            eng.algo.board = b;
+            eng.search_sync();
+            println!(
+                "Time with {i} threads: {}\n\n\n",
+                Formatting::duration(time::Instant::now() - start)
+            );
+            // println!("\ntt\n{}", eng.algo.tt);
+        }
+    }
+
+    #[test]
+    fn example_search() {
+        let pos = Position::parse_epd(
+            "k7/8/8/4b3/8/4p3/8/K6N w - - 0 23", // "2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;",
+        )
+        .unwrap();
+
+        let mut engine = ThreadedSearch::new();
+        engine.set_position(pos);
+        engine.algo.set_timing_method(TimeControl::Depth(13));
+        // use crate::Color;
+        // engine.algo.set_timing_method(TimeControl::RemainingTime {
+        //     our_color: Color::White,
+        //     wtime: Duration::from_secs(15),
+        //     btime: Duration::from_secs(15),
+        //     winc: Duration::ZERO,
+        //     binc: Duration::ZERO,
+        //     movestogo: 20,
+        // });
+        engine.algo.set_callback(UciServer::uci_info);
+        engine.algo.run_search();
+        println!("{}", engine);
+    }
+
+    #[ignore]
+    #[test]
+    fn profile_search() {
+        let positions = Catalog::example_game();
+        let mut engine = ThreadedSearch::new();
+        for _ in 0..1 {
+            for pos in &positions {
+                engine.set_position(pos.clone());
+                engine
+                    .algo
+                    .set_timing_method(TimeControl::SearchTime(Duration::from_millis(30)));
+                engine.algo.run_search();
+                let results = engine.algo.results_as_position();
+                black_box(results);
+                // println!("{}", results);
+            }
+        }
+    }
+
+    // #[test]
+    // fn test_mate_in_2_ids() {
+    //     for &id in &[true, false] {
+    //         let position = Catalog::mate_in_2()[0].clone();
+    //         let mut engine = Engine::new();
+    //         engine.set_position(position.clone());
+    //         let eval = Eval::new();
+
+    //         engine
+    //             .algo
+    //             .set_timing_method(TimeControl::Depth(3))
+    //             .set_eval(eval)
+    //             .set_callback(Uci::uci_info);
+    //         assert_eq!(engine.algo.repetition.prior_positions(), 1);
+    //         engine.search();
+    //         info!("{}", engine);
+    //         if id {
+    //             assert!(
+    //                 engine.algo.search_stats().iteration().all_nodes() < 22500,
+    //                 "nodes {} > 22500",
+    //                 engine.algo.search_stats().iteration().all_nodes()
+    //             ); // with piece mob
+
+    //         // previous
+    //         // assert_eq!(engine.algo.search_stats().total().nodes(), 3456); // with pawn promo
+    //         // assert_eq!(engine.algo.search_stats().total().nodes(), 3885); // with gen qsearch
+    //         // with sq q qsearch
+    //         // assert_eq!(engine.algo.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+    //         // assert_eq!(engine.algo.search_stats().total().nodes(), 3560);
+    //         // assert_eq!(engine.algo.search_stats().total().nodes(), 6553);  // with ordering pv
+    //         // assert_eq!(engine.algo.search_stats().total().nodes(), 6740);
+    //         } else {
+    //             // assert!(engine.algo.search_stats().total().nodes() < 5232); // with piece mob
+
+    //             // previous
+    //             // assert_eq!(engine.algo.search_stats().total().nodes(), 3456); // with pawn promos
+    //             // assert_eq!(engine.algo.search_stats().total().nodes(), 3885); // with sq qsearch
+    //             // assert_eq!(engine.algo.search_stats().total().nodes(), 2200); // with sq qsearch
+    //             // assert_eq!(engine.algo.search_stats().total().nodes(), 2108); // with  mvvlva
+    //             //assert_eq!(engine.algo.search_stats().total().nodes(), 7749); // no ids no mvvlva
+    //         }
+    //         assert_eq!(engine.algo.pv_table.extract_pv(), position.pv().unwrap());
+    //         assert_eq!(engine.algo.score(), Score::we_win_in(3));
+    //         assert_eq!(engine.algo.repetition.prior_positions(), 1);
+    //         info!("{}", engine.algo.results_as_position());
+    //     }
+    // }
+}

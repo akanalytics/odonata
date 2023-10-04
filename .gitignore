@@ -27,6 +27,7 @@
 /tmp
 junk/**
 .vscode/*
+.vscode
 
 # profiling output
 # profiling output
@@ -55,6 +56,7 @@ odonata.geany
 
 # python compiled files
 *.pyc
+.pytest_cache
 
 # intellij + vscode stuff
 .idea
