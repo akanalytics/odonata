@@ -1,5 +1,29 @@
 # Changelog
 
+# Release 0.7.0 (4 Oct 2023)
+- Release to kickstart development again after a long pause
+- Updated rust library dependencies
+- Improved zugzwang detection on null move pruning
+- Futility pruning uses classical piece evals
+- Eval changes - candidate passed pawns and distant pawn bishops bonus
+- Rust dependencies updated
+- Node counts and NPS include q-search nodes
+
+
+# Release 0.6.2 (21 Jun 2022)
+- There was a compilation issue with windows-0.6.0 - please upgrade to 0.6.2 <br>
+  (22/06/22 windows binaries updated again just to correct reported version number - no change in play/performance)
+
+
+# Release 0.6.0
+- Pawn structure examined during eval
+- Eval caching
+- Promos accounted for in q-search
+- Internal search metrics
+
+# Release 0.5.1
+- Release 0.5.1 replaces release 0.5.0 which had a fatal issue involving Hash resizing on Windows. <br>
+  Please upgrade to 0.5.1.
 
 # Release 0.5.0 
 - Elo improved by 200+ in self-play vs release 0.4.0 (expected 2500+)
