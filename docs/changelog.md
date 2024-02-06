@@ -1,5 +1,12 @@
 # Changelog
 
+# Release 0.8.0 (6 Feb 2024)
+- Connected rooks and doubled rooks evals fixed
+- Training migrated from LBFGS (argmin) to Adam (custom coded) in anticipation of Odonata NNUE
+- Increase in training dataset to 4m+ positions 
+- Migration to rustc 1.75
+- Elo +30 (maybe?) vs Odonata 0.7.0
+
 # Release 0.7.0 (4 Oct 2023)
 - Release to kickstart development again after a long pause
 - Updated rust library dependencies

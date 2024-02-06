@@ -1,0 +1,112 @@
+[package]
+name = "odonata-base"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+authors.workspace = true
+
+# for built dependency
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+append-only-vec.workspace = true
+arrayvec.workspace = true
+bitflags.workspace = true
+once_cell.workspace = true
+crossbeam-utils.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+regex.workspace = true
+test-log.workspace = true
+anyhow.workspace = true
+backtrace.workspace = true
+config.workspace = true
+flexi_logger.workspace = true
+format_num.workspace = true
+hdrhist.workspace = true
+include_dir.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
+log.workspace = true
+num-traits.workspace = true
+petgraph.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
+static_init.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+statrs.workspace = true
+toml.workspace = true
+tracing.workspace = true
+tabled = "0.14.0"
+
+
+[target.'cfg(target_os="linux")'.dependencies]
+pprof = { version = "0.13", features = ["flamegraph"] }
+perf-event = { version = "0.4.7" }
+
+
+[dev-dependencies]
+thread_local.workspace = true
+test-log.workspace = true
+env_logger.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+include_dir = "0.7"
+# vergen = {git = "https://github.com/rustyhorde/vergen.git", tag="8.0.0-beta.8", features = ["build", "cargo", "git", "git2", "rustc", "si"]}
+
+# lto = true
+
+# [profile.dev]
+# codegen-units = 256 
+# debug = true # allow profiling of the  main executable 
+# incremental = true 
+# opt-level = 3 
+# split-debuginfo = "unpacked" 
+
+# [profile.test]
+# codegen-units = 256 
+# debug = true # allow profiling of the  main executable 
+# incremental = true 
+# opt-level = 2 
+# split-debuginfo = "off" # for hotspot profiler disassembly
+
+# [profile.release]
+# codegen-units = 256
+# debug = 1 #true # allow profiling of the  main executable 
+# incremental = false
+# opt-level = 3 
+# split-debuginfo = "unpacked" 
+# lto = true
+# debug-assertions = true
+
+
+[lib]
+# bug in criterion<->cargo interaction https://bheisler.github.io/criterion.rs/book/faq.html
+bench = false
+test = true
+
+
+[features]
+default = ["unchecked_indexing", "remove_logging"]
+# profiler = ["pprof", "perf-event"]
+remove_logging = []
+metrics = []
+unchecked_indexing = []
+
+# RUSTFLAGS="-C target-cpu=native" cargo bench
+
+# in .cargo/config.toml
+# rustflags = ["-C target-cpu=native"]
+
+# rustc --print cfg
+# rustc -C target-cpu=native --print cfg

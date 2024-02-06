@@ -1,0 +1,477 @@
+
+# shared_tt = true
+thread_count = 1
+engine_name = "Odonata"
+# config_filename = "config.toml"
+# feature = false
+
+
+[ids]
+enabled = true
+part_ply = false
+step_size = 1
+start_ply = 1
+end_ply = 127
+
+
+[clock]
+include_q_nodes = true
+
+
+[controller]
+show_refutations = false
+analyse_mode = false
+multi_pv = 1
+
+
+
+
+
+#
+# date/time    = 2022-11-17--14-55-15
+#
+# desc: uses grouped moves for k/b/r/q mobility
+#
+# mse          = 0.051400
+#
+# Input data
+# features     = 1054
+# row count    = 722159
+# file         = ../../odonata-extras/epd/quiet-labeled-combo.epd
+# ex pieces L1 = false
+# ign draws    = true
+# ign likely   = true
+# ign certain  = true
+#
+# Model parameters
+# model name   = Argmin::LBFGS
+# max eval     = 0.00
+# lambda       = 0.0000075
+# k            = 156.00
+# alpha        = 1.7000
+# pawn         = 100.0000
+# max iters    = 15000
+# ftol         = 0.000010
+# gtol         = 0.000000
+#
+# Results
+# |grad| (l1)  = 0.007594
+# |grad| (l2)  = 0.000503
+#
+#  ------------------------------- -------- ----------- --------- ------------ 
+# | Counter                       | Time % |     Count | Average |      Total |
+# |-------------------------------|--------|-----------|---------|------------|
+# | Timing Eval                   |        |   740,853 |  0.000s |    10.916s |
+# | Timing Move Gen               |        | 1,051,387 |  0.000s |     0.335s |
+# | Timing Parse Epd              |        | 1,054,311 |  0.000s | 1m 10.515s |
+# | Timing Read File              |        |         1 |  0.083s |     0.083s |
+# | Timimg Tuner Upload Positions |        |         1 |  0.597s |     0.597s |
+# | Timing Tuner Solver Lbfgs     |        |         1 |  3.935s |     3.935s |
+# -----------------------------------------------------------------------------
+#  ---------------------- ------------- 
+# | Counter              |       Value |
+# |----------------------|-------------|
+# | Search Time Up       |             |
+# | Search Complete      |             |
+# | Make Move            |             |
+# | Move Gen             |   1,051,515 |
+#  ---------------------- ------------- 
+# | Calc Hash Board      | 141,531,985 |
+# | Calc Hash Pawns      |             |
+# | Calc Hash Move       |             |
+# | Matched Counter Move |             |
+# | Tt Collision         |             |
+#  ---------------------- ------------- 
+# | Tt Insert            |             |
+# | Tt Update            |             |
+# | Tt Pv Overwrite      |             |
+# | Tt Illegal Move      |             |
+# | Eval Cache Hit       |             |
+#  ---------------------- ------------- 
+# | Eval Cache Miss      |             |
+# | Eval Cache Percent   |             |
+# | Tuner Gradient       |          31 |
+# | Tuner Cost Function  |             |
+# | Tuner Mse            |          30 |
+# --------------------------------------
+# 
+#
+# elapsed      = 9.514s
+
+
+
+
+[aspiration]
+enabled = true
+fail_soft = true
+change_both_bounds = false
+min_depth = 4
+window = 100
+max_window = 1200
+max_iter = 16
+multiplier1 = 4.0
+multiplier2 = 4.0
+
+
+[nmp]
+enabled = true
+logging = false
+pv_nodes = true
+recursive = true
+successive = true
+eval_margin = 0 # eval needs to be > beta + eval_margin
+min_depth = 2
+min_ply = 1
+zugzwang_check = true
+depth_reduction_strat = "DepthEvalWeighted"
+store_tt = true
+prune_alpha_mate = false
+prune_beta_mate = false
+a = 2.7
+b = 0.198
+c = 0.00017
+zugzwang = "NonPawnNonPinned"
+
+
+[razor]
+enabled = true
+beta_enabled = true
+max_depth = 3
+min_opponents = 4
+min_pieces = 0
+min_pieces_depth = 1
+pv_nodes = false
+store_tt = true
+margin1 = 94
+margin2 = 381
+margin3 = 873
+move_types_forbidden = "Hash | Killer | Promo | Capture | GoodCapture | GoodCaptureUpfrontSorted | CounterMove | QueenPromo"
+
+[futility]
+alpha_enabled = true
+beta_enabled = false
+in_check = false
+discoverer = false
+giving_check = false
+first_move = false
+prune_extensions = false
+prune_fw_node = true
+prune_alpha_mate = false
+prune_beta_mate = true
+max_pawn_rank = 5
+max_depth = 20
+max_depth_captures = 2
+prune_remaining = false
+min_pieces = 0
+min_pieces_depth = 1
+move_eval_method = "Classical"
+move_types_forbidden = ""
+margin_qs = 0
+margin1 = 65
+margin2 = 200
+margin3 = 825
+margin4 = 1000
+margin_ply = 100
+
+
+
+[mate_dist]
+enabled = true
+raise_alpha = true
+reduce_beta = true
+
+[rev_fut]
+enabled = true
+in_check = false
+prune_zugzwang = false
+prune_extensions = false
+prune_fw_node = false
+prune_alpha_mate = true
+prune_beta_mate = true
+prune_eval_mate = false
+max_depth = 20
+min_pieces = 0
+min_pieces_depth = 1
+margin1 = 90
+margin2 = 180
+margin3 = 300
+margin4 = 400
+margin_ply = 100
+
+[ext]
+enabled = true
+max_extend = 1
+
+gives_check_enabled = true
+in_check_enabled = false
+check_max_depth = 2
+check_only_captures = false
+check_see = false
+check_see_threshold = 0
+
+promo_enabled = false
+promo_max_depth = 1
+near_promo_enabled = false
+near_promo_max_depth = 1
+
+recapture_enabled = false
+recapture_same_square = true
+recapture_only_pv_node = false
+recapture_max_depth = 1
+pawn_double_attacks = false
+
+pv_enabled = false
+
+[pvs]
+enabled = true
+min_depth = 2
+min_ply = 0
+# qs = false
+# first_move = false
+
+[lmp]
+enabled = true
+pawns = true
+first_move = false
+fw_node = false
+alpha_numeric = false
+bad_captures = false
+max_pawn_rank = 6
+killers = false
+discoverer = false
+in_check = false
+gives_check = false
+extensions = false
+a = 4.07
+b = 0.33
+c = 1.56
+pa = 5.63
+pb = 1.18
+pc = 1.28
+
+[lmr]
+enabled = true
+depth_reduction_strat = "LogFormula"
+table_intercept = 0.12
+table_gradient = 0.5
+table_aspect = 1.32
+bad_captures = true
+killers = true
+pawns = true
+first_move = false
+fw_node = true
+max_pawn_rank = 6
+only_nt_all = false
+in_check = false
+discoverer = false
+gives_check = false
+reduce_bad_capture = 0
+reduce_killer = -0.85
+reduce_pv = -0.97
+reduce_hash = 0
+min_remaining_depth = 0
+# move_number = 5
+alpha_numeric = false
+beta_numeric = false
+extensions = false
+iir = 5.0
+
+[mte]
+# 0.5.1
+# move_overhead_ms = 0
+# branching_factor = 12.625
+# moves_rem = 8
+
+# 0.5.5
+# branching_factor = 4.01
+# moves_rem = 11
+# move_overhead_ms = 7
+
+# 0.5.6
+# branching_factor = 5.01
+# moves_rem = 12
+# move_overhead_ms = 0
+# use_last_2_iters=false
+move_overhead_ms = 1
+branching_factor = 5.01
+moves_rem = 12
+use_last_2_iters = false
+
+min_ply_for_estimation = 3
+perc_of_time_adv = 62
+deterministic = false
+nodestime = 0
+check_every = 128
+use_moves_to_go = true
+
+[move_orderer]
+enabled = true
+prior_pv = true
+prior_bm = false
+tt_bm = true
+mvv_lva = true
+discovered_checks = true
+see_cutoff = 0
+qsearch_see_cutoff = 1
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
+qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
+qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
+
+discovered_check_sort_bonus = 0
+rank_index_sort_bonus = 0
+knight_pseudo_mobility = 0
+bishop_pseudo_mobility = 0
+queen_pseudo_mobility = 0
+is_counter_move_sort_bonus = 0.0
+has_counter_move_sort_bonus = -20000.0
+promo_sort_bonus = 0.0
+castle_sort_bonus = 0.0
+hh_sort_factor = 1000
+promo_queen_sort_bonus = 0.0
+promo_knight_sort_bonus = 0.0
+pst_sort_factor = 0.0
+
+# discovered_check_sort_bonus = 0
+# rank_index_sort_bonus = 0
+# knight_pseudo_mobility = 0
+# bishop_pseudo_mobility = 0
+# queen_pseudo_mobility = 0
+# is_counter_move_sort_bonus = 1200.0
+# has_counter_move_sort_bonus = -20000.0
+# promo_sort_bonus = 2100.0
+# castle_sort_bonus = 1200.0
+# hh_sort_factor = 1600.0
+# promo_queen_sort_bonus = 60.0
+# promo_knight_sort_bonus = 0.0
+# pst_sort_factor = 1.0
+
+# is_counter_move_sort_bonus = 0.0
+# has_counter_move_sort_bonus = -20000.0
+# promo_sort_bonus = 2000.0
+# castle_sort_bonus = 1000.0
+# promo_queen_sort_bonus = 0.0
+# promo_knight_sort_bonus = -500.0
+# pst_sort_factor = 1.0
+# hh_sort_factor = 1.0
+
+[repetition]
+enabled = true
+never_with_null_moves = false
+# +19 elo
+include_prior_to_null_moves = true 
+in_played_threshold = 3
+in_search_threshold = 2
+
+
+[tt]
+enabled = true
+shared = true
+aging = true
+persistent = true
+improve_non_pv_bounds = false
+use_tt_for_pv = false
+eval_from_tt = "UseTtScore"
+tt_for_eval_depth = 0
+allow_truncated_pv = true
+buckets = 2
+aligned = true
+overlapping_buckets = false
+cacheline_size = 64
+mb = 8
+hmvc_horizon = 85
+min_ply = 1
+min_depth = 1
+# TODO: triggers root node lower bound
+rewrite_pv = true
+rewrite_pv_score = false
+freshen_on_fetch = true
+replacement = "AgeTypeDepth"
+preserve_bm = false
+
+[killers]
+enabled = true
+clear_every_move = false
+clear_scores_every_move = true
+use_ply_below = true
+castles = true
+captures = false
+record_mover = true
+order = false
+max_depth = 256
+min_depth = 0
+max_ply = 256
+min_ply = 0
+
+
+[counter_move]
+enabled = true
+clear_every_move = false
+age_factor = 10
+min_depth = 4
+max_ply = 128
+
+[qs]
+enabled = true
+only_on_capture = false
+promos = true
+promo_piece = "Queen"
+delta_prune_gives_check = false
+delta_prune_discovered_check = true
+delta_prune_near_promos = true
+delta_prune_min_pieces = 0
+see_prune_discovered_check = false
+see_prune_gives_check = true
+see_prune_near_promos = true
+even_exchange_max_ply = 2
+max_ply = 16
+delta_prune = true
+delta_prune_move_pawn_margin = 100
+delta_prune_move_margin = 50
+delta_prune_node_margin = 0
+checks_max_ply = -1
+recapture_score = 0
+probe_tt = true
+use_hash_move = true
+
+# setoption name OwnBook value true
+[opening_book]
+own_book = false
+book_file = ""
+best_book_line = true
+
+
+[history]
+enabled = true
+min_depth = 0
+max_ply = 128
+alpha = 1
+beta = 1
+age_factor = 4
+malus_factor = 10
+variation = false
+board = "PieceTo"
+alpha_method = "Squared"
+beta_method = "Squared"
+duff_method = "Squared"
+score_method = "GoodOverGoodAndBad"
+
+[explainer]
+explainer_enabled = false
+log_dir = "."
+is_explaining = false
+min_depth = 0
+max_additional_ply = 5
+show_pv_eval = false
+tree_crit = { enabled = false, starts_with = [],  max_ply = 4 }
+debug = false
+show_metrics_on_exit = false
+export_games = false
+
+[recognizer]
+enabled = true
+min_depth = -100
+terminal_depth = 2
+
+
+
+#end of file
