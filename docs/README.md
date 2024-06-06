@@ -4,7 +4,7 @@
 # Odonata
 A chess engine written in Rust. 
 
-Odonata is designed by [Andy Watkins](https://github.com/akanalytics), with [Mark Raistrick](https://github.com/raistrma) assisting with designs and discussion. Bugs in the Rust code will certainly be mine though - Andy ;-)
+Odonata was created by [Andy Watkins](https://github.com/akanalytics), with [Mark Raistrick](https://github.com/raistrma) assisting with designs and discussion. Bugs in the Rust code will certainly be mine though - Andy ;-)
 
 My lockdown hobby was writing a chess engine, and learning Python and Rust in the process. I started Decemeber 2020. Python and Rust are very different from Java, which I had programmed maybe 10 years previous. Certainly my first efforts at Rust are not very clean, clever or idiomatic, but the code improves as I revisit areas to build improvements.
 
