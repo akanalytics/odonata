@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
-use strum_macros::{Display, EnumCount, EnumIter, IntoStaticStr};
+use strum_macros::{Display, EnumCount, IntoStaticStr};
 
 use crate::prelude::*;
 use crate::trace::stat::{SliceStat, Stat};
@@ -55,7 +54,7 @@ impl Configurable for EndGameScoring {
     }
 }
 
-#[derive(Copy, Default, Clone, PartialEq, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
+#[derive(Copy, Default, Clone, PartialEq, Debug, IntoStaticStr, EnumCount, Display)]
 pub enum EndGame {
     #[default]
     Unknown, // for when its too costly to work out who wins
@@ -139,11 +138,11 @@ pub enum EndGame {
 use static_init::dynamic;
 #[dynamic]
 static ENDGAME_COUNTS: Vec<Stat> = {
-    let mut vec = vec![];
-    for eg in EndGame::iter() {
-        let s: &'static str = eg.into();
-        vec.push(Stat::new(s));
-    }
+    let vec = vec![];
+    // for eg in EndGame::iter() {
+    //     let s: &'static str = eg.into();
+    //     vec.push(Stat::new(s));
+    // }
     vec
 };
 
@@ -417,7 +416,7 @@ impl EndGame {
 
     pub fn from_board(b: &Board) -> Self {
         let eg = Self::private_ctor(b);
-        ENDGAME_COUNTS[eg as usize].increment();
+        // ENDGAME_COUNTS[eg as usize].increment();
         eg
     }
 

@@ -1015,9 +1015,9 @@ impl fmt::Display for Metrics {
         //
         let mut b = Builder::default();
         b.set_header(["Counter", "Value"]);
-        for eg in EndGame::iter() {
-            b.push_record([&eg.to_string(), &i(self.endgame[eg as usize])]);
-        }
+        // for eg in EndGame::iter() {
+        //     b.push_record([&eg.to_string(), &i(self.endgame[eg as usize])]);
+        // }
         let mut t = b.build();
         t.with(style.clone())
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
