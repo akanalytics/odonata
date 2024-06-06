@@ -1,17 +1,15 @@
-use odonata_base::{
-    domain::info::Info,
-    infra::component::{Component, State},
-};
-use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    sync::{
-        atomic::{self, AtomicBool},
-        Arc, Mutex,
-    },
-};
+use std::fmt;
+use std::sync::atomic::{self, AtomicBool};
+use std::sync::Arc;
 
-#[derive(Clone, Serialize, Deserialize)]
+use odonata_base::domain::info::Info;
+use odonata_base::infra::component::{Component, State};
+use odonata_base::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use super::algo::Callback;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Controller {
     pub show_refutations: bool,
@@ -19,7 +17,7 @@ pub struct Controller {
     pub multi_pv:         usize,
 
     #[serde(skip)]
-    pub progress_callback: Option<Arc<Mutex<dyn Fn(&Info) + Send + Sync>>>,
+    pub progress_callback: Callback,
 
     #[serde(skip)]
     kill_switch: Arc<AtomicBool>,
@@ -31,9 +29,18 @@ impl Default for Controller {
             show_refutations:  false,
             analyse_mode:      false,
             multi_pv:          1,
-            progress_callback: None,
+            progress_callback: Callback::default(),
             kill_switch:       Arc::new(AtomicBool::new(false)),
         }
+    }
+}
+
+impl Configurable for Controller {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.show_refutations.set(p.get("show_refutations"))?;
+        self.analyse_mode.set(p.get("analyse_mode"))?;
+        self.multi_pv.set(p.get("multi_pv"))?;
+        Ok(p.is_modified())
     }
 }
 
@@ -44,16 +51,6 @@ impl fmt::Display for Controller {
             "kill switch      : {}",
             self.kill_switch.load(atomic::Ordering::SeqCst)
         )?;
-        // writeln!(f, "has bn cancelled : {}", self.has_been_cancelled)?;
-        writeln!(
-            f,
-            "progress_callback: {}",
-            if self.progress_callback.is_some() {
-                "set"
-            } else {
-                "not set"
-            }
-        )?;
         Ok(())
     }
 }
@@ -63,12 +60,14 @@ impl Component for Controller {
 
     fn new_position(&mut self) {}
 
-    fn new_game(&mut self) {}
+    fn new_game(&mut self) {
+        self.kill_switch.store(false, atomic::Ordering::SeqCst);
+    }
 
     fn set_state(&mut self, s: State) {
         use State::*;
         match s {
-            NewGame => {}
+            NewGame => self.new_game(),
             SetPosition => {}
             StartSearch => {}
             EndSearch => {}
@@ -97,15 +96,12 @@ impl Controller {
         // self.has_been_cancelled
     }
 
-    pub fn invoke_callback(&self, data: &Info) {
-        trace!("callback with {data}");
-        if let Some(callback) = &self.progress_callback {
-            let callback = callback.lock().unwrap();
-            callback(data);
-        }
+    pub fn invoke_callback(&self, info: &Info) {
+        trace!("callback with {info}");
+        self.progress_callback.0(info);
     }
 
     pub fn register_callback(&mut self, callback: impl Fn(&Info) + Send + Sync + 'static) {
-        self.progress_callback = Some(Arc::new(Mutex::new(callback)));
+        self.progress_callback = Callback(Arc::new(callback));
     }
 }

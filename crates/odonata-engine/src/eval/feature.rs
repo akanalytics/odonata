@@ -1,8 +1,7 @@
-use odonata_base::{bits::Square, Piece};
+use odonata_base::bits::Square;
+use odonata_base::Piece;
 use serde::{Deserialize, Serialize};
-use strum_macros::{
-    Display, EnumCount, EnumIter, EnumString, FromRepr, IntoStaticStr, VariantNames,
-};
+use strum_macros::{Display, EnumCount, EnumIter, EnumString, FromRepr, IntoStaticStr, VariantNames};
 
 #[derive(
     Clone,
@@ -145,6 +144,8 @@ pub enum Feature {
     KnightOutpost,
     KnightOutpostPawnDefended,
     KnightOutpostRookSafe,
+    KnightEdge,
+    KnightCorner,
     KnightConnected,
     KnightAttacksCenter,
     KnightTrapped,
@@ -767,12 +768,8 @@ impl Feature {
                     x if x <= QueenEarlyDevelop.index() => FeatureCategory::Threats,
                     x if x <= DiscoveredChecks.index() => FeatureCategory::KingSafety,
                     x if x >= PstP_A1.index() && x <= PstK_H8.index() => FeatureCategory::Mobility,
-                    x if x >= ContemptPenalty.index() && x <= WinBonus.index() => {
-                        FeatureCategory::Winnable
-                    }
-                    x if x >= MaterialPawn.index() && x <= MaterialQueen.index() => {
-                        FeatureCategory::Material
-                    }
+                    x if x >= ContemptPenalty.index() && x <= WinBonus.index() => FeatureCategory::Winnable,
+                    x if x >= MaterialPawn.index() && x <= MaterialQueen.index() => FeatureCategory::Material,
                     _ => FeatureCategory::Initiative,
                 };
                 f += 1;

@@ -1,13 +1,14 @@
+use std::fmt;
+use std::str::FromStr;
+use std::time::Duration;
+
 use anyhow::Context;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 
-use crate::{
-    infra::utils::{KeywordIter, Uci},
-    piece::{Color, FlipSide, Ply},
-};
-use std::{fmt, str::FromStr, time::Duration};
+use crate::infra::utils::{KeywordIter, Uci};
+use crate::piece::{Color, FlipSide, Ply};
 
 // from cutechess we see examples such as
 // go wtime 75961 btime 75600 winc 600 binc 600 depth 8 (depth=8; tc = "75+0.6")
@@ -186,9 +187,7 @@ impl Uci for TimeControl {
                     ("ins", t) => return Ok(TimeControl::Instructions(t.parse().context(t)?)),
                     ("cycles", t) => return Ok(TimeControl::Cycles(t.parse().context(t)?)),
                     ("mate", t) => return Ok(TimeControl::MateIn(t.parse().context(t)?)),
-                    ("movetime", t) => {
-                        return Ok(TimeControl::from_move_time_millis(t.parse().context(t)?))
-                    }
+                    ("movetime", t) => return Ok(TimeControl::from_move_time_millis(t.parse().context(t)?)),
                     ("infinite", _) => return Ok(TimeControl::Infinite),
                     ("wtime", t) => rt.wtime = Duration::from_millis(t.parse().context(t)?),
                     ("btime", t) => rt.btime = Duration::from_millis(t.parse().context(t)?),
@@ -221,7 +220,7 @@ impl TimeControl {
             SearchTime(dur) => write!(f, "st={d:.3}", d = dur.as_secs_f64())?,
             MateIn(depth) => write!(f, "mate={depth}")?,
             Depth(d) => write!(f, "depth={d}")?,
-            DepthNodeCount(d, n) => write!(f, "depth/nodes={d},{n}")?,
+            DepthNodeCount(d, n) => write!(f, "depth/nodes={d}/{n}")?,
             NodeCount(nodes) => write!(f, "nodes={nodes}")?,
             Cycles(n) => write!(f, "cycles={n}")?,
             Instructions(n) => write!(f, "ins={n}")?,
@@ -334,11 +333,7 @@ impl TimeControl {
                 Some((s, i)) => {
                     secs = s.parse::<f32>().context(s.to_string())?;
                     inc = i.parse::<f32>().context(i.to_string())?;
-                    return Ok(TimeControl::FischerMulti {
-                        moves: 0,
-                        secs,
-                        inc,
-                    });
+                    return Ok(TimeControl::FischerMulti { moves: 0, secs, inc });
                 }
                 _ => anyhow::bail!("failed to parse time control '{s}' as moves+inc"),
             }
@@ -363,8 +358,7 @@ impl TimeControl {
     }
 
     fn parse_cli_option(tc: &str) -> anyhow::Result<TimeControl> {
-        Self::parse_cli_option_without_context(tc)
-            .with_context(|| format!("parsing time control '{tc}'"))
+        Self::parse_cli_option_without_context(tc).with_context(|| format!("parsing time control '{tc}'"))
     }
 
     fn parse_cli_option_without_context(tc: &str) -> anyhow::Result<TimeControl> {
@@ -458,10 +452,7 @@ mod tests {
             T::parse_cli_option("depth/nodes=5/10_000")?,
             T::DepthNodeCount(5, 10_000)
         );
-        assert_eq!(
-            T::parse_cli_option("st=10s")?,
-            T::SearchTime(Duration::from_secs(10))
-        );
+        assert_eq!(T::parse_cli_option("st=10s")?, T::SearchTime(Duration::from_secs(10)));
         assert_eq!(
             T::parse_cli_option("st=11ms")?,
             T::SearchTime(Duration::from_millis(11))
@@ -489,14 +480,11 @@ mod tests {
             inc:   0.1,
         });
 
-        assert_eq!(
-            T::parse_cli_option("tc=40/960:40/960:40/960")?,
-            T::FischerMulti {
-                moves: 40,
-                secs:  960.,
-                inc:   0.,
-            }
-        );
+        assert_eq!(T::parse_cli_option("tc=40/960:40/960:40/960")?, T::FischerMulti {
+            moves: 40,
+            secs:  960.,
+            inc:   0.,
+        });
 
         assert_eq!(T::parse_uci("nodes 10 depth 5")?, T::DepthNodeCount(5, 10));
 

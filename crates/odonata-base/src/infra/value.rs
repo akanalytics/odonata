@@ -1,14 +1,15 @@
-use super::utils::IntegerFormatter;
-use crate::{infra::utils::DecimalFormatter, piece::Dual};
+use std::fmt::{self, Debug};
+use std::mem;
+use std::ops::{Add, AddAssign, Div, Index, IndexMut, Neg, Sub};
+
 use indexmap::IndexMap;
 use itertools::Itertools;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{self, Debug},
-    mem,
-    ops::{Add, AddAssign, Div, Index, IndexMut, Neg, Sub},
-};
+
+use super::utils::IntegerFormatter;
+use crate::infra::utils::DecimalFormatter;
+use crate::piece::Dual;
 
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 struct CountingMetrics {
@@ -438,9 +439,7 @@ impl Stats {
                 let total = &s[key];
                 let count = &s[&(stem.clone() + "Count")];
                 if !count.is_null() {
-                    let derived = (stem.to_string() + "Av")
-                        .trim_start_matches('.')
-                        .to_string();
+                    let derived = (stem.to_string() + "Av").trim_start_matches('.').to_string();
                     s[&derived] = total / count;
                 }
             }
@@ -466,17 +465,8 @@ impl Stats {
         use std::fmt::Write;
         let (titles, statses): (Vec<&str>, Vec<&Stats>) = iter.into_iter().unzip();
         let mut s = String::new();
-        let keys = statses
-            .iter()
-            .flat_map(|stats| stats.map.keys())
-            .unique()
-            .collect_vec();
-        let width_key = keys
-            .iter()
-            .cloned()
-            .map(String::len)
-            .max()
-            .unwrap_or_default();
+        let keys = statses.iter().flat_map(|stats| stats.map.keys()).unique().collect_vec();
+        let width_key = keys.iter().cloned().map(String::len).max().unwrap_or_default();
         let widths = statses
             .iter()
             .enumerate()
@@ -574,9 +564,10 @@ trait Metrics {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use indexmap::indexmap;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_value_metrics() {
@@ -607,11 +598,8 @@ mod tests {
 
         impl Metrics for MyStruct3 {
             fn into_stats(self) -> Stats {
-                let map: IndexMap<String, Value> = self
-                    .0
-                    .into_iter()
-                    .map(|(k, v)| (k.to_ascii_uppercase(), v))
-                    .collect();
+                let map: IndexMap<String, Value> =
+                    self.0.into_iter().map(|(k, v)| (k.to_ascii_uppercase(), v)).collect();
                 Stats { map }
             }
 
@@ -641,8 +629,7 @@ mod tests {
             // e: (4, 4, 5),
         };
 
-        let map =
-            indexmap::indexmap! { "one" => Value::Int(1), "two" => Value::Text("cat".to_string()) };
+        let map = indexmap::indexmap! { "one" => Value::Int(1), "two" => Value::Text("cat".to_string()) };
         let string_map = serde_json::to_string(&map).unwrap();
         let string_struct = serde_json::to_string(&my_struct).unwrap();
 
@@ -659,8 +646,7 @@ mod tests {
         let map_from: IndexMap<String, Value> = serde_json::from_value(json_value_struct).unwrap();
         println!("map_from = {map_from:?}");
 
-        let map_from2: IndexMap<String, Value> =
-            serde_json::from_value(json_value_struct2).unwrap();
+        let map_from2: IndexMap<String, Value> = serde_json::from_value(json_value_struct2).unwrap();
         println!("map_from2 = {map_from2:?}");
 
         let my_struct4 = my_struct2;
@@ -668,11 +654,9 @@ mod tests {
         println!("agg = {my_struct4:?}");
         println!("agg = \n{}", my_struct4.into_stats());
 
-        let my_struct3a =
-            MyStruct3(indexmap! { "3a".to_string() => 13.into(), "3b".to_string() => 14.into()});
+        let my_struct3a = MyStruct3(indexmap! { "3a".to_string() => 13.into(), "3b".to_string() => 14.into()});
 
-        let my_struct3b =
-            MyStruct3(indexmap! { "3a".to_string() => 23.into(), "3b".to_string() => 24.into()});
+        let my_struct3b = MyStruct3(indexmap! { "3a".to_string() => 23.into(), "3b".to_string() => 24.into()});
 
         let mut map3a = my_struct3a.into_stats();
         let map3b = my_struct3b.into_stats();
@@ -772,10 +756,7 @@ mod tests {
 
     #[test]
     fn test_value_parse() {
-        assert_eq!(
-            Stats::parse_pgn("|White | Black\n\n").unwrap(),
-            Dual::default()
-        );
+        assert_eq!(Stats::parse_pgn("|White | Black\n\n").unwrap(), Dual::default());
         assert_eq!(
             Stats::parse_pgn("|n\n").unwrap_err().to_string(),
             "Expected '|White|Black' but got '|n' instead"

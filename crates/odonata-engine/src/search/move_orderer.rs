@@ -1,20 +1,15 @@
-use super::{algo::Search, stack::Stack};
-use odonata_base::{
-    domain::{
-        node::{Node, Timing},
-        score::ToScore,
-    },
-    infra::{
-        component::Component,
-        metric::{Event, Metrics},
-    },
-    piece::MoveType,
-    prelude::*,
-    trace::stat::{ArrayPlyStat, PlyStat},
-    PreCalc,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use odonata_base::domain::node::{Node, Timing};
+use odonata_base::domain::staticeval::StaticEval;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::piece::MoveType;
+use odonata_base::prelude::*;
+use odonata_base::PreCalc;
+use serde::{Deserialize, Serialize};
+
+use super::algo::Search;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -46,38 +41,6 @@ pub struct MoveOrderer {
 
     #[serde(skip)]
     pub thread: u32,
-
-    #[serde(skip)]
-    count_pv: PlyStat,
-
-    #[serde(skip)]
-    count_bm: PlyStat,
-
-    #[serde(skip)]
-    count_tt_bm: PlyStat,
-
-    #[serde(skip)]
-    picker: Stack<OrderedMoveList>,
-}
-
-impl Component for MoveOrderer {
-    fn new_game(&mut self) {
-        self.picker.clear();
-    }
-
-    fn new_position(&mut self) {
-        self.picker.clear();
-        self.thread = 0;
-        self.count_pv = PlyStat::new("order pv");
-        self.count_bm = PlyStat::new("order bm");
-        self.count_tt_bm = PlyStat::new("order tt bm");
-    }
-}
-
-impl MoveOrderer {
-    pub fn new() -> Self {
-        Self::default()
-    }
 }
 
 impl Default for MoveOrderer {
@@ -86,33 +49,70 @@ impl Default for MoveOrderer {
             enabled:                     true,
             prior_pv:                    true,
             prior_bm:                    false,
-            discovered_checks:           true,
             tt_bm:                       true,
             mvv_lva:                     true,
+            discovered_checks:           true,
             see_cutoff:                  0.cp(),
+            qsearch_see_cutoff:          1.cp(),
             discovered_check_sort_bonus: 0.0,
             rank_index_sort_bonus:       0.0,
             knight_pseudo_mobility:      0.0,
             bishop_pseudo_mobility:      0.0,
             queen_pseudo_mobility:       0.0,
-            is_counter_move_sort_bonus:  1000.0,
-            has_counter_move_sort_bonus: 900.0,
-            promo_sort_bonus:            1200.0,
-            promo_queen_sort_bonus:      500.0,
-            promo_knight_sort_bonus:     500.0,
-            castle_sort_bonus:           500.0,
-            pst_sort_factor:             1.0,
-            hh_sort_factor:              5.0,
-            qsearch_see_cutoff:          1.cp(),
-            thread:                      0,
-            count_pv:                    PlyStat::new("order pv"),
-            count_bm:                    PlyStat::new("order bm"),
-            count_tt_bm:                 PlyStat::new("order tt bm"),
-            picker:                      Stack::<OrderedMoveList>::default(),
-            order:                       MoveType::vec_from_string("SHIGKPqBE").unwrap(), /* , SHICKPQE, SHIGKPQBE */
+            is_counter_move_sort_bonus:  0.0,
+            has_counter_move_sort_bonus: 0.0,
+            promo_sort_bonus:            0.0,
+            promo_queen_sort_bonus:      0.0,
+            promo_knight_sort_bonus:     0.0,
+            castle_sort_bonus:           0.0,
+            pst_sort_factor:             0.0,
+            hh_sort_factor:              1000.0,
+            // picker:                      Stack::<OrderedMoveList>::default(),
+            order:                       MoveType::vec_from_string("SHIGKPqBE").unwrap(), // , SHICKPQE, SHIGKPQBE
             qorder:                      MoveType::vec_from_string("SIgE").unwrap(),      //
             qorder_evasions:             MoveType::vec_from_string("SIVE").unwrap(),      //
+
+            thread: 0,
         }
+    }
+}
+
+#[rustfmt::skip]
+impl Configurable for MoveOrderer {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.prior_pv.set(p.get("prior_pv"))?;
+        self.prior_bm.set(p.get("prior_bm"))?;
+        self.tt_bm.set(p.get("tt_bm"))?;
+        self.mvv_lva.set(p.get("mvv_lva"))?;
+        self.discovered_checks.set(p.get("discovered_checks"))?;
+        self.see_cutoff.set(p.get("see_cutoff"))?;
+        self.qsearch_see_cutoff.set(p.get("qsearch_see_cutoff"))?;
+        self.discovered_check_sort_bonus.set(p.get("discovered_check_sort_bonus"))?;
+        self.rank_index_sort_bonus.set(p.get("rank_index_sort_bonus"))?;
+        self.knight_pseudo_mobility.set(p.get("knight_pseudo_mobility"))?;
+        self.bishop_pseudo_mobility.set(p.get("bishop_pseudo_mobility"))?;
+        self.queen_pseudo_mobility.set(p.get("queen_pseudo_mobility"))?;
+        self.is_counter_move_sort_bonus.set(p.get("is_counter_move_sort_bonus"))?;
+        self.has_counter_move_sort_bonus.set(p.get("has_counter_move_sort_bonus"))?;
+        self.promo_sort_bonus.set(p.get("promo_sort_bonus"))?;
+        self.promo_queen_sort_bonus.set(p.get("promo_queen_sort_bonus"))?;
+        self.promo_knight_sort_bonus.set(p.get("promo_knight_sort_bonus"))?;
+        self.castle_sort_bonus.set(p.get("castle_sort_bonus"))?;
+        self.pst_sort_factor.set(p.get("pst_sort_factor"))?;
+        self.hh_sort_factor.set(p.get("hh_sort_factor"))?;
+        // self.order.set(p.get("order"))?;  // BUG
+        // self.qorder.set(p.get("qorder"))?;
+        // self.qorder_evasions.set(p.get("qorder_evasions"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl Component for MoveOrderer {
+    fn new_game(&mut self) {}
+
+    fn new_position(&mut self) {
+        self.thread = 0;
     }
 }
 
@@ -125,27 +125,17 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
         writeln!(f, "see_cutoff       : {}", self.see_cutoff)?;
         writeln!(f, "qs_see_cutoff    : {}", self.qsearch_see_cutoff)?;
-        writeln!(
-            f,
-            "order            : {}",
-            MoveType::slice_to_string(&self.order)
-        )?;
-        writeln!(
-            f,
-            "qorder           : {}",
-            MoveType::slice_to_string(&self.qorder)
-        )?;
+        writeln!(f, "order            : {}", MoveType::slice_to_string(&self.order))?;
+        writeln!(f, "qorder           : {}", MoveType::slice_to_string(&self.qorder))?;
         writeln!(f, "thread           : {}", self.thread)?;
-        writeln!(
-            f,
-            "{}",
-            ArrayPlyStat(&[&self.count_pv, &self.count_bm, &self.count_tt_bm])
-        )?;
         Ok(())
     }
 }
 
 impl MoveOrderer {
+    pub fn new() -> Self {
+        Self::default()
+    }
     // #[inline]
     // pub fn quiet_score_old(
     //     &self,
@@ -199,15 +189,7 @@ impl MoveOrderer {
     // 7 0.5.65:                 :     -23     26   485.0    1042  46.5     ---  398  174  470  16.7
 
     #[inline]
-    pub fn quiet_points(
-        &self,
-        n: &Node,
-        mv: Move,
-        algo: &Search,
-        c: Color,
-        b: &Board,
-        parent: Move,
-    ) -> i32 {
+    pub fn quiet_points(&self, n: &Node, mv: Move, algo: &Search, c: Color, b: &Board, parent: Move) -> i32 {
         let mut score = 0.0;
         if let Some(promo) = mv.promo_piece() {
             score += self.promo_sort_bonus;
@@ -246,23 +228,18 @@ impl MoveOrderer {
         if self.knight_pseudo_mobility != 0.0 && mv.mover_piece(b) == Piece::Knight {
             score += self.knight_pseudo_mobility
                 * (PreCalc::instance().knight_attacks(mv.to()).popcount()
-                    - PreCalc::instance().knight_attacks(mv.from()).popcount())
-                    as f32
+                    - PreCalc::instance().knight_attacks(mv.from()).popcount()) as f32
         }
         if self.bishop_pseudo_mobility != 0.0 && mv.mover_piece(b) == Piece::Bishop {
             score += self.bishop_pseudo_mobility
-                * (PreCalc::instance()
-                    .bishop_attacks(Bitboard::EMPTY, mv.to())
-                    .popcount()
+                * (PreCalc::instance().bishop_attacks(Bitboard::EMPTY, mv.to()).popcount()
                     - PreCalc::instance()
                         .bishop_attacks(Bitboard::EMPTY, mv.from())
                         .popcount()) as f32
         }
         if self.queen_pseudo_mobility != 0.0 && mv.mover_piece(b) == Piece::Queen {
             score += self.queen_pseudo_mobility
-                * (PreCalc::instance()
-                    .bishop_attacks(Bitboard::EMPTY, mv.to())
-                    .popcount()
+                * (PreCalc::instance().bishop_attacks(Bitboard::EMPTY, mv.to()).popcount()
                     - PreCalc::instance()
                         .bishop_attacks(Bitboard::EMPTY, mv.from())
                         .popcount()) as f32
@@ -302,13 +279,7 @@ impl MoveOrderer {
 }
 
 impl Search {
-    pub fn order_moves(
-        &mut self,
-        ply: Ply,
-        movelist: &mut MoveList,
-        tt_mv: &Option<Move>,
-        bd: &Board,
-    ) {
+    pub fn order_moves(&mut self, _ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>, bd: &Board) {
         if !self.move_orderer.enabled {
             return;
         }
@@ -322,11 +293,6 @@ impl Search {
             // }
         }
 
-        if self.move_orderer.prior_pv
-            && Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv())
-        {
-            self.move_orderer.count_pv.add(ply, 1);
-        }
         // if self.move_orderer.prior_bm {
         //     if ply == 0 {
         //         let i = movelist.iter().position(|&mv| mv == self.bm());
@@ -342,7 +308,6 @@ impl Search {
                 let i = movelist.iter().position(|&mv| mv == *tt_bm);
                 if let Some(i) = i {
                     movelist.swap(0, i);
-                    self.move_orderer.count_tt_bm.add(ply, 1);
                 }
             }
         }
@@ -437,8 +402,7 @@ impl OrderedMoveList {
             {
                 Self::sort_one_capture_move(self.index, &mut self.moves, self.last, b);
             }
-            if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture
-            {
+            if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = self.moves[self.index];
                 Metrics::incr_node(&self.n, Event::EvalSee);
                 let see = algo.eval.eval_move_see(mv, b);
@@ -449,8 +413,7 @@ impl OrderedMoveList {
                 };
 
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
-                    if !(algo.move_orderer.discovered_checks && b.maybe_gives_discovered_check(mv))
-                    {
+                    if !(algo.move_orderer.discovered_checks && b.maybe_gives_discovered_check(mv)) {
                         self.bad_captures.push(mv);
                         self.index += 1;
                         return self.calc_next_move_(b, algo);
@@ -529,9 +492,7 @@ impl OrderedMoveList {
                     .iter()
                     .filter(|&m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
-                moves.sort_by_cached_key(|m| {
-                    Move::mvv_lva_score(m, b) + if m.to() == last.to() { 0 } else { 0 }
-                });
+                moves.sort_by_cached_key(|m| Move::mvv_lva_score(m, b) + if m.to() == last.to() { 0 } else { 0 });
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -603,10 +564,8 @@ impl OrderedMoveList {
                     .filter(|&m| !Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
-                moves.sort_by_cached_key(|&mv| {
-                    algo.move_orderer
-                        .quiet_points(&self.n, mv, algo, b.color_us(), b, last)
-                });
+                moves
+                    .sort_by_cached_key(|&mv| algo.move_orderer.quiet_points(&self.n, mv, algo, b.color_us(), b, last));
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
@@ -619,10 +578,8 @@ impl OrderedMoveList {
                     .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
-                moves.sort_by_cached_key(|&mv| {
-                    algo.move_orderer
-                        .quiet_points(&self.n, mv, algo, b.color_us(), b, last)
-                });
+                moves
+                    .sort_by_cached_key(|&mv| algo.move_orderer.quiet_points(&self.n, mv, algo, b.color_us(), b, last));
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
@@ -786,19 +743,21 @@ impl OrderedMoveList {
 
 #[cfg(test)]
 mod tests {
+    use odonata_base::catalog::Catalog;
+
     use super::*;
     use crate::search::engine::ThreadedSearch;
-    use odonata_base::{catalog::Catalog, globals::constants::*};
 
     #[test]
     fn test_prior_pv() {
-        let a1a2 = Move::new_quiet(Piece::Pawn, a1.square(), a2.square());
-        let a1a3 = Move::new_quiet(Piece::Pawn, a1.square(), a3.square());
-        let a1a4 = Move::new_quiet(Piece::Pawn, a1.square(), a4.square());
-        let b1a2 = Move::new_quiet(Piece::Pawn, b1.square(), a2.square());
-        let b1a3 = Move::new_quiet(Piece::Pawn, b1.square(), a3.square());
-        let b1a4 = Move::new_quiet(Piece::Pawn, b1.square(), a4.square());
-        let c1c2 = Move::new_quiet(Piece::Pawn, c1.square(), c2.square());
+        let bd = &Board::starting_pos();
+        let a1a2 = Move::new_quiet(Piece::Pawn, Square::A1, Square::A2, bd);
+        let a1a3 = Move::new_quiet(Piece::Pawn, Square::A1, Square::A3, bd);
+        let a1a4 = Move::new_quiet(Piece::Pawn, Square::A1, Square::A4, bd);
+        let b1a2 = Move::new_quiet(Piece::Pawn, Square::B1, Square::A2, bd);
+        let b1a3 = Move::new_quiet(Piece::Pawn, Square::B1, Square::A3, bd);
+        let b1a4 = Move::new_quiet(Piece::Pawn, Square::B1, Square::A4, bd);
+        let c1c2 = Move::new_quiet(Piece::Pawn, Square::C1, Square::C2, bd);
 
         let mut moves_orig = MoveList::new();
         moves_orig.extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);
@@ -860,9 +819,7 @@ mod tests {
         let board = Catalog::perft_kiwipete().0;
         let mut moves = board.legal_moves();
         moves.sort(); // alphabetical first
-        ThreadedSearch::new()
-            .search
-            .order_moves(0, &mut moves, &None, &board);
+        ThreadedSearch::new().search.order_moves(0, &mut moves, &None, &board);
         println!("{moves:#}");
         assert_eq!(moves[0].to_uci(), "e2a6"); // b x b
         assert_eq!(moves[1].to_uci(), "f3f6"); // q x n
@@ -896,8 +853,7 @@ mod tests {
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
-            let mut sorted_moves =
-                orderer.create_sorted_moves(n, &pos.board(), TT_MOVE, Move::new_null());
+            let mut sorted_moves = orderer.create_sorted_moves(n, &pos.board(), TT_MOVE, Move::new_null());
             let mut moves = MoveList::new();
             while let Some((_stage, mv)) = sorted_moves.next_move(&pos.board(), &mut eng.search) {
                 moves.push(mv);

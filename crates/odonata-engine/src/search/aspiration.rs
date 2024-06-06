@@ -1,21 +1,16 @@
-use super::{algo::Search, trail::Trail};
-use odonata_base::{
-    boards::Position,
-    domain::{
-        node::{Event, Node},
-        score::Score,
-    },
-    infra::{component::Component, metric::Metrics},
-    piece::Ply,
-};
-use serde::{Deserialize, Serialize};
-use std::{
-    cmp::{max, min},
-    fmt,
-};
+use std::cmp::{max, min};
+use std::fmt;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+use odonata_base::boards::Position;
+use odonata_base::domain::node::{Event, Node};
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::Metrics;
+use odonata_base::prelude::*;
+
+use super::algo::Search;
+use super::trail::Trail;
+
+#[derive(Clone, Debug)]
 pub struct Aspiration {
     enabled:            bool,
     min_depth:          Ply,
@@ -41,14 +36,35 @@ impl Default for Aspiration {
         Aspiration {
             enabled:            true,
             min_depth:          4,
-            window:             Score::from_cp(100),
-            max_iter:           4,
-            max_window:         Score::from_cp(1200),
+            window:             100.cp(),
+            max_iter:           16,
+            max_window:         1200.cp(),
             multiplier1:        4.0,
             multiplier2:        4.0,
             change_both_bounds: false,
             fail_soft:          true,
         }
+    }
+}
+
+impl Configurable for Aspiration {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.window.set(p.get("window"))?;
+        self.max_iter.set(p.get("max_iter"))?;
+        self.max_window.set(p.get("max_window"))?;
+        self.multiplier1.set(p.get("multiplier1"))?;
+        self.multiplier2.set(p.get("multiplier2"))?;
+        self.change_both_bounds.set(p.get("change_both_bounds"))?;
+        self.fail_soft.set(p.get("fail_soft"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for Aspiration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
     }
 }
 
@@ -71,9 +87,7 @@ impl Search {
             let mut beta1 = score + Score::from_f32(delta);
             let ret = loop {
                 aspiration_count += 1;
-                if aspiration_count > self.aspiration.max_iter
-                    || delta > self.aspiration.max_window.as_i16() as f32
-                {
+                if aspiration_count > self.aspiration.max_iter || delta > self.aspiration.max_window.as_i16() as f32 {
                     break self.alphabeta_root_search(trail, pos, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
@@ -128,13 +142,6 @@ impl Search {
             }
             ret
         }
-    }
-}
-
-impl fmt::Display for Aspiration {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        Ok(())
     }
 }
 

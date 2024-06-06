@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::Board, PreCalc};
+use crate::prelude::Board;
+use crate::PreCalc;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -33,7 +34,7 @@ impl Zugzwang {
             Zugzwang::NonPawnNonPinnedOrFreePawn => {
                 Self::NonPawnNonPinned.is_maybe_zugzwang(b) && {
                     let their_pawns = b.pawns() & b.them();
-                    let their_king_sq = (b.kings() & b.them()).square();
+                    let their_king_sq = b.king(b.color_them());
                     let their_atts = their_pawns.shift(b.color_them().pawn_capture_east())
                         | their_pawns.shift(b.color_them().pawn_capture_west())
                         | PreCalc::instance().king_attacks(their_king_sq);
@@ -42,8 +43,7 @@ impl Zugzwang {
                         & (our_pawns.shift(b.color_them().pawn_capture_east())
                             | our_pawns.shift(b.color_them().pawn_capture_west()));
                     let our_free_pawns = our_pawns - our_pawn_defenders;
-                    let our_pawn_moves =
-                        our_free_pawns.shift(b.color_us().forward()) - b.occupied();
+                    let our_pawn_moves = our_free_pawns.shift(b.color_us().forward()) - b.occupied();
                     let our_safe_pawn_moves = our_pawn_moves - their_atts;
                     our_safe_pawn_moves.popcount() < 1
                 }
@@ -51,7 +51,7 @@ impl Zugzwang {
             Zugzwang::NonPawnOrFreePawn => {
                 Self::NonPawn.is_maybe_zugzwang(b) && {
                     let their_pawns = b.pawns() & b.them();
-                    let their_king_sq = (b.kings() & b.them()).square();
+                    let their_king_sq = b.king(b.color_them());
                     let their_atts = their_pawns.shift(b.color_them().pawn_capture_east())
                         | their_pawns.shift(b.color_them().pawn_capture_west())
                         | PreCalc::instance().king_attacks(their_king_sq);
@@ -60,8 +60,7 @@ impl Zugzwang {
                         & (our_pawns.shift(b.color_them().pawn_capture_east())
                             | our_pawns.shift(b.color_them().pawn_capture_west()));
                     let our_free_pawns = our_pawns - our_pawn_defenders;
-                    let our_pawn_moves =
-                        our_free_pawns.shift(b.color_us().forward()) - b.occupied();
+                    let our_pawn_moves = our_free_pawns.shift(b.color_us().forward()) - b.occupied();
                     let our_safe_pawn_moves = our_pawn_moves - their_atts;
                     our_safe_pawn_moves.popcount() < 1
                 }
@@ -69,12 +68,11 @@ impl Zugzwang {
             Zugzwang::NonPawnNonPinnedOrPawnMove1 => {
                 Self::NonPawnNonPinned.is_maybe_zugzwang(b) && {
                     let their_pawns = b.pawns() & b.them();
-                    let their_king_sq = (b.kings() & b.them()).square();
+                    let their_king_sq = b.king(b.color_them());
                     let their_atts = their_pawns.shift(b.color_them().pawn_capture_east())
                         | their_pawns.shift(b.color_them().pawn_capture_west())
                         | PreCalc::instance().king_attacks(their_king_sq);
-                    let our_pawn_moves =
-                        (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
+                    let our_pawn_moves = (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
                     let our_safe_pawn_moves = our_pawn_moves - their_atts;
                     our_safe_pawn_moves.popcount() < 1
                 }
@@ -82,12 +80,11 @@ impl Zugzwang {
             Zugzwang::NonPawnNonPinnedOrPawnMove2 => {
                 Self::NonPawnNonPinned.is_maybe_zugzwang(b) && {
                     let their_pawns = b.pawns() & b.them();
-                    let their_king_sq = (b.kings() & b.them()).square();
+                    let their_king_sq = b.king(b.color_them());
                     let their_atts = their_pawns.shift(b.color_them().pawn_capture_east())
                         | their_pawns.shift(b.color_them().pawn_capture_west())
                         | PreCalc::instance().king_attacks(their_king_sq);
-                    let our_pawn_moves =
-                        (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
+                    let our_pawn_moves = (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
                     let our_safe_pawn_moves = our_pawn_moves - their_atts;
                     our_safe_pawn_moves.popcount() < 2
                 }
@@ -95,12 +92,11 @@ impl Zugzwang {
             Zugzwang::NonPawnOrPawnMove1 => {
                 Self::NonPawn.is_maybe_zugzwang(b) && {
                     let their_pawns = b.pawns() & b.them();
-                    let their_king_sq = (b.kings() & b.them()).square();
+                    let their_king_sq = b.king(b.color_them());
                     let their_atts = their_pawns.shift(b.color_them().pawn_capture_east())
                         | their_pawns.shift(b.color_them().pawn_capture_west())
                         | PreCalc::instance().king_attacks(their_king_sq);
-                    let our_pawn_moves =
-                        (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
+                    let our_pawn_moves = (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
                     let our_safe_pawn_moves = our_pawn_moves - their_atts;
                     our_safe_pawn_moves.popcount() < 1
                 }
@@ -108,21 +104,19 @@ impl Zugzwang {
             Zugzwang::NonPawnOrPawnMove2 => {
                 Self::NonPawn.is_maybe_zugzwang(b) && {
                     let their_pawns = b.pawns() & b.them();
-                    let their_king_sq = (b.kings() & b.them()).square();
+                    let their_king_sq = b.king(b.color_them());
                     let their_atts = their_pawns.shift(b.color_them().pawn_capture_east())
                         | their_pawns.shift(b.color_them().pawn_capture_west())
                         | PreCalc::instance().king_attacks(their_king_sq);
-                    let our_pawn_moves =
-                        (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
+                    let our_pawn_moves = (b.pawns() & b.us()).shift(b.color_us().forward()) - b.occupied();
                     let our_safe_pawn_moves = our_pawn_moves - their_atts;
                     our_safe_pawn_moves.popcount() < 2
                 }
             }
             Zugzwang::NonPawnOrKingSpace => {
                 Self::NonPawn.is_maybe_zugzwang(b) && {
-                    let our_king_sq = (b.kings() & b.us()).square();
-                    let area =
-                        PreCalc::instance().within_chebyshev_distance_inclusive(our_king_sq, 2);
+                    let our_king_sq = b.our_king();
+                    let area = PreCalc::instance().within_chebyshev_distance_inclusive(our_king_sq, 2);
                     (area & b.occupied()).popcount() > 1
                 }
             }
@@ -133,7 +127,8 @@ impl Zugzwang {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_log::test, Color};
+    use crate::test_log::test;
+    use crate::Color;
 
     #[test]
     fn test_zugzwang_lone_king() {

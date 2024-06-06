@@ -1,22 +1,15 @@
-use itertools::Itertools;
-use odonata_base::{
-    domain::{
-        node::{Counter, Timing},
-        score::Score,
-        BoundType,
-    },
-    infra::{
-        component::{Component, State},
-        lockless_hashmap::HashEntry,
-        metric::Metrics,
-    },
-    mv::{BareMove, Move},
-    piece::{Hash, Ply},
-    prelude::Board,
-    variation::Variation,
-};
+use std::fmt;
+use std::sync::Arc;
+
+use odonata_base::domain::node::{Counter, Timing};
+use odonata_base::domain::BoundType;
+use odonata_base::infra::component::{Component, State};
+use odonata_base::infra::lockless_hashmap::HashEntry;
+use odonata_base::infra::metric::Metrics;
+use odonata_base::mv::BareMove;
+use odonata_base::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{fmt, sync::Arc};
+use strum_macros::EnumString;
 use tracing::{debug, info};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -165,25 +158,7 @@ impl fmt::Display for TtNode {
     }
 }
 
-// #[derive(Default, Debug)]
-// struct Element {
-//     hash: Hash,
-//     entry: TtNode,
-//     age: AtomicI16,
-// }
-
-// impl Clone for Element {
-//     #[inline]
-//     fn clone(&self) -> Self {
-//         Element {
-//             entry: self.entry,
-//             hash: self.hash,
-//             age: AtomicI16::new(self.age.load(Ordering::Relaxed)),
-//         }
-//     }
-// }
-
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize, EnumString)]
 enum Replacement {
     Always,
     Age,
@@ -240,14 +215,14 @@ impl Default for TranspositionTable2 {
             use_tt_for_pv:         false,
             improve_non_pv_bounds: false,
             allow_truncated_pv:    false,
-            eval_from_tt:          EvalFromTt::UseTtEval,
+            eval_from_tt:          EvalFromTt::UseTtScore,
             tt_for_eval_depth:     0,
             mb:                    8,
             aging:                 true,
             persistent:            true,
             buckets:               2,
             aligned:               false,
-            cacheline_size:        128,
+            cacheline_size:        64,
             overlapping_buckets:   false,
             current_age:           10, // to allow us to look back
             hmvc_horizon:          85,
@@ -265,29 +240,41 @@ impl Default for TranspositionTable2 {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+impl Configurable for TranspositionTable2 {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.shared.set(p.get("shared"))?;
+        self.use_tt_for_pv.set(p.get("use_tt_for_pv"))?;
+        self.improve_non_pv_bounds.set(p.get("improve_non_pv_bounds"))?;
+        self.allow_truncated_pv.set(p.get("allow_truncated_pv"))?;
+        self.eval_from_tt.set(p.get("eval_from_tt"))?;
+        self.tt_for_eval_depth.set(p.get("tt_for_eval_depth"))?;
+        self.mb.set(p.get("mb"))?;
+        self.aging.set(p.get("aging"))?;
+        self.persistent.set(p.get("persistent"))?;
+        self.buckets.set(p.get("buckets"))?;
+        self.aligned.set(p.get("aligned"))?;
+        self.cacheline_size.set(p.get("cacheline_size"))?;
+        self.overlapping_buckets.set(p.get("overlapping_buckets"))?;
+        self.current_age.set(p.get("current_age"))?;
+        self.hmvc_horizon.set(p.get("hmvc_horizon"))?;
+        self.min_ply.set(p.get("min_ply"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.rewrite_pv.set(p.get("rewrite_pv"))?;
+        self.rewrite_pv_score.set(p.get("rewrite_pv_score"))?;
+        self.freshen_on_fetch.set(p.get("freshen_on_fetch"))?;
+        self.replacement.set(p.get("replacement"))?;
+        self.preserve_bm.set(p.get("preserve_bm"))?;
+        Ok(p.is_modified())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, EnumString)]
 pub enum EvalFromTt {
     Never,
     UseTtEval,
     UseTtScore,
 }
-
-// impl fmt::Debug for TranspositionTable2 {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         f.debug_struct("TranspositionTable")
-//             // .field("pv_table", &self.pv_table.extract_pv().)
-//             .field("enabled", &self.enabled)
-//             .field("use.tt.for.pv", &self.use_tt_for_pv)
-//             .field("allow.truncated.pv", &self.allow_truncated_pv)
-//             .field("mb", &self.mb)
-//             .field("buckets", &self.buckets)
-//             .field("aligned", &self.aligned)
-//             .field("hmvc.horizon", &self.hmvc_horizon)
-//             .field("aging", &self.aging)
-//             .field("current.age", &self.current_age)
-//             .finish()
-//     }
-// }
 
 impl fmt::Display for TranspositionTable2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -301,18 +288,6 @@ impl fmt::Display for TranspositionTable2 {
                 .map(|s| "    ".to_string() + s)
                 .join("\n")
         )?;
-        // writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
-        // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
-        // writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
-        // writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
-        // for i in 0..10 {
-        //     writeln!(
-        //         f,
-        //         "ages (cur-{})     : {}",
-        //         i,
-        //         self.count_of_age(self.current_age - i)
-        //     )?;
-        // }
         Ok(())
     }
 }
@@ -349,15 +324,12 @@ impl TranspositionTable2 {
     fn resize_if_required(&mut self) {
         if self.requires_resize() {
             let capacity = Table::convert_mb_to_capacity(self.mb);
-            info!(
+            debug!(
                 "tt resized so capacity is now {} with {} buckets",
                 capacity, self.buckets
             );
 
-            info!(
-                "In resize table with aligned = {} cap = {}",
-                self.aligned, capacity
-            );
+            debug!("In resize table with aligned = {} cap = {}", self.aligned, capacity);
             let mut table = Table::default();
             table.resize(
                 capacity,
@@ -476,17 +448,11 @@ impl TranspositionTable2 {
     #[inline]
     pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
         // FIXME maybe store QS results
-        if !self.enabled && new_node.bt != BoundType::ExactPv
-            || self.capacity() == 0
-            || new_node.depth < 0
-        {
+        if !self.enabled && new_node.bt != BoundType::ExactPv || self.capacity() == 0 || new_node.depth < 0 {
             return;
         }
         let t = Metrics::timing_start();
-        debug_assert!(
-            new_node.bt != BoundType::Unused,
-            "Cannot store unused nodes in tt"
-        );
+        debug_assert!(new_node.bt != BoundType::Unused, "Cannot store unused nodes in tt");
         debug_assert!(
             new_node.score.0.is_finite(),
             "Cannot store score {} in tt\n{}",
@@ -561,8 +527,7 @@ impl TranspositionTable2 {
             (Replacement::AgeTypeDepth, _) => {
                 self.current_age > old_age
                     || self.current_age == old_age
-                        && (new_node.bt > old_node.bt
-                            || new_node.bt == old_node.bt && new_node.depth >= old_node.depth)
+                        && (new_node.bt > old_node.bt || new_node.bt == old_node.bt && new_node.depth >= old_node.depth)
             }
             (Replacement::AgeDepthType, _) => {
                 self.current_age > old_age
@@ -587,9 +552,7 @@ impl TranspositionTable2 {
             if self.current_age == old_age && old_node.bt == BoundType::ExactPv {
                 Metrics::incr(Counter::TtPvOverwrite);
             }
-            debug_assert!(
-                new_node.score.0 > -Score::INFINITY && new_node.score.0 < Score::INFINITY
-            );
+            debug_assert!(new_node.score.0 > -Score::INFINITY && new_node.score.0 < Score::INFINITY);
             debug_assert!(
                 new_node.bt != BoundType::ExactPv || !new_node.bm.is_null(),
                 "bm is null at {:?} mv {:?}",
@@ -707,51 +670,48 @@ impl TranspositionTable2 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{comms::uci_server::*, engine::Engine, search::engine::ThreadedSearch};
-    use odonata_base::{catalog::*, domain::timecontrol::*, globals::constants::*, piece::*};
+    use odonata_base::catalog::*;
+    use odonata_base::other::tags::EpdOps as _;
     use test_log::test;
+
+    use super::*;
+    use crate::comms::uci_server::*;
+    use crate::search::engine::ThreadedSearch;
 
     fn entry123() -> TtNode {
         TtNode {
-            score: TtScore(Score::from_cp(300)),
+            score: TtScore(300.cp()),
             depth: 2,
             bt:    BoundType::ExactPv,
-            bm:    Move::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
-            eval:  Score::from_cp(123),
+            bm:    Move::new_quiet(Piece::Pawn, Square::B7, Square::B6, &Board::starting_pos()).to_inner(),
+            eval:  123.cp(),
         }
     }
 
     fn entry456() -> TtNode {
         TtNode {
-            score: TtScore(Score::from_cp(200)),
+            score: TtScore(200.cp()),
             depth: 3,
             bt:    BoundType::ExactPv,
-            bm:    Move::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
-            eval:  Score::from_cp(456),
+            bm:    Move::new_quiet(Piece::Pawn, Square::A2, Square::A3, &Board::starting_pos()).to_inner(),
+            eval:  456.cp(),
         }
     }
 
     fn entry456b() -> TtNode {
         TtNode {
-            score: TtScore(Score::from_cp(201)),
+            score: TtScore(201.cp()),
             depth: 4,
             bt:    BoundType::ExactPv,
-            bm:    Move::new_quiet(Piece::Rook, a1.square(), a2.square()).to_inner(),
+            bm:    Move::new_quiet(Piece::Rook, Square::A1, Square::A2, &Board::starting_pos()).to_inner(),
             eval:  Score::zero(),
         }
     }
 
     #[test]
     fn test_tt_score() {
-        assert_eq!(
-            TtScore::new(Score::we_lose_in(5), 3).as_score(3),
-            Score::we_lose_in(5)
-        );
-        assert_eq!(
-            TtScore::new(Score::we_win_in(5), 3).as_score(3),
-            Score::we_win_in(5)
-        );
+        assert_eq!(TtScore::new(Score::we_lose_in(5), 3).as_score(3), Score::we_lose_in(5));
+        assert_eq!(TtScore::new(Score::we_win_in(5), 3).as_score(3), Score::we_win_in(5));
     }
 
     #[test]
@@ -867,10 +827,7 @@ mod tests {
             let res_pv = res.pv();
 
             // No reason acd = pv length as pv line may be reduced due to lmr etc.
-            assert!(
-                tt_pv.len() >= (d as usize) - 1,
-                "eng.pv=<{res_pv}> ttpv=<{tt_pv}>",
-            );
+            assert!(tt_pv.len() >= (d as usize) - 1, "eng.pv=<{res_pv}> ttpv=<{tt_pv}>",);
             // certainly pv can be longer as it has qsearch
             // assert!(
             //     pv.len() <= d as usize,
@@ -889,18 +846,14 @@ mod tests {
     fn tt2_test_new_game() {
         let mut eng = ThreadedSearch::new();
         // eng.new_game();
-        eng.set_state(State::NewGame);
-        eng.set_position(Catalog::starting_position());
-        eng.search.set_timing_method(TimeControl::Depth(6));
+        eng.new_game();
         println!("Before 1\n{:#?}", eng.search.eval);
-        eng.search_sync();
+        eng.search(Catalog::starting_position(), TimeControl::Depth(6)).unwrap();
         println!("After 1\n{}", eng.search);
         let mut eng = ThreadedSearch::new();
         eng.new_game();
-        eng.set_position(Catalog::starting_position());
-        eng.search.set_timing_method(TimeControl::Depth(6));
         println!("Before 2\n{}", eng.search);
-        eng.search_sync();
+        eng.search(Catalog::starting_position(), TimeControl::Depth(6)).unwrap();
         println!("After 2{}", eng.search);
     }
 }

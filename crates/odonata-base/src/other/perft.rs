@@ -1,7 +1,6 @@
-use crate::{
-    boards::{board::Var, Board, Position},
-    mv::Move,
-};
+use crate::boards::board::Var;
+use crate::boards::{Board, Position};
+use crate::mv::Move;
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Perft<const BULK_COUNT: bool = true> {
@@ -25,10 +24,7 @@ impl<const BULK_COUNT: bool> Perft<BULK_COUNT> {
         if BULK_COUNT && depth == 1 {
             board.legal_moves_with(|mv| f(board, mv))
         } else {
-            let moves = board.legal_moves();
-            for &m in moves.iter() {
-                Self::perft_with(&mut board.make_move(m), depth - 1, f);
-            }
+            board.legal_moves_with(|mv| Self::perft_with(&mut board.make_move(mv), depth - 1, f));
         }
     }
 
@@ -78,7 +74,7 @@ impl<const BULK_COUNT: bool> Perft<BULK_COUNT> {
         count.max(1) // we count perft(0) as 1
     }
 
-    fn count_using_board(board: &Board, depth: u32) -> u64 {
+    pub fn count_using_board(board: &Board, depth: u32) -> u64 {
         let mut count = 0;
         Self::perft_with(&mut board.clone(), depth, &mut |_b, _mv| count += 1);
         count.max(1) // we count perft(0) as 1
@@ -86,11 +82,9 @@ impl<const BULK_COUNT: bool> Perft<BULK_COUNT> {
 
     fn count_using_position(board: &Board, depth: u32) -> u64 {
         let mut count = 0;
-        Self::perft_with_position(
-            &mut Position::from_board(board.clone()),
-            depth,
-            &mut |_b, _mv| count += 1,
-        );
+        Self::perft_with_position(&mut Position::from_board(board.clone()), depth, &mut |_b, _mv| {
+            count += 1
+        });
         count.max(1) // we count perft(0) as 1
     }
 
@@ -118,10 +112,14 @@ impl<const BULK_COUNT: bool> Perft<BULK_COUNT> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{catalog::Catalog, infra::profiler::PerfProfiler};
-    use std::{hint::black_box, time::Instant};
+    use std::hint::black_box;
+    use std::time::Instant;
+
     use test_log::test;
+
+    use super::*;
+    use crate::catalog::Catalog;
+    use crate::infra::profiler::PerfProfiler;
 
     #[test]
     fn test_perft_fn() {
@@ -148,12 +146,7 @@ mod tests {
     #[test]
     fn test_perft_1() {
         let (board, perfts) = &Catalog::perfts()[1];
-        assert_eq!(
-            board.legal_moves().len() as u64,
-            perfts[1],
-            "{}",
-            board.legal_moves()
-        );
+        assert_eq!(board.legal_moves().len() as u64, perfts[1], "{}", board.legal_moves());
     }
 
     #[test]

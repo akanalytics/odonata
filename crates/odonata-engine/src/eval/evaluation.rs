@@ -1,14 +1,14 @@
-use odonata_base::{
-    bits::{bitboard::Dir, precalc::Pawns, CastlingRights, Square},
-    domain::node::Timing,
-    eg::{EndGame, LikelyOutcome},
-    infra::metric::Metrics,
-    prelude::Board,
-    Color, Piece, PreCalc,
-};
-
-use super::{scoring::Scorer, Feature};
+use odonata_base::bits::bitboard::Dir;
+use odonata_base::bits::precalc::Pawns;
+use odonata_base::bits::CastlingRights;
+use odonata_base::domain::node::Timing;
+use odonata_base::eg::{EndGame, LikelyOutcome};
+use odonata_base::infra::metric::Metrics;
 use odonata_base::prelude::*;
+use odonata_base::PreCalc;
+
+use super::scoring::Scorer;
+use crate::eval::feature::Feature;
 
 pub struct Evaluation;
 
@@ -37,45 +37,45 @@ impl Evaluation {
 
     #[inline(never)]
     fn material<T>(&mut self, b: &Board, sc: &mut impl Scorer<T>) {
-        use odonata_base::{Color::*, Piece::*};
+        use odonata_base::Color::*;
         use Feature::*;
         let m = b.material();
 
         sc.accum(
             Feature::MaterialPawn,
-            m.count(White, Pawn),
-            m.count(Black, Pawn),
+            m.count(White, Piece::Pawn),
+            m.count(Black, Piece::Pawn),
         );
         sc.accum(
             Feature::MaterialKnight,
-            m.count(White, Knight),
-            m.count(Black, Knight),
+            m.count(White, Piece::Knight),
+            m.count(Black, Piece::Knight),
         );
         sc.accum(
             Feature::MaterialBishop,
-            m.count(White, Bishop),
-            m.count(Black, Bishop),
+            m.count(White, Piece::Bishop),
+            m.count(Black, Piece::Bishop),
         );
         sc.accum(
             Feature::MaterialRook,
-            m.count(White, Rook),
-            m.count(Black, Rook),
+            m.count(White, Piece::Rook),
+            m.count(Black, Piece::Rook),
         );
         sc.accum(
             Feature::MaterialQueen,
-            m.count(White, Queen),
-            m.count(Black, Queen),
+            m.count(White, Piece::Queen),
+            m.count(Black, Piece::Queen),
         );
 
         sc.accum(
             BishopPair,
-            (m.count(White, Bishop) >= 2) as i32,
-            (m.count(Black, Bishop) >= 2) as i32,
+            (m.count(White, Piece::Bishop) >= 2) as i32,
+            (m.count(Black, Piece::Bishop) >= 2) as i32,
         );
         sc.accum(
             RookPair,
-            (m.count(White, Rook) >= 2) as i32,
-            (m.count(Black, Rook) >= 2) as i32,
+            (m.count(White, Piece::Rook) >= 2) as i32,
+            (m.count(Black, Piece::Rook) >= 2) as i32,
         );
     }
 
@@ -181,8 +181,8 @@ impl Evaluation {
     fn pst<T>(&mut self, b: &Board, sc: &mut impl Scorer<T>) {
         // if s.csv() {
         for &p in &Piece::ALL {
-            let w = (b.pieces(p) & b.white()).flip_vertical();
-            let b = b.pieces(p) & b.black();
+            let w = b.pieces(p) & b.white();
+            let b = (b.pieces(p) & b.black()).flip_vertical();
 
             for sq in (w | b).squares() {
                 // FIXME performance of from_index
@@ -204,17 +204,16 @@ impl Evaluation {
     //
     #[inline(never)]
     fn pawns_both<T>(&mut self, bd: &Board, p: &Pawns, s: &mut impl Scorer<T>) {
-        use crate::evaluation::Feature::*;
-        use odonata_base::globals::constants::*;
-        const BR_7: Bitboard = RANK_7.flip_vertical();
-        const BR_6: Bitboard = RANK_6.flip_vertical();
-        const BR_5: Bitboard = RANK_5.flip_vertical();
-        const BR_4: Bitboard = RANK_4.flip_vertical();
-        const R_67: Bitboard = RANK_6.or(RANK_7);
+        use crate::eval::evaluation::Feature::*;
+        const BR_7: Bitboard = Bitboard::RANK_7.flip_vertical();
+        const BR_6: Bitboard = Bitboard::RANK_6.flip_vertical();
+        const BR_5: Bitboard = Bitboard::RANK_5.flip_vertical();
+        const BR_4: Bitboard = Bitboard::RANK_4.flip_vertical();
+        const R_67: Bitboard = Bitboard::RANK_6.or(Bitboard::RANK_7);
         const BR_67: Bitboard = R_67.flip_vertical();
-        const R_345: Bitboard = RANK_3.or(RANK_4).or(RANK_5);
+        const R_345: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_4).or(Bitboard::RANK_5);
         const BR_345: Bitboard = R_345.flip_vertical();
-        const R_2345: Bitboard = RANK_2.or(R_345);
+        const R_2345: Bitboard = Bitboard::RANK_2.or(R_345);
         const BR_2345: Bitboard = R_2345.flip_vertical();
 
         #[inline(always)]
@@ -257,9 +256,8 @@ impl Evaluation {
         // );
 
         // try and ensure closedness is symmetric
-        let centerish_rammed_pawns =
-            p.rammed & w & (Bitboard::CENTER_16_SQ | Bitboard::CENTER_16_SQ.shift(Dir::S))
-                | p.rammed & b & (Bitboard::CENTER_16_SQ | Bitboard::CENTER_16_SQ.shift(Dir::N));
+        let centerish_rammed_pawns = p.rammed & w & (Bitboard::CENTER_16_SQ | Bitboard::CENTER_16_SQ.shift(Dir::S))
+            | p.rammed & b & (Bitboard::CENTER_16_SQ | Bitboard::CENTER_16_SQ.shift(Dir::N));
         closedness += centerish_rammed_pawns.popcount();
         closedness = closedness * closedness;
 
@@ -295,25 +293,18 @@ impl Evaluation {
             bishop_color_rammed_pawns & b, // & Bitboard::CENTER_16_SQ.shift(Dir::N),
         );
 
-        let connected_bishop_w =
-            bd.bishops() & w & (p.white_single_attacks | p.white_double_attacks);
+        let connected_bishop_w = bd.bishops() & w & (p.white_single_attacks | p.white_double_attacks);
         // let connected_bishop_w = connected_bishop_w - (bd.bishops() & b).squares_of_matching_color();
         // let connected_bishop_w = connected_bishop_w.iff((bd.knights() & b).is_empty());
 
-        let connected_bishop_b =
-            bd.bishops() & b & (p.black_single_attacks | p.black_double_attacks);
+        let connected_bishop_b = bd.bishops() & b & (p.black_single_attacks | p.black_double_attacks);
         // let connected_bishop_b = connected_bishop_b - (bd.bishops() & w).squares_of_matching_color();
         // let connected_bishop_b = connected_bishop_b.iff((bd.knights() & w).is_empty());
 
         net(s, BishopConnected, connected_bishop_w, connected_bishop_b);
 
         // doubled not isolated
-        net(
-            s,
-            PawnDoubled,
-            p.doubled & !p.isolated & w,
-            p.doubled & !p.isolated & b,
-        );
+        net(s, PawnDoubled, p.doubled & !p.isolated & w, p.doubled & !p.isolated & b);
         net(
             s,
             PawnIsolatedDoubled,
@@ -347,14 +338,14 @@ impl Evaluation {
 
         net(s, SemiIsolated, Bitboard::EMPTY, Bitboard::EMPTY);
         let dn = p.distant_neighbours;
-        net(s, PawnDistantNeighboursR7, dn & RANK_7 & w, dn & BR_7 & b);
-        net(s, PawnDistantNeighboursR6, dn & RANK_6 & w, dn & BR_6 & b);
-        net(s, PawnDistantNeighboursR5, dn & RANK_5 & w, dn & BR_5 & b);
+        net(s, PawnDistantNeighboursR7, dn & Bitboard::RANK_7 & w, dn & BR_7 & b);
+        net(s, PawnDistantNeighboursR6, dn & Bitboard::RANK_6 & w, dn & BR_6 & b);
+        net(s, PawnDistantNeighboursR5, dn & Bitboard::RANK_5 & w, dn & BR_5 & b);
         net(s, PawnPassed, p.passed & w, p.passed & b);
-        net(s, PawnPassedR7, p.passed & RANK_7 & w, p.passed & BR_7 & b);
-        net(s, PawnPassedR6, p.passed & RANK_6 & w, p.passed & BR_6 & b);
-        net(s, PawnPassedR5, p.passed & RANK_5 & w, p.passed & BR_5 & b);
-        net(s, PawnPassedR4, p.passed & RANK_4 & w, p.passed & BR_4 & b);
+        net(s, PawnPassedR7, p.passed & Bitboard::RANK_7 & w, p.passed & BR_7 & b);
+        net(s, PawnPassedR6, p.passed & Bitboard::RANK_6 & w, p.passed & BR_6 & b);
+        net(s, PawnPassedR5, p.passed & Bitboard::RANK_5 & w, p.passed & BR_5 & b);
+        net(s, PawnPassedR4, p.passed & Bitboard::RANK_4 & w, p.passed & BR_4 & b);
         net(
             s,
             PassersOnRim,
@@ -387,10 +378,8 @@ impl Evaluation {
         // let wf = (p.white.shift(Dir::N) & !bd.occupied() & bnp.shift(Dir::SW) & bnp.shift(Dir::SE)).iff(bd.color_us() == White).popcount();
         // let bf = (p.black.shift(Dir::S) & !bd.occupied() & wnp.shift(Dir::NW) & wnp.shift(Dir::NE)).iff(bd.color_us() == Black).popcount();
 
-        let wf = ((p.white_single_attacks | p.white_double_attacks) & (b - bd.pawns()))
-            .two_or_more() as i32;
-        let bf = ((p.black_single_attacks | p.black_double_attacks) & (w - bd.pawns()))
-            .two_or_more() as i32;
+        let wf = ((p.white_single_attacks | p.white_double_attacks) & (b - bd.pawns())).two_or_more() as i32;
+        let bf = ((p.black_single_attacks | p.black_double_attacks) & (w - bd.pawns())).two_or_more() as i32;
         s.accum(PawnDoubleAttacks, wf, bf);
 
         let rbp = p.rooks_behind_passers(bd);
@@ -402,18 +391,8 @@ impl Evaluation {
 
         // TODO: Eval of Space
         net(s, Space, Bitboard::EMPTY, Bitboard::EMPTY);
-        net(
-            s,
-            PawnConnectedR67,
-            p.connected & R_67 & w,
-            p.connected & BR_67 & b,
-        );
-        net(
-            s,
-            PawnConnectedR345,
-            p.connected & R_345 & w,
-            p.connected & BR_345 & b,
-        );
+        net(s, PawnConnectedR67, p.connected & R_67 & w, p.connected & BR_67 & b);
+        net(s, PawnConnectedR345, p.connected & R_345 & w, p.connected & BR_345 & b);
         // TODO: PassedConnectedR67 & PassedConnectedR345
         //     if p.is_in(pawn_atts) || p.is_in(pawn_duos)  {
         net(s, PassedConnectedR67, Bitboard::EMPTY, Bitboard::EMPTY);
@@ -449,7 +428,7 @@ impl Evaluation {
         }
         let them = b.color(c.flip_side());
         let p = b.pawns() & us;
-        let ksq = k.square();
+        let ksq = b.our_king();
         let bb = PreCalc::instance();
         let castling_rights = b.castling().contains(CastlingRights::king_side_right(c)) as i32
             + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
@@ -458,6 +437,9 @@ impl Evaluation {
             .within_chebyshev_distance_inclusive(Square::E8, 1)
             .or(bb.within_chebyshev_distance_inclusive(Square::E1, 1))
             .contains(k)) as i32;
+
+        // OUR king safety more important if they have a queen
+        let mult = 1; //= if (b.queens()).any() { 2 } else { 1 };
 
         // tropism
         //
@@ -484,22 +466,23 @@ impl Evaluation {
             + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
             + (d3 & (b.rooks()) & them).popcount() * 2
             + (d3 & (b.queens()) & them).popcount() * 4;
-        sc.accum2(c, TropismD1, king_tropism_d1);
-        sc.accum2(c, TropismD2, king_tropism_d2);
-        sc.accum2(c, TropismD3, king_tropism_d3);
-        sc.accum2(c, TropismD4, king_tropism_d4);
+        sc.accum2(c, TropismD1, king_tropism_d1 * mult);
+        sc.accum2(c, TropismD2, king_tropism_d2 * mult);
+        sc.accum2(c, TropismD3, king_tropism_d3 * mult);
+        sc.accum2(c, TropismD4, king_tropism_d4 * mult);
 
         // pawn shield
         //
+        let mult = 1; // if (b.queens()).any() { 1 } else { 1 };
         let (adjacent, nearby) = bb.adjacent_and_nearby_pawn_shield(c, ksq);
         let adjacent_shield = (p & adjacent).popcount();
         sc.set_bits(PawnAdjacentShield, adjacent & p);
         let nearby_shield = (p & nearby).popcount();
         sc.set_bits(PawnNearbyShield, nearby & p);
         let isolated_shield = bb.pawn_side_isolated(p) & (adjacent | nearby);
-        sc.accum2(c, PawnAdjacentShield, adjacent_shield);
-        sc.accum2(c, PawnNearbyShield, nearby_shield);
-        sc.accum2(c, PawnShieldFaulty, isolated_shield.popcount());
+        sc.accum2(c, PawnAdjacentShield, adjacent_shield * mult);
+        sc.accum2(c, PawnNearbyShield, nearby_shield * mult);
+        sc.accum2(c, PawnShieldFaulty, isolated_shield.popcount() * mult);
         let king_safety_bonus = if b.queens().any() {
             adjacent_shield + nearby_shield
         } else {
@@ -531,24 +514,18 @@ impl Evaluation {
         );
         sc.accum2(c, StormBlockedR3, blocked_r3.popcount());
         sc.accum2(c, StormBlockedR4, blocked_r4.popcount());
-        sc.accum2(
-            c,
-            StormUnblocked,
-            unblocked.popcount() - unblocked_r23.popcount(),
-        );
+        sc.accum2(c, StormUnblocked, unblocked.popcount() - unblocked_r23.popcount());
         sc.accum2(c, StormUnblockedR23, unblocked_r23.popcount());
 
-        let open_files_near_king_bb = d3 & ksq.rank() & bb.open_files(b.pawns());
+        let open_files_near_king_bb = d3 & ksq.rank_bitboard() & bb.open_files(b.pawns());
         let open_files_near_king = (open_files_near_king_bb).popcount();
-        let open_files_adjacent_king = (d1 & ksq.rank() & bb.open_files(b.pawns())).popcount();
-        let rq_on_open_files_near_king =
-            (open_files_near_king_bb.file_flood() & b.rooks_or_queens() & them).popcount();
+        let open_files_adjacent_king = (d1 & ksq.rank_bitboard() & bb.open_files(b.pawns())).popcount();
+        let rq_on_open_files_near_king = (open_files_near_king_bb.file_flood() & b.rooks_or_queens() & them).popcount();
 
         let king_trapped_on_back_rank = (b.rooks_or_queens().any()
             && k.intersects(Bitboard::RANKS_18)
             // && Bitboard::RANKS_18 & ksq.rank() & us == k
-            && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty())
-            as i32;
+            && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty()) as i32;
 
         let checkers = b.checkers_of(c).popcount();
 
@@ -562,19 +539,20 @@ impl Evaluation {
         } else {
             0
         };
-        sc.accum2(c, OpenFilesNearKing, open_files_near_king);
-        sc.accum2(c, OpenFilesAdjacentKing, open_files_adjacent_king);
-        sc.accum2(c, TempoSafety, tempo_safety_d12);
-        sc.accum2(c, KingTrappedOnBackRank, king_trapped_on_back_rank);
-        sc.accum2(c, RqOnOpenFilesNearKing, rq_on_open_files_near_king);
+        let mult = 1;
+        sc.accum2(c, OpenFilesNearKing, open_files_near_king * mult);
+        sc.accum2(c, OpenFilesAdjacentKing, open_files_adjacent_king * mult);
+        sc.accum2(c, TempoSafety, tempo_safety_d12 * mult);
+        sc.accum2(c, KingTrappedOnBackRank, king_trapped_on_back_rank * mult);
+        sc.accum2(c, RqOnOpenFilesNearKing, rq_on_open_files_near_king * mult);
 
         sc.accum2(c, CastlingRightsBonus, castling_rights);
         sc.accum2(c, Uncastled, uncastled);
         sc.accum2(c, Checkers, checkers);
-        sc.accum2(c, PiecesNearKing, pieces_near_king);
-        sc.accum2(c, PinnedNearKing, pinned_near_king);
-        sc.accum2(c, PinnedFar, pinned_far);
-        sc.accum2(c, DiscoveredChecks, discovered_checks);
+        sc.accum2(c, PiecesNearKing, pieces_near_king * mult);
+        sc.accum2(c, PinnedNearKing, pinned_near_king * mult);
+        sc.accum2(c, PinnedFar, pinned_far * mult);
+        sc.accum2(c, DiscoveredChecks, discovered_checks * mult);
     }
 
     #[inline(never)]
@@ -615,7 +593,7 @@ impl Evaluation {
 
         // knight
         let mut knight_connected = false;
-        let knight_outpost = 0;
+        let mut knight_outpost = 0;
         let knight_outpost_rook_safe = 0;
         let mut knight_outpost_pawn_defended = 0;
         let mut knight_forks = 0;
@@ -638,7 +616,8 @@ impl Evaluation {
         let k = b.kings() & them;
 
         let (adjacent, nearby) = if k.any() {
-            bb.adjacent_and_nearby_pawn_shield(opponent, k.square())
+            let ksq = k.find_first_square().expect("king missing");
+            bb.adjacent_and_nearby_pawn_shield(opponent, ksq)
         } else {
             (Bitboard::empty(), Bitboard::empty())
         };
@@ -684,6 +663,8 @@ impl Evaluation {
         // knights
         //
         let mut ni_atts = Bitboard::empty();
+        let knight_corner = (b.knights() & us & Bitboard::CORNERS).popcount();
+        let knight_edge = (b.knights() & us & Bitboard::EDGE).popcount();
         for sq in (b.knights() & us).squares() {
             // let p = Piece::Knight;
             let our_raw_attacks = bb.knight_attacks(sq);
@@ -698,28 +679,52 @@ impl Evaluation {
             if b.color_us() == c {
                 for sq in our_attacks.squares() {
                     let atts = bb.knight_attacks(sq);
-                    if (atts & them & (b.rooks_or_queens() | b.bishops() | b.kings())).two_or_more()
-                    {
+                    if (atts & them & (b.rooks_or_queens() | b.bishops() | b.kings())).two_or_more() {
                         knight_forks += 1;
                     }
                 }
             }
-            if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                && sq.is_in(Bitboard::home_half(opponent))
-                && sq.is_in(
-                    Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F,
-                )
-                && sq.is_in(our_pa)
+
+            // if bb.pawn_attack_span(c, sq).disjoint(their_p)
+            //     && sq.is_in(Bitboard::home_half(opponent))
+            //     && sq.is_in(
+            //         Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F,
+            //     )
+            //     && sq.is_in(our_pa)
+            // {
+            //     knight_outpost_pawn_defended += 1;
+            // }
+
+            if bb.pawn_attack_span(c, sq).disjoint(their_p) // safe from opponent pawn attacks 
+                // && sq.is_in(Bitboard::home_half(opponent))
+                && !sq.is_in(Bitboard::EDGE) && sq.is_in(Bitboard::RANKS_45 | Bitboard::RANK_6 )
             {
-                knight_outpost_pawn_defended += 1;
+                if sq.is_in(our_pa) {
+                    knight_outpost_pawn_defended += 1;
+                } else if bb.pawn_attack_span(opponent, sq).intersects(our_p) {
+                    knight_outpost += 1;
+                }
             }
+            // && (bb.pawn_double_stop(c, sq) | bb.pawn_stop(c, sq)).intersects(their_p)
+            // // oppo pawn in front => rook safe
+            // else if (bb.pawn_double_stop(c, sq) | bb.pawn_stop(c, sq)).intersects(their_p)
+            // &&
+            // // no bishops same color
+            // sq.as_bb().squares_of_matching_color().disjoint(b.bishops() & them)
+            // &&
+            // // no opponent knights or queens
+            // ((b.knights() | b.queens()) & them).is_empty()
+            // {
+            //     knight_outpost += 1;
+            // }
+
+            // knight_trapped += (piece_move_squares + asym_attacks == 0) as i32;
             // knight_trapped += (piece_move_squares + asym_attacks == 0) as i32;
 
             double_attacks |= our_attacks & them & all_attacks;
             all_attacks |= our_attacks & them;
 
-            attacks_near_king +=
-                (our_attacks & pawn_shield).any() as i32 * (Piece::Knight.centipawns() / 64);
+            attacks_near_king += (our_attacks & pawn_shield).any() as i32 * (Piece::Knight.centipawns() / 64);
             s.set_bits(AttacksNearKing, our_attacks & pawn_shield);
             let atts = our_attacks.popcount();
             if atts == 1 {
@@ -744,6 +749,8 @@ impl Evaluation {
         s.accum2(c, KnightOutpost, knight_outpost);
         s.accum2(c, KnightOutpostPawnDefended, knight_outpost_pawn_defended);
         s.accum2(c, KnightOutpostRookSafe, knight_outpost_rook_safe);
+        s.accum2(c, KnightEdge, knight_edge);
+        s.accum2(c, KnightCorner, knight_corner);
         s.accum2(c, KnightConnected, knight_connected as i32);
         s.accum2(c, KnightAttacksCenter, knight_attacks_center);
         s.accum2(c, KnightTrapped, knight_trapped);
@@ -780,8 +787,7 @@ impl Evaluation {
             double_attacks |= our_attacks & them & all_attacks;
             all_attacks |= our_attacks & them;
 
-            attacks_near_king +=
-                (our_attacks & pawn_shield).any() as i32 * (Piece::Bishop.centipawns() / 64);
+            attacks_near_king += (our_attacks & pawn_shield).any() as i32 * (Piece::Bishop.centipawns() / 64);
             s.set_bits(AttacksNearKing, our_attacks & pawn_shield);
             let atts = our_attacks.popcount();
             if atts == 1 {
@@ -817,11 +823,7 @@ impl Evaluation {
             }
             0
         };
-        s.accum(
-            BishopColorPawns,
-            bishop_color_pawns(White),
-            bishop_color_pawns(Black),
-        );
+        s.accum(BishopColorPawns, bishop_color_pawns(White), bishop_color_pawns(Black));
         s.accum2(c, BishopOutposts, bishop_outposts);
         s.accum2(c, BishopTrapped, bishop_trapped);
 
@@ -843,12 +845,11 @@ impl Evaluation {
 
             center_attacks += (our_attacks & Bitboard::CENTER_16_SQ).popcount();
             enemy_pawns_on_rook_rank +=
-                (sq.rank() & b.pawns() & them & Bitboard::home_half(opponent)).popcount();
+                (sq.rank_bitboard() & b.pawns() & them & Bitboard::home_half(opponent)).popcount();
             double_attacks |= our_attacks & them & all_attacks;
             all_attacks |= our_attacks & them;
 
-            attacks_near_king +=
-                (our_attacks & pawn_shield).any() as i32 * (Piece::Rook.centipawns() / 64);
+            attacks_near_king += (our_attacks & pawn_shield).any() as i32 * (Piece::Rook.centipawns() / 64);
             s.set_bits(AttacksNearKing, our_attacks & pawn_shield);
             let atts = our_attacks.popcount();
             if atts == 1 {
@@ -875,8 +876,7 @@ impl Evaluation {
         // let doubled_rooks = ((b.rooks() & us).two_or_more()
         //     && (b.rooks() & us).first_square().file_index()
         //         == (b.rooks() & us).last_square().file_index()) as i32;
-        let doubled_rooks_open_file =
-            (doubled_rooks && (open_files & b.rooks() & us).popcount() >= 2) as i32;
+        let doubled_rooks_open_file = (doubled_rooks && (open_files & b.rooks() & us).popcount() >= 2) as i32;
         let rook_on_open_file = (open_files & us & b.rooks()).popcount();
         s.accum2(c, RookOpenFile, rook_on_open_file);
 
@@ -904,8 +904,7 @@ impl Evaluation {
             double_attacks |= our_attacks & them & all_attacks;
             all_attacks |= our_attacks & them;
 
-            attacks_near_king +=
-                (our_attacks & pawn_shield).any() as i32 * (Piece::Queen.centipawns() / 64);
+            attacks_near_king += (our_attacks & pawn_shield).any() as i32 * (Piece::Queen.centipawns() / 64);
             s.set_bits(AttacksNearKing, our_attacks & pawn_shield);
 
             let atts = our_attacks.popcount();
@@ -1050,21 +1049,27 @@ impl Evaluation {
 
 #[cfg(test)]
 mod eval_tests {
-    use super::*;
-    use crate::{scoring::Hardcoded, test_log::test, weight::WeightOf, Softcoded, SummationScorer};
-    use odonata_base::{catalog::Catalog, infra::profiler::PerfProfiler, other::Perft};
     use std::hint::black_box;
 
-    #[test]
-    fn test_eval_basics() {
-        let mut sum = SummationScorer::new(|f| Hardcoded::<f32>::WTS[f]);
-        let b = &Catalog::test_position().board().clone();
-        Evaluation.eval(b, &mut sum);
-        // sum.eval(b, &mut |f, w, b| {
-        //     total += (w - b) * HardcodedF32Wts::weight(f)
-        // });
-        println!("{}", sum.total);
-    }
+    use odonata_base::catalog::Catalog;
+    use odonata_base::infra::profiler::PerfProfiler;
+    use odonata_base::other::Perft;
+
+    use super::*;
+    use crate::eval::hce::Hce;
+    use crate::eval::scoring::SummationScorer;
+    use crate::test_log::test;
+
+    // #[test]
+    // fn test_eval_basics() {
+    //     let mut sum = SummationScorer::new(|f| Hardcoded::<f32>::WTS[f]);
+    //     let b = &Catalog::test_position().board().clone();
+    //     Evaluation.eval(b, &mut sum);
+    //     // sum.eval(b, &mut |f, w, b| {
+    //     //     total += (w - b) * HardcodedF32Wts::weight(f)
+    //     // });
+    //     println!("{}", sum.total);
+    // }
 
     #[test]
     fn bench_weights() {
@@ -1074,56 +1079,49 @@ mod eval_tests {
         // let mut sum_i32 = SummationScorer::<i32>::default();
         // let mut sum_f32 = SummationScorer::<f32>::default();
 
-        let soft_i32_wts = Softcoded {
-            wts: Hardcoded::<i32>::WTS,
-        };
-        let soft_i16_wts = Softcoded {
-            wts: Hardcoded::<i32>::WTS.map(|wt| WeightOf::new(wt.0 as i16, wt.1 as i16)),
-        };
-        let soft_f32_wts = Softcoded {
-            wts: Hardcoded::<f32>::WTS,
-        };
-        let soft_f64_wts = Softcoded {
-            wts: Hardcoded::<f32>::WTS.map(|n| WeightOf::<f64>(n.0 as f64, n.1 as f64)),
-        };
-        let mut prof_hard_i32 = PerfProfiler::new("eval: hard i32");
-        // let mut prof_hard_i32 = PerfProfiler::new("eval: hard i32");
-        let mut prof_hard_f32 = PerfProfiler::new("eval: hard f32");
+        let hce = Hce::default();
+
+        let soft_i32_wts = hce.soft_coded_i32();
+        let soft_f32_wts = hce.soft_coded_f32();
+        let soft_f64_wts = hce.soft_coded_f64();
+        // // let mut prof_hard_i32 = PerfProfiler::new("eval: hard i32");
+        // // let mut prof_hard_i32 = PerfProfiler::new("eval: hard i32");
+        // // let mut prof_hard_f32 = PerfProfiler::new("eval: hard f32");
         let mut prof_soft_i32 = PerfProfiler::new("eval: soft i32");
-        let mut prof_soft_i16 = PerfProfiler::new("eval: soft i16");
+        // let mut prof_soft_i16 = PerfProfiler::new("eval: soft i16");
         let mut prof_soft_f32 = PerfProfiler::new("eval: soft f32");
         let mut prof_soft_f64 = PerfProfiler::new("eval: soft f64");
         // let mut prof_new_f32 = PerfProfiler::new("eval: new f32");
         // let mut prof_new_f64 = PerfProfiler::new("eval: new f64");
         // let mut prof_new_i32 = PerfProfiler::new("eval: new i32");
-        // let mut prof_new_hci32 = PerfProfiler::new("eval: new hc i32");
-        // let mut prof_new_hci32_mp = PerfProfiler::new("eval: new hc i32 mp");
+        // // let mut prof_new_hci32 = PerfProfiler::new("eval: new hc i32");
+        // // let mut prof_new_hci32_mp = PerfProfiler::new("eval: new hc i32 mp");
 
         // old_eval.init();
 
         let mut func = |b: &Board, mv: Move| {
             let b = &mut b.make_move(mv);
             b.calculate_internals();
-            prof_hard_f32.bench(|| {
-                let mut sum = SummationScorer::new(|f| Hardcoded::<f32>::WTS[f]);
-                Evaluation.eval(black_box(b), &mut sum)
-            });
-            b.calculate_internals();
-            prof_hard_i32.bench(|| {
-                let mut sum = SummationScorer::new(|f| Hardcoded::<i32>::WTS[f]);
-                Evaluation.eval(black_box(b), &mut sum)
-            });
-            b.calculate_internals();
+            // prof_hard_f32.bench(|| {
+            //     let mut sum = SummationScorer::new(|f| hce::softcode);
+            //     Evaluation.eval(black_box(b), &mut sum)
+            // });
+            // b.calculate_internals();
+            // prof_hard_i32.bench(|| {
+            //     let mut sum = SummationScorer::new(|f| Hardcoded::<i32>::WTS[f]);
+            //     Evaluation.eval(black_box(b), &mut sum)
+            // });
+            // b.calculate_internals();
             prof_soft_i32.bench(|| {
                 let mut sum = SummationScorer::new(|f: Feature| soft_i32_wts.wts[f]);
                 Evaluation.eval(black_box(b), &mut sum)
             });
             b.calculate_internals();
-            prof_soft_i16.bench(|| {
-                let mut sum = SummationScorer::new(|f: Feature| soft_i16_wts.wts[f]);
-                Evaluation.eval(black_box(b), &mut sum)
-            });
-            b.calculate_internals();
+            // prof_soft_i16.bench(|| {
+            //     let mut sum = SummationScorer::new(|f: Feature| soft_i16_wts.wts[f]);
+            //     Evaluation.eval(black_box(b), &mut sum)
+            // });
+            // b.calculate_internals();
             prof_soft_f64.bench(|| {
                 let mut sum = SummationScorer::new(|f: Feature| soft_f64_wts.wts[f]);
                 Evaluation.eval(black_box(b), &mut sum)

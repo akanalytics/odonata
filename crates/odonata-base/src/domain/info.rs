@@ -1,15 +1,8 @@
-use super::wdl::ScoreWdl;
-use crate::{
-    domain::score::Score,
-    infra::utils::{KeywordIter, Uci},
-    mv::Move,
-    piece::Ply,
-    prelude::{Board, *},
-    variation::Variation,
-    MoveList,
-};
-use anyhow::Context;
 use std::fmt;
+
+use super::wdl::ScoreWdl;
+use crate::infra::utils::{KeywordIter, Uci};
+use crate::prelude::*;
 
 // #[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
 // pub struct BareMoveVariation(pub Vec<BareMove>);
@@ -228,9 +221,10 @@ impl Info {
 
 #[cfg(test)]
 mod tests {
+    use test_log::test;
+
     use super::*;
     use crate::domain::score::ToScore;
-    use test_log::test;
 
     #[test]
     fn test_basic_variation() {
@@ -276,9 +270,7 @@ mod tests {
         assert_eq!(info.cpuload_per_mille, None);
 
         assert_eq!(
-            Info::parse_uci("info depth 5 seldepth 6", &b)
-                .unwrap()
-                .to_uci(),
+            Info::parse_uci("info depth 5 seldepth 6", &b).unwrap().to_uci(),
             "depth 5 seldepth 6",
         );
     }

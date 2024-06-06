@@ -1,15 +1,12 @@
+use std::ops::{Index, IndexMut};
+use std::{fmt, iter};
+
 use num_traits::{AsPrimitive, Num};
-use serde::{Deserialize, Serialize};
-use std::{
-    fmt, iter,
-    ops::{Index, IndexMut},
-};
-use strum_macros::Display;
-
 use odonata_base::other::Phase;
-use serde::{Deserializer, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use strum_macros::{Display, EnumString};
 
-#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq, Serialize, Deserialize, EnumString)]
 #[serde(deny_unknown_fields)]
 pub enum Rounding {
     Truncate,
@@ -24,14 +21,8 @@ pub enum Rounding {
 
 pub trait Number
 where
-    Self: AsPrimitive<f32>
-        + Copy
-        + num_traits::Num
-        + Default
-        + std::ops::AddAssign
-        + Into<f64>
-        + fmt::Display
-        + 'static,
+    Self:
+        AsPrimitive<f32> + Copy + num_traits::Num + Default + std::ops::AddAssign + Into<f64> + fmt::Display + 'static,
 {
 }
 
@@ -98,8 +89,7 @@ impl<'de> Deserialize<'de> for WeightOf<i32> {
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer)
-            .map(|WeightOfHelper { s, e }| WeightOf::<i32>::from_f32(s, e))
+        Deserialize::deserialize(deserializer).map(|WeightOfHelper { s, e }| WeightOf::<i32>::from_f32(s, e))
     }
 }
 
@@ -337,9 +327,7 @@ where
 //     }
 // }
 
-impl<T: num_traits::Num + std::ops::AddAssign + Copy + Default> std::ops::AddAssign
-    for WeightOf<T>
-{
+impl<T: num_traits::Num + std::ops::AddAssign + Copy + Default> std::ops::AddAssign for WeightOf<T> {
     #[inline]
     fn add_assign(&mut self, o: Self) {
         self.0 += o.s();
@@ -453,21 +441,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use odonata_base::infra::profiler::PerfProfiler;
     use std::hint::black_box;
+
+    use odonata_base::infra::profiler::PerfProfiler;
+    use test_log::test;
     use tracing::info;
 
     use super::*;
-    use test_log::test;
 
     #[test]
     fn test_basic_weight() {
         assert_eq!(WeightOf::<i32>::new(-10, 11).to_string(), "(-10, 11)");
         assert_eq!(WeightOf::new(-10.1_f32, 11.6).to_string(), "(-10.1, 11.6)");
-        assert_eq!(
-            format!("{:.2}", WeightOf::new(-10.1_f32, 11.6)),
-            "(-10.10, 11.60)"
-        );
+        assert_eq!(format!("{:.2}", WeightOf::new(-10.1_f32, 11.6)), "(-10.10, 11.60)");
     }
 
     #[test]

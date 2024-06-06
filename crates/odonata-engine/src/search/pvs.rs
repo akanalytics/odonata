@@ -1,15 +1,11 @@
-use odonata_base::{
-    domain::{node::Node, BoundType},
-    infra::component::Component,
-    prelude::*,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::algo::Search;
+use odonata_base::domain::node::Node;
+use odonata_base::domain::BoundType;
+use odonata_base::infra::component::Component;
+use odonata_base::prelude::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Pvs {
     pub enabled:   bool,
     pub min_depth: Ply,
@@ -34,23 +30,38 @@ impl Default for Pvs {
     }
 }
 
+impl Configurable for Pvs {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.min_ply.set(p.get("min_ply"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for Pvs {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
+    }
+}
+
 // once we have an alpha raising move, search remainder using null window and see if they raise alpha (or cut)
 // re-search full-window if they do, to get a score
-impl Search {
-    pub fn pvs_permitted(&mut self, _nt: BoundType, _b: &Board, n: &Node, mv_num: u32) -> bool {
-        if !self.pvs.enabled {
+impl Pvs {
+    pub fn permitted(&mut self, _nt: BoundType, _b: &Board, n: &Node, mv_num: u32) -> bool {
+        if !self.enabled {
             return false;
         }
         if mv_num <= 1 {
             return false;
         }
 
-        if n.ply < self.pvs.min_ply {
+        if n.ply < self.min_ply {
             return false;
         }
 
         // includes QS
-        if n.depth < self.pvs.min_depth {
+        if n.depth < self.min_depth {
             return false;
         }
         // if nt != NodeType::ExactPv {
@@ -64,13 +75,6 @@ impl Search {
         //     return false;
         // }
         true
-    }
-}
-
-impl fmt::Display for Pvs {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
-        Ok(())
     }
 }
 

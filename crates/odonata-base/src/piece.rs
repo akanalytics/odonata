@@ -1,10 +1,12 @@
-use crate::bits::bitboard::{Bitboard, Dir};
-use anyhow::{anyhow, bail, Result};
+use std::fmt;
+use std::ops::{Index, IndexMut};
+use std::str::FromStr;
+
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    ops::{Index, IndexMut},
-};
+use strum_macros::EnumString;
+
+use crate::bits::bitboard::{Bitboard, Dir};
 
 pub const MAX_PLY: Ply = 128;
 pub const LEN_PLY: usize = MAX_PLY as usize;
@@ -101,9 +103,7 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     [&choices.white, &choices.black][c as usize]
 }
 
-#[derive(
-    Copy, Clone, Default, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
-)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
     #[default]
     #[serde(rename = "w")]
@@ -113,7 +113,7 @@ pub enum Color {
     Black = 1,
 } // numbering as per CPW
 
-impl<T> std::ops::Index<Color> for [T] {
+impl<T> std::ops::Index<Color> for [T; 2] {
     type Output = T;
     #[inline]
     fn index(&self, i: Color) -> &Self::Output {
@@ -127,7 +127,7 @@ impl<T> std::ops::Index<Color> for [T] {
     }
 }
 
-impl<T> std::ops::IndexMut<Color> for [T] {
+impl<T> std::ops::IndexMut<Color> for [T; 2] {
     #[inline]
     fn index_mut(&mut self, c: Color) -> &mut Self::Output {
         &mut self[c.index()]
@@ -148,7 +148,12 @@ impl Color {
     }
 
     #[inline]
-    pub fn chooser_wb<T: Copy>(self, white_thing: T, black_thing: T) -> T {
+    pub const fn is_white(self) -> bool {
+        matches!(self, Color::White)
+    }
+
+    #[inline]
+    pub const fn chooser_wb<T: Copy>(self, white_thing: T, black_thing: T) -> T {
         match self {
             Color::White => white_thing,
             Color::Black => black_thing,
@@ -156,13 +161,13 @@ impl Color {
     }
 
     #[inline]
-    pub fn forward(self) -> Dir {
-        [Dir::N, Dir::S][self]
+    pub const fn forward(self) -> Dir {
+        self.chooser_wb(Dir::N, Dir::S)
     }
 
     #[inline]
     pub fn backward(self) -> Dir {
-        [Dir::S, Dir::N][self]
+        self.chooser_wb(Dir::S, Dir::N)
     }
 
     #[inline]
@@ -171,13 +176,13 @@ impl Color {
     }
 
     #[inline]
-    pub fn pawn_capture_east(self) -> Dir {
-        [Dir::NE, Dir::SE][self]
+    pub const fn pawn_capture_east(self) -> Dir {
+        self.chooser_wb(Dir::NE, Dir::SE)
     }
 
     #[inline]
-    pub fn pawn_capture_west(self) -> Dir {
-        [Dir::NW, Dir::SW][self]
+    pub const fn pawn_capture_west(self) -> Dir {
+        self.chooser_wb(Dir::NW, Dir::SW)
     }
 
     #[inline]
@@ -186,11 +191,13 @@ impl Color {
     }
 
     #[inline]
+    /// index runs from 0-7
     pub fn rank_as_white_index(self, index: usize) -> Bitboard {
         [Bitboard::RANKS[index], Bitboard::RANKS[7 - index]][self]
     }
 
     #[inline]
+    /// num runs from 1-8
     pub fn rank_as_white_num(self, num: usize) -> Bitboard {
         [Bitboard::RANKS[num - 1], Bitboard::RANKS[8 - num]][self]
     }
@@ -217,7 +224,7 @@ impl Color {
 impl FlipSide for Color {
     #[inline]
     fn flip_side(self) -> Color {
-        [Color::Black, Color::White][self]
+        self.chooser_wb(Color::Black, Color::White)
     }
 }
 
@@ -228,7 +235,7 @@ impl fmt::Display for Color {
 }
 
 // #[repr(u8)]
-#[derive(Copy, Default, Hash, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Copy, Default, Hash, Clone, Debug, PartialEq, Eq, Deserialize, Serialize, EnumString)]
 pub enum Piece {
     Pawn,
     Knight,
@@ -239,7 +246,13 @@ pub enum Piece {
     King,
 }
 
-impl<T> std::ops::Index<Piece> for [T] {
+impl From<u8> for Piece {
+    fn from(u: u8) -> Self {
+        Piece::from_index(u as usize)
+    }
+}
+
+impl<T> std::ops::Index<Piece> for [T; 6] {
     type Output = T;
     #[inline]
     fn index(&self, i: Piece) -> &Self::Output {
@@ -253,7 +266,7 @@ impl<T> std::ops::Index<Piece> for [T] {
     }
 }
 
-impl<T> std::ops::IndexMut<Piece> for [T] {
+impl<T> std::ops::IndexMut<Piece> for [T; 6] {
     #[inline]
     fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
         &mut self[p.index()]
@@ -277,13 +290,7 @@ impl Piece {
         Piece::King,
     ];
 
-    pub const ALL_BAR_KING: [Piece; 5] = [
-        Piece::Pawn,
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-    ];
+    pub const ALL_BAR_KING: [Piece; 5] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
     // pub fn to_upper_char(self) -> &char {
     //     ".PNBRQK".as_bytes()[self as usize] as char
@@ -416,8 +423,16 @@ impl fmt::Display for MoveType {
     }
 }
 
+impl FromStr for MoveType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Self::from_chars(s).with_context(|| format!("parsing MoveTypes from {s}"))
+    }
+}
+
 impl MoveType {
-    pub fn from_chars(s: &str) -> Result<MoveType, String> {
+    pub fn from_chars(s: &str) -> anyhow::Result<MoveType> {
         let mut mts = MoveType::empty();
         for c in s.chars() {
             mts |= Self::from_char(c)?;
@@ -460,7 +475,7 @@ impl MoveType {
         }
     }
 
-    pub fn from_char(c: char) -> Result<MoveType, String> {
+    pub fn from_char(c: char) -> Result<MoveType> {
         match c {
             'S' => Ok(MoveType::Start),
             'H' => Ok(MoveType::Hash),
@@ -481,7 +496,7 @@ impl MoveType {
             'U' => Ok(MoveType::Unsorted),
             'C' => Ok(MoveType::Capture),
             'E' => Ok(MoveType::End),
-            _ => Err(format!("'{}' is unknown move type", c)),
+            _ => Err(anyhow::anyhow!("'{c}' is unknown move type")),
         }
     }
 
@@ -494,7 +509,7 @@ impl MoveType {
             .collect()
     }
 
-    pub fn vec_from_string(move_types: &str) -> Result<Vec<MoveType>, String> {
+    pub fn vec_from_string(move_types: &str) -> Result<Vec<MoveType>> {
         move_types
             .chars()
             .map(MoveType::from_char)
@@ -539,20 +554,17 @@ mod tests {
     fn test_serde() {
         // let color = json!({"color" : "b"});
         assert_eq!(serde_json::to_string(&Color::Black).unwrap(), "\"b\"");
-        assert_eq!(
-            serde_json::from_str::<Color>("\"w\"").unwrap(),
-            Color::White
-        );
+        assert_eq!(serde_json::from_str::<Color>("\"w\"").unwrap(), Color::White);
     }
 
-    // panic is caused by debug assertions - so only run this test in debug
-    #[cfg(debug_assertions)]
-    #[test]
-    #[should_panic]
-    fn piece_panic1() {
-        let array = [0u32; Piece::len() - 1];
-        assert_eq!(array[Piece::King], 1); // triggers panic not mismatch
-    }
+    // // panic is caused by debug assertions - so only run this test in debug
+    // #[cfg(debug_assertions)]
+    // #[test]
+    // #[should_panic]
+    // fn piece_panic1() {
+    //     let array = [0u32; Piece::len() - 1];
+    //     assert_eq!(array[Piece::King], 1); // triggers panic not mismatch
+    // }
 
     #[test]
     fn piece() {
@@ -571,7 +583,7 @@ mod tests {
     }
 
     #[test]
-    fn test_move_type() -> Result<(), String> {
+    fn test_move_type() -> Result<()> {
         let many = MoveType::vec_from_string("HIGKPqB").unwrap();
         assert_eq!(many[0], MoveType::Hash);
         assert_eq!(many.last(), Some(&MoveType::BadCapture));

@@ -1,6 +1,11 @@
-use crate::{prelude::Board, infra::utils::StringUtils, movelist::MoveList, mv::Move, piece::Color};
 use once_cell::sync::Lazy;
 use regex::Regex;
+
+use crate::infra::utils::StringUtils;
+use crate::movelist::MoveList;
+use crate::mv::Move;
+use crate::piece::Color;
+use crate::prelude::Board;
 pub struct Parse;
 use anyhow::{anyhow, bail, Result};
 
@@ -128,9 +133,7 @@ impl Parse {
             }
             // SAN promos are upper case eg "=Q" "=B"
             if let Some(pp) = lm.promo_piece() {
-                if !promo.is_empty()
-                    && "=".to_string() + &pp.to_char(Color::White).to_string() != promo
-                {
+                if !promo.is_empty() && "=".to_string() + &pp.to_char(Color::White).to_string() != promo {
                     continue;
                 }
             }

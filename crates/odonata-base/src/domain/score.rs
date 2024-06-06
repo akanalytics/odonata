@@ -1,11 +1,12 @@
-use crate::{
-    infra::utils::{win_probability_from_cp_and_k, Uci},
-    piece::{Ply, MAX_PLY},
-    Color,
-};
+use std::fmt;
+use std::str::FromStr;
+
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+
+use crate::infra::utils::Uci;
+use crate::piece::MAX_PLY;
+use crate::prelude::*;
 
 // pub struct ScoreBound {
 //     score: Score,
@@ -14,7 +15,7 @@ use std::fmt;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
-// from the point of view of the player: +ve = winning, -ve = losing
+/// from the point of view of the player: +ve = winning, -ve = losing
 pub struct Score {
     cp: i16,
 }
@@ -30,48 +31,13 @@ impl ToScore for i32 {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
-struct WhiteScore(Score, Color);
+pub struct WhiteScore(pub Score);
 
-impl WhiteScore {
-    pub fn zero() -> Self {
-        Self(0.cp(), Color::White)
-    }
-
-    pub fn as_white_cp(&self) -> i16 {
-        self.0.as_i16()
-    }
-
-    #[inline]
-    pub fn pov_score(&self) -> Score {
-        // avoid multiply on a possible mate score
-        self.1.chooser_wb(self.0, -self.0)
-    }
-
-    #[inline]
-    pub fn new(pov_score: Score, turn: Color) -> WhiteScore {
-        // avoid multiply on a possible mate score
-        WhiteScore(pov_score, turn)
-    }
-}
-impl fmt::Display for WhiteScore {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.0.is_numeric() {
-            self.0.fmt(f) // call display on underlying score
-        } else if self.0.cp == -Score::INF {
-            f.write_str("-")
-        } else if self.0.cp == Score::INF {
-            f.write_str("+inf")
-        } else if self.0.cp < 0 {
-            write!(f, "B({})", self.0.ply_loss())
-        } else {
-            write!(f, "W({})", self.0.ply_win())
-        }
-    }
-}
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.is_numeric() {
-            self.cp.fmt(f) // call display on underlying int
+            self.cp.fmt(f)?; // call display on underlying int
+            f.write_str("cp")
         } else if self.cp == -Self::INF {
             f.write_str("-inf")
         } else if self.cp == i16::MAX {
@@ -84,23 +50,43 @@ impl fmt::Display for Score {
     }
 }
 
+impl FromStr for Score {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse_pgn_pawn_value(s)
+    }
+}
+
 impl Score {
     pub fn pov_score(&self) -> Score {
         *self
     }
 
-    pub fn parse_pgn(s: &str) -> anyhow::Result<Score> {
-        if let Ok(cp) = s.parse::<f32>() {
-            return Ok(Score::from_cp((cp * 100.0) as i32));
+    pub fn parse_pgn_pawn_value(s: &str) -> anyhow::Result<Score> {
+        // try cp suffix
+        if let Some(s) = s.strip_suffix("cp") {
+            let s = s.trim_end();
+            if let Ok(cp) = s.parse::<i32>() {
+                anyhow::ensure!(Score::within_range(cp), "out of range cp score");
+                return Ok(Score::from_cp(cp));
+            }
+        }
+
+        // try as floating point pawn value if contains "."
+        if s.contains('.') {
+            if let Ok(pawn) = s.parse::<f32>() {
+                let cp = (pawn * 100.0) as i32;
+                anyhow::ensure!(Score::within_range(cp), "out of range cp score");
+                return Ok(Score::from_cp(cp));
+            }
         }
         match s.split_once('M') {
             Some(("+", n)) => Ok(Score::from_mate_in_moves(
-                n.parse()
-                    .with_context(|| format!("parsing mate score '{s}')"))?,
+                n.parse().with_context(|| format!("parsing mate score '{s}')"))?,
             )),
             Some(("-", n)) => Ok(Score::from_mate_in_moves(
-                -n.parse()
-                    .with_context(|| format!("parsing mate score '{s}')"))?,
+                -n.parse().with_context(|| format!("parsing mate score '{s}')"))?,
             )),
             _ => anyhow::bail!("unable to parse pgn score '{s}'"),
         }
@@ -140,9 +126,11 @@ impl Uci for Score {
         let t = s.replace("upperbound", "").trim().to_string();
         let t = t.replace("lowerbound", "").trim().to_string();
         match t.split_once(' ') {
-            Some(("cp", text)) => Ok(Score::from_cp(
-                text.parse::<i32>().with_context(|| text.to_string())?,
-            )),
+            Some(("cp", text)) => {
+                let cp = text.parse::<i32>().with_context(|| text.to_string())?;
+                anyhow::ensure!(Self::within_range(cp), "centipawns {cp} out of range");
+                Ok(Score::from_cp(cp))
+            }
             Some(("mate", text)) => Ok(Score::from_mate_in_moves(text.parse::<i32>()?)),
             _ => anyhow::bail!("expected score to have cp or mate but found '{s}'"),
         }
@@ -169,47 +157,34 @@ impl Score {
         Self::from_cp(turn.chooser_wb(centipawn, -centipawn))
     }
 
-    pub fn as_white(&self, turn: Color) -> Score {
-        turn.chooser_wb(*self, self.negate())
+    pub fn as_white(&self, turn: Color) -> WhiteScore {
+        WhiteScore(turn.chooser_wb(*self, self.negate()))
+    }
+
+    pub fn within_range(cp: i32) -> bool {
+        cp.clamp(-Self::INF as i32, Self::INF as i32) == cp
+    }
+
+    fn assert_within_range(cp: i32) {
+        debug_assert!(Self::within_range(cp), "centipawns {cp} out of range");
     }
 
     #[inline]
     pub fn from_cp(centipawn: i32) -> Score {
-        debug_assert!(
-            centipawn.clamp(-Self::INF as i32, Self::INF as i32) == centipawn,
-            "centipawns {} out of range",
-            centipawn
-        );
-        Score {
-            cp: centipawn as i16,
-        }
-        // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
+        Self::assert_within_range(centipawn);
+        Score { cp: centipawn as i16 }
     }
 
     #[inline]
     pub fn from_f32(centipawn: f32) -> Score {
-        debug_assert!(
-            (centipawn as i32).clamp(-Self::INF as i32, Self::INF as i32) == centipawn as i32,
-            "centipawns {} out of range",
-            centipawn
-        );
-        Score {
-            cp: centipawn as i16,
-        }
-        // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
+        Self::assert_within_range(centipawn as i32);
+        Score { cp: centipawn as i16 }
     }
 
     #[inline]
     pub fn from_f64(centipawn: f64) -> Score {
-        debug_assert!(
-            (centipawn as i32).clamp(-Self::INF as i32, Self::INF as i32) == centipawn as i32,
-            "centipawns {} out of range",
-            centipawn
-        );
-        Score {
-            cp: centipawn as i16,
-        }
-        // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
+        Self::assert_within_range(centipawn as i32);
+        Score { cp: centipawn as i16 }
     }
 
     #[inline]
@@ -235,6 +210,15 @@ impl Score {
         *self >= lower && *self <= upper
     }
 
+    /// score in centipawn pawn value, from pov stm
+    /// -345
+    /// +234
+    /// -32000
+    pub fn to_epd(&self) -> String {
+        format!("{}", self.as_i16())
+    }
+
+    /// score in pawn value, with centipawns as the decimal
     /// +1.35
     /// -0.34
     /// +M8
@@ -346,7 +330,7 @@ impl Score {
     #[inline]
     pub fn win_probability_using_k(self, k: f32) -> f32 {
         if self.is_numeric() {
-            win_probability_from_cp_and_k(self.cp as f32, k)
+            Math::win_probability_from_cp_and_k(self.cp as f32, k)
         } else if self.cp > 0 {
             1.0
         } else {
@@ -396,7 +380,6 @@ impl Score {
     }
 }
 
-
 impl std::ops::Add for Score {
     type Output = Self;
 
@@ -439,9 +422,12 @@ impl std::ops::Neg for Score {
 
 #[cfg(test)]
 mod tests {
+    use std::hint::black_box;
+
+    use test_log::test;
+
     use super::*;
     use crate::infra::profiler::*;
-    use std::hint::black_box;
 
     #[test]
     fn score_basics() {
@@ -476,16 +462,10 @@ mod tests {
         assert!(Score::from_cp(100) > Score::from_cp(0));
 
         // addition
-        assert_eq!(
-            Score::from_cp(100) + Score::from_cp(150),
-            Score::from_cp(250)
-        );
+        assert_eq!(Score::from_cp(100) + Score::from_cp(150), Score::from_cp(250));
 
         // subtraction
-        assert_eq!(
-            Score::from_cp(100) - Score::from_cp(150),
-            Score::from_cp(-50)
-        );
+        assert_eq!(Score::from_cp(100) - Score::from_cp(150), Score::from_cp(-50));
 
         assert_eq!(2 * Score::from_cp(100), Score::from_cp(200));
         assert_eq!(-2 * Score::from_cp(200), Score::from_cp(-400));
@@ -540,6 +520,15 @@ mod tests {
     }
 
     #[test]
+    fn test_score_serde() -> anyhow::Result<()> {
+        let s = Score::from_cp(123);
+        assert_eq!(serde_json::to_string(&s).unwrap(), "123");
+        assert_eq!(s, serde_json::from_str("123").unwrap());
+        // assert_eq!(s, serde_json::from_str("123").unwrap());
+        Ok(())
+    }
+
+    #[test]
     fn test_pgn_score() -> anyhow::Result<()> {
         assert_eq!(Score::from_cp(100).to_pgn(), "+1.00".to_string());
         assert_eq!(Score::from_cp(0).to_pgn(), "+0.00".to_string());
@@ -547,11 +536,18 @@ mod tests {
         assert_eq!(Score::from_mate_in_moves(5).to_pgn(), "+M5".to_string());
         assert_eq!(Score::from_mate_in_moves(-3).to_pgn(), "-M3".to_string());
 
-        assert_eq!(Score::parse_pgn("+1.00")?, Score::from_cp(100));
-        assert_eq!(Score::parse_pgn("+0.00")?, Score::from_cp(0));
-        assert_eq!(Score::parse_pgn("-8.70")?, Score::from_cp(-870));
-        assert_eq!(Score::parse_pgn("+M5")?, Score::from_mate_in_moves(5));
-        assert_eq!(Score::parse_pgn("-M3")?, Score::from_mate_in_moves(-3));
+        assert_eq!(Score::parse_pgn_pawn_value("+1.00")?, Score::from_cp(100));
+        assert_eq!(Score::parse_pgn_pawn_value("100cp")?, Score::from_cp(100));
+        assert_eq!(Score::parse_pgn_pawn_value("100 cp")?, Score::from_cp(100));
+        assert_eq!(Score::parse_pgn_pawn_value("+0.00")?, Score::from_cp(0));
+        assert_eq!(Score::parse_pgn_pawn_value("-8.70")?, Score::from_cp(-870));
+        assert_eq!(Score::parse_pgn_pawn_value("+M5")?, Score::from_mate_in_moves(5));
+        assert_eq!(Score::parse_pgn_pawn_value("-M3")?, Score::from_mate_in_moves(-3));
+
+        assert_eq!(Score::from_cp(100), "+1.00".parse()?);
+        assert_eq!(Score::from_cp(-100), "-1.00".parse()?);
+        assert_eq!(Score::from_cp(1), "1cp".parse()?);
+        assert_eq!(true, "1".parse::<Score>().is_err());
 
         Ok(())
     }
@@ -567,10 +563,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_score_panic2() {
-        assert_eq!(
-            Score::we_win_in(1) + Score::from_cp(150),
-            Score::we_win_in(1)
-        );
+        assert_eq!(Score::we_win_in(1) + Score::from_cp(150), Score::we_win_in(1));
     }
 
     #[cfg(debug_assertions)]
@@ -582,7 +575,7 @@ mod tests {
 
     #[test]
     fn score_fmt() {
-        assert_eq!(format!("{}", Score::from_cp(1000)), "1000");
+        assert_eq!(format!("{}", Score::from_cp(1000)), "1000cp");
         assert_eq!(format!("{}", Score::INFINITY), "+inf");
         assert_eq!(format!("{}", -Score::INFINITY), "-inf");
         assert_eq!(format!("{}", -(-Score::INFINITY)), "+inf");
@@ -608,7 +601,7 @@ mod tests {
         let mut p = PerfProfiler::new("standard_exp");
         p.start();
         for cp in (-1000..1000).step_by(100) {
-            black_box(win_probability_from_cp_and_k(cp as f32, 4.0));
+            black_box(Math::win_probability_from_cp_and_k(cp as f32, 4.0));
         }
         p.stop();
 

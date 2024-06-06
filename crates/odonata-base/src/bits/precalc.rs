@@ -1,34 +1,31 @@
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
+use std::fmt;
 
-use crate::{
-    piece::{Color, FlipSide, Piece},
-    prelude::Board,
-};
-// use crate::bitboard::bb_classical::ClassicalBitboard;
-use crate::bits::{
-    bb_hyperbola::Hyperbola,
-    bb_sliders::SlidingPieceAttacks,
-    bitboard::{Bitboard, Dir},
-    square::Square,
-};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use static_init::dynamic;
 use tabled::builder::Builder;
 
-pub type BestSlidingPieceAttacks = Hyperbola;
+use crate::bits::bb_hyperbola::Hyperbola;
+use crate::bits::bitboard::{Bitboard, Dir};
+use crate::bits::square::Square;
+use crate::piece::{Color, FlipSide, Piece};
+use crate::prelude::Board;
 
-#[dynamic]
-static STATIC_INSTANCE: Box<PreCalc> = PreCalc::new();
-
-impl PreCalc {
-    // doesnt impl Default as too large to copy by value
-    #[inline]
-    pub fn instance() -> &'static Self {
-        &STATIC_INSTANCE
+fn display_bitboards(bitboards: &HashMap<String, Bitboard>) -> String {
+    let mut builder = Builder::new();
+    for y in &bitboards.iter().chunks(7) {
+        let mut row = vec![];
+        for (var_name, bb) in y {
+            let desc = var_name.replace("white_", "w_").replace("black_", "b_");
+            row.push(format!("{desc}\n{bb:#}"));
+        }
+        builder.push_record(row);
     }
+    let tab = builder.build();
+    tab.to_string()
 }
 
+#[repr(align(64))]
 pub struct PreCalc {
     king_moves:            [Bitboard; 64],
     knight_moves:          [Bitboard; 64],
@@ -43,13 +40,40 @@ pub struct PreCalc {
     strictly_between:      [[Bitboard; 64]; 64],
     line:                  [[Bitboard; 64]; 64],
     surround:              [[Bitboard; 8]; 64],
-    sliding_piece_attacks: Box<BestSlidingPieceAttacks>,
+    sliding_piece_attacks: Hyperbola,
 }
 
+#[allow(long_running_const_eval)]
+static PRECALC: PreCalc = PreCalc::new();
+
 impl PreCalc {
-    fn new() -> Box<Self> {
-        let mut me = Box::new(Self {
-            sliding_piece_attacks: BestSlidingPieceAttacks::new(),
+    // doesnt impl Default as too large to copy by value
+    #[inline]
+    pub fn instance() -> &'static Self {
+        &PRECALC
+    }
+
+    fn display(&self, s1: Square, s2: Square, c: Color) -> String {
+        let mut bbs = HashMap::new();
+        bbs.insert("king".to_string(), self.king_moves[s1]);
+        bbs.insert("knight".to_string(), self.knight_moves[s1]);
+        bbs.insert("bishop".to_string(), self.bishop_moves[s1]);
+        bbs.insert("rook".to_string(), self.rook_moves[s1]);
+        bbs.insert("pawn front span".to_string(), self.pawn_front_span[c][s1]);
+        bbs.insert("pawn push".to_string(), self.pawn_push[c][s1]);
+        bbs.insert("pawn double push".to_string(), self.pawn_double_push[c][s1]);
+        bbs.insert("pawn cap east".to_string(), self.pawn_capture_east[c][s1]);
+        bbs.insert("pawn cap west".to_string(), self.pawn_capture_west[c][s1]);
+        bbs.insert("pawn att span".to_string(), self.pawn_attack_span[c][s1]);
+        bbs.insert("strictly between".to_string(), self.strictly_between[s1][s2]);
+        bbs.insert("line".to_string(), self.line[s1][s2]);
+        bbs.insert("surround[2]".to_string(), self.surround[s1][2]);
+        format!("{s1} {s2} {c}\n{}", display_bitboards(&bbs))
+    }
+
+    const fn new() -> Self {
+        let mut bbs = Self {
+            sliding_piece_attacks: Hyperbola::new(),
             king_moves:            [Bitboard::EMPTY; 64],
             knight_moves:          [Bitboard::EMPTY; 64],
             bishop_moves:          [Bitboard::EMPTY; 64],
@@ -63,92 +87,52 @@ impl PreCalc {
             strictly_between:      [[Bitboard::EMPTY; 64]; 64],
             line:                  [[Bitboard::EMPTY; 64]; 64],
             surround:              [[Bitboard::EMPTY; 8]; 64],
-        });
+        };
 
-        Self::pop_strictly_between(&mut me.strictly_between);
-        Self::pop_king_moves(&mut me.king_moves);
-        Self::pop_piece_moves(
-            &mut me.knight_moves,
-            &mut me.bishop_moves,
-            &mut me.rook_moves,
-        );
-        Self::pop_line(&mut me.line);
-        Self::pop_surround(&mut me.surround);
-        me.pop_pawn();
-        me
-    }
+        let mut s = 0;
+        while s < 64 {
+            let sq = Square::from_usize(s);
+            let mut color = 0;
+            while color < 2 {
+                let c = [Color::White, Color::Black][color];
+                bbs.pawn_front_span[color][s] = sq.as_bb().rays(c.forward());
+                bbs.pawn_push[color][s] = sq.as_bb().shift(c.forward());
+                bbs.pawn_double_push[color][s] = sq.as_bb().shift(c.forward()).shift(c.forward());
+                let e = sq.as_bb().shift(c.pawn_capture_east());
+                let w = sq.as_bb().shift(c.pawn_capture_west());
+                bbs.pawn_capture_east[color][s] = e;
+                bbs.pawn_capture_west[color][s] = w;
+                bbs.pawn_attack_span[color][s] = (e.or(w)).rays(c.forward()).or(e).or(w);
 
-    fn pop_pawn(&mut self) {
-        for c in Color::ALL {
-            for pawn in Square::all() {
-                self.pawn_front_span[c][pawn] = pawn.as_bb().rays(c.forward());
-                self.pawn_push[c][pawn] = pawn.as_bb().shift(c.forward());
-                self.pawn_double_push[c][pawn] = pawn.as_bb().shift(c.forward()).shift(c.forward());
-                let e = pawn.as_bb().shift(c.pawn_capture_east());
-                let w = pawn.as_bb().shift(c.pawn_capture_west());
-                self.pawn_capture_east[c][pawn] = e;
-                self.pawn_capture_west[c][pawn] = w;
-                self.pawn_attack_span[c][pawn] = (e | w).rays(c.forward()) | e | w;
+                color += 1;
             }
-        }
-    }
 
-    fn pop_king_moves(king_moves: &mut [Bitboard; 64]) {
-        for (sq, mv) in king_moves.iter_mut().enumerate() {
-            for &dir in Dir::ALL.iter() {
-                let bb = Bitboard::from_sq(sq as u16);
-                *mv |= bb.shift(dir);
+            let mut s2 = 0;
+            while s2 < 64 {
+                let sq2 = Square::from_usize(s2);
+                bbs.strictly_between[s][s2] = Square::slow_strictly_between(sq, sq2);
+                bbs.line[s][s2] = Square::slow_line_through(sq, sq2);
+                s2 += 1;
             }
-        }
-    }
 
-    fn pop_piece_moves(
-        knight_moves: &mut [Bitboard; 64],
-        bishop_moves: &mut [Bitboard; 64],
-        rook_moves: &mut [Bitboard; 64],
-    ) {
-        for sq in Bitboard::all().squares() {
-            // knight
-            for &dir in Dir::ALL.iter() {
+            let mut d = 0;
+            while d < 8 {
+                bbs.surround[s][d] = Square::slow_within_chebyshev_distance_inclusive(sq, d as i32);
+
+                let dir = Dir::ALL[d];
+                bbs.king_moves[s] = bbs.king_moves[s].or(sq.as_bb().shift(dir));
+
                 // for example a night attack might be step N followed by step NE
                 let next_dir = dir.rotate_clockwise();
-                knight_moves[sq] |= sq.as_bb().shift(dir).shift(next_dir);
+                bbs.knight_moves[s] = bbs.knight_moves[s].or(sq.as_bb().shift(dir).shift(next_dir));
+                d += 1;
             }
-            bishop_moves[sq] |= (sq.diag() | sq.anti_diag()) - sq.as_bb();
-            rook_moves[sq] |= (sq.file() | sq.rank()) - sq.as_bb();
-        }
-    }
 
-    fn pop_strictly_between(strictly_between: &mut [[Bitboard; 64]; 64]) {
-        for s1 in Bitboard::all().squares() {
-            for s2 in Bitboard::all().squares() {
-                strictly_between[s1][s2] = Square::calc_strictly_between(s1, s2);
-            }
+            bbs.bishop_moves[s] = bbs.bishop_moves[s].or((sq.diag().or(sq.anti_diag())).sub(sq.as_bb()));
+            bbs.rook_moves[s] = bbs.rook_moves[s].or((sq.file_bitboard().or(sq.rank_bitboard())).sub(sq.as_bb()));
+            s += 1;
         }
-    }
-
-    fn pop_line(line: &mut [[Bitboard; 64]; 64]) {
-        for s1 in Bitboard::all().squares() {
-            for s2 in Bitboard::all().squares() {
-                line[s1][s2] = Square::calc_line_through(s1, s2);
-            }
-        }
-    }
-
-    // surround - for each square we have the region of squares with a checyshev-distance of n
-    // surround[B2][1] = kings moves from B2
-    // surround[B2][0] = B2
-    fn pop_surround(surround: &mut [[Bitboard; 8]; 64]) {
-        for d in 0..8 {
-            for s1 in Bitboard::all().squares() {
-                for s2 in Bitboard::all().squares() {
-                    // when d = 0, we use distance of 1
-                    if Square::calc_chebyshev_distance(s1, s2) <= d {
-                        surround[s1][d as usize].insert(s2.as_bb());
-                    }
-                }
-            }
-        }
+        bbs
     }
 
     #[inline]
@@ -176,13 +160,13 @@ impl PreCalc {
     // max difference in rank or file
     #[inline]
     pub fn chebyshev_distance(&self, s1: Square, s2: Square) -> i32 {
-        Square::calc_chebyshev_distance(s1, s2)
+        Square::chebyshev_distance(s1, s2)
     }
 
     // king moves - see https://www.chessprogramming.org/Distance
     #[inline]
     pub fn manhattan_distance(&self, s1: Square, s2: Square) -> i32 {
-        Square::calc_manhattan_distance(s1, s2)
+        Square::manhattan_distance(s1, s2)
     }
 
     #[inline]
@@ -221,9 +205,9 @@ impl PreCalc {
     }
 
     pub fn all_pawn_attacks_ext(&self, c: Color, pawns: Bitboard, them: Bitboard) -> Bitboard {
-        pawns.squares().fold(Bitboard::empty(), |a, sq| {
-            a | self.pawn_attacks_ext(c, pawns, them, sq)
-        })
+        pawns
+            .squares()
+            .fold(Bitboard::empty(), |a, sq| a | self.pawn_attacks_ext(c, pawns, them, sq))
     }
 
     pub fn all_knight_attacks(&self, knights: Bitboard) -> Bitboard {
@@ -233,7 +217,9 @@ impl PreCalc {
     }
 
     pub fn all_king_attacks(&self, kings: Bitboard) -> Bitboard {
-        self.king_attacks(kings.first_square())
+        kings
+            .squares()
+            .fold(Bitboard::empty(), |a, sq| a | self.king_attacks(sq))
     }
 
     pub fn all_bishop_attacks(&self, bishops: Bitboard, occ: Bitboard) -> Bitboard {
@@ -266,20 +252,11 @@ impl PreCalc {
     }
 
     #[inline]
-    pub fn attacks(
-        &self,
-        c: Color,
-        p: Piece,
-        us: Bitboard,
-        them: Bitboard,
-        from: Square,
-    ) -> Bitboard {
+    pub fn attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
         match p {
             Piece::Bishop => self.bishop_attacks(us | them, from),
             Piece::Rook => self.rook_attacks(us | them, from),
-            Piece::Queen => {
-                self.rook_attacks(us | them, from) | self.bishop_attacks(us | them, from)
-            }
+            Piece::Queen => self.rook_attacks(us | them, from) | self.bishop_attacks(us | them, from),
             Piece::King => self.king_attacks(from),
             Piece::Knight => self.knight_attacks(from),
             Piece::Pawn => self.pawn_attacks_ext(c, us, them, from),
@@ -290,8 +267,7 @@ impl PreCalc {
     pub fn pawn_attacks_ext(&self, c: Color, us: Bitboard, them: Bitboard, fr: Square) -> Bitboard {
         let empty = !(us | them);
         let single = self.pawn_push[c][fr] & empty;
-        let double =
-            self.pawn_double_push[c][fr].iff(single.any()) & empty & c.double_push_dest_rank();
+        let double = self.pawn_double_push[c][fr].iff(single.any()) & empty & c.double_push_dest_rank();
         let capture = them & (self.pawn_capture_east[c][fr] | self.pawn_capture_west[c][fr]);
         single | double | capture
     }
@@ -305,10 +281,7 @@ impl PreCalc {
 
     #[inline]
     pub fn pawn_attacks_ew(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
-        (
-            pawns.shift(c.pawn_capture_east()),
-            pawns.shift(c.pawn_capture_west()),
-        )
+        (pawns.shift(c.pawn_capture_east()), pawns.shift(c.pawn_capture_west()))
     }
 
     #[inline]
@@ -352,13 +325,6 @@ impl PreCalc {
     #[inline]
     pub fn pawn_rear_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_front_span[c.flip_side()][pawn_sq]
-        // let pawn = pawn_sq.as_bb();
-        // let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
-        // if c == Color::White {
-        //     (pawn | atts).fill_north()
-        // } else {
-        //     (pawn | atts).fill_south()
-        // }
     }
 
     /// attack span = 1 or 2 columns of squares attacked and those in front of squares attacked
@@ -369,24 +335,24 @@ impl PreCalc {
 
     /// front span UNION attack span 2 or 3 columns of squares
     #[inline]
-    pub fn pawn_front_span_union_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]
+    pub fn pawn_front_span_union_attack_span(&self, c: Color, pawn: Square) -> Bitboard {
+        self.pawn_front_span[c][pawn] | self.pawn_attack_span[c][pawn]
     }
 
     #[inline]
     pub fn neighbouring_files(&self, sq: Square) -> Bitboard {
-        sq.file() | sq.file().shift(Dir::E) | sq.file().shift(Dir::W)
+        sq.file_bitboard() | sq.file_bitboard().shift(Dir::E) | sq.file_bitboard().shift(Dir::W)
     }
 
     /// square in front of pawn (or empty)
     #[inline]
-    pub fn pawn_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        self.pawn_push[c][pawn_sq]
+    pub fn pawn_stop(&self, c: Color, pawn: Square) -> Bitboard {
+        self.pawn_push[c][pawn]
     }
 
     /// square 2 in front of pawn (or empty). excludes single push square
-    pub fn pawn_double_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        self.pawn_double_push[c][pawn_sq]
+    pub fn pawn_double_stop(&self, c: Color, pawn: Square) -> Bitboard {
+        self.pawn_double_push[c][pawn]
     }
 
     #[inline]
@@ -417,16 +383,11 @@ impl PreCalc {
     #[inline]
     pub fn pawn_side_distant_neighbours(&self, side: Bitboard) -> Bitboard {
         let open = self.open_files(side);
-        ((side.shift(Dir::E) & open).shift(Dir::E) | (side.shift(Dir::W) & open).shift(Dir::W))
-            & side
+        ((side.shift(Dir::E) & open).shift(Dir::E) | (side.shift(Dir::W) & open).shift(Dir::W)) & side
     }
 
     #[inline]
-    pub fn adjacent_and_nearby_pawn_shield(
-        &self,
-        king_color: Color,
-        king_sq: Square,
-    ) -> (Bitboard, Bitboard) {
+    pub fn adjacent_and_nearby_pawn_shield(&self, king_color: Color, king_sq: Square) -> (Bitboard, Bitboard) {
         // take the sheild sq as  away from the side if the king is on the side
         let ssq = if king_sq.is_in(Bitboard::FILE_A) {
             king_sq.shift(Dir::E)
@@ -448,26 +409,6 @@ impl PreCalc {
         };
         (adjacent, nearby)
     }
-
-    // fn pawn_ep_captures(
-    //     &self,
-    //     pawns: Bitboard,
-    //     opp: Bitboard,
-    //     c: Color,
-    //     ep: Bitboard,
-    // ) -> (Bitboard, Bitboard) {
-    //     debug_assert!(!ep.is_empty());
-    //     let (east, west) = self.pawn_attacks(pawns, c);
-
-    //     let enemy_pawn = ep.shift(c.opposite().forward());
-
-    //     // check enemy have occupied the square one beyond en passant square
-    //     if (enemy_pawn & opp).is_empty() {
-    //         return (Bitboard::EMPTY, Bitboard::EMPTY);
-    //     }
-
-    //     (east & ep, west & ep)
-    // }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -548,7 +489,9 @@ pub struct Pawns {
 impl Pawns {
     #[inline]
     /// white pawns and black pawns determine the Pawn-structure
-    pub fn new(wp: Bitboard, bp: Bitboard) -> Pawns {
+    pub fn new(white_pawns: Bitboard, black_pawns: Bitboard) -> Pawns {
+        let wp = white_pawns;
+        let bp = black_pawns;
         let precalc = PreCalc::instance();
         let pawns = wp | bp;
         let open_files = precalc.open_files(pawns);
@@ -577,12 +520,10 @@ impl Pawns {
         // connected pawns = those that are currently pawn defended
         let connected = pawns & (wp & white_attacks | bp & black_attacks);
 
-        let duos =
-            (wp.shift(Dir::E) | wp.shift(Dir::W)) & wp | (bp.shift(Dir::E) | bp.shift(Dir::W)) & bp;
+        let duos = (wp.shift(Dir::E) | wp.shift(Dir::W)) & wp | (bp.shift(Dir::E) | bp.shift(Dir::W)) & bp;
 
         // distant neighbours are same rank but seperated by one file
-        let distant_neighbours =
-            precalc.pawn_side_distant_neighbours(wp) | precalc.pawn_side_distant_neighbours(bp);
+        let distant_neighbours = precalc.pawn_side_distant_neighbours(wp) | precalc.pawn_side_distant_neighbours(bp);
 
         // backward pawns - cannot be defended by other pawns and cannot move fwd because of a pawn attack
         // and sq in front not defended (ie not a duo)
@@ -596,10 +537,8 @@ impl Pawns {
         let black_single_attacks = black_attacks - black_double_attacks;
         let white_double_attacks = wp.shift(Dir::NW) & wp.shift(Dir::NE);
         let white_single_attacks = white_attacks - white_double_attacks;
-        let white_controlled = (white_double_attacks & !black_double_attacks)
-            | (white_single_attacks & !black_attacks);
-        let black_controlled = (black_double_attacks & !white_double_attacks)
-            | (black_single_attacks & !white_attacks);
+        let white_controlled = (white_double_attacks & !black_double_attacks) | (white_single_attacks & !black_attacks);
+        let black_controlled = (black_double_attacks & !white_double_attacks) | (black_single_attacks & !white_attacks);
         let candidate_passed_w = !(rays_north & black_controlled).fill_south() & half_open & wp;
         let candidate_passed_b = !(rays_south & white_controlled).fill_north() & half_open & bp;
         let candidate_passed = (candidate_passed_w | candidate_passed_b) - passed;
@@ -653,73 +592,67 @@ impl Pawns {
     }
 
     #[inline]
+    /// rook behind a passer (even if rook attacks obstructed)
     pub fn rooks_behind_passers(&self, bd: &Board) -> Bitboard {
         (self.passed & self.white).fill_south() & (bd.rooks() & bd.white())
             | (self.passed & self.black).fill_north() & (bd.rooks() & bd.black())
     }
 
     #[inline]
+    /// rammed pawns with the same color as a bishop on their team
     pub fn bishop_colored_rammed(&self, bd: &Board) -> Bitboard {
-        self.rammed & self.white & (bd.bishops() & bd.white()).squares_of_matching_color()
-            | self.rammed & self.black & (bd.bishops() & bd.black()).squares_of_matching_color()
+        self.rammed & self.white & (bd.bishops() & bd.white()).color_flood()
+            | self.rammed & self.black & (bd.bishops() & bd.black()).color_flood()
     }
 }
 
 impl fmt::Display for Pawns {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        let mut builder = Builder::new();
         let v = serde_json::value::to_value(self).unwrap();
         let bitboards: HashMap<String, Bitboard> = serde_json::value::from_value(v).unwrap();
-        for y in &bitboards.iter().chunks(7) {
-            let mut row = vec![];
-            for (var_name, bb) in y {
-                let desc = var_name.replace("white_", "w_").replace("black_", "b_");
-                row.push(format!("{desc}\n{bb:#}"));
-            }
-            builder.push_record(row);
-        }
-        let tab = builder.build();
-        tab.fmt(f)?;
+        display_bitboards(&bitboards).fmt(f)?;
         Ok(())
     }
 }
 
-// let bbd = PreCalc::default();
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{globals::constants::*, infra::profiler::PerfProfiler, test_log::test};
     use std::hint::black_box;
+
+    use Square::*;
+
+    use super::*;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::test_log::test;
 
     #[test]
     fn test_king_attacks() {
         let classical = PreCalc::new();
-        let attacks = classical.king_attacks(a6.square());
-        assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
+        let attacks = classical.king_attacks(Square::A6);
+        assert_eq!(attacks, A5 | B5 | B6 | B7 | A7);
 
-        let attacks = classical.king_attacks(c6.square());
-        assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
+        let attacks = classical.king_attacks(Square::C6);
+        assert_eq!(attacks, B5 | C5 | D5 | B6 | D6 | B7 | C7 | D7)
     }
 
     #[test]
     fn test_knight_attacks() {
         let classical = PreCalc::new();
-        let attacks = classical.knight_attacks(a1.square());
-        assert_eq!(attacks, b3 | c2);
+        let attacks = classical.knight_attacks(Square::A1);
+        assert_eq!(attacks, B3 | C2);
 
-        let attacks = classical.knight_attacks(c6.square());
-        assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
+        let attacks = classical.knight_attacks(Square::C6);
+        assert_eq!(attacks, A5 | A7 | B4 | B8 | D4 | D8 | E5 | E7)
     }
 
     #[test]
     fn test_xray_attacks() {
         let bb = PreCalc::instance();
-        let atts = bb.rook_xray_attacks(a1.square());
-        assert_eq!(atts, (FILE_A | RANK_1) - a1);
+        let atts = bb.rook_xray_attacks(Square::A1);
+        assert_eq!(atts, (Bitboard::FILE_A | Bitboard::RANK_1) - Bitboard::A1);
 
-        let atts = bb.bishop_xray_attacks(a1.square());
-        assert_eq!(atts, b2 | c3 | d4 | e5 | f6 | g7 | h8);
+        let atts = bb.bishop_xray_attacks(Square::A1);
+        assert_eq!(atts, B2 | C3 | D4 | E5 | F6 | G7 | H8);
     }
 
     #[test]
@@ -744,61 +677,58 @@ mod tests {
     #[test]
     fn test_precalc_pawns() {
         let bb = PreCalc::instance();
-        let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
-        let opponent = a4 | b4 | d3 | g5;
-        let _occupied = pawns_w | opponent;
+        let pawns_w = A2 | B3 | C2 | D7 | F5 | G4 | H4 | H5;
+        let opponent = A4 | B4 | D3 | G5;
 
         let pawns = Pawns::new(pawns_w, opponent);
         println!("{pawns}");
 
         // let pawn_single_push = bb.pawn_pushes(occupied, pawns_w, Color::White);
-        // let single = a3 | c3 | d8 | f6 | h6;
-        // let double = c4;
+        // let single = A3 | C3 | D8 | F6 | H6;
+        // let double = C4;
         // assert_eq!(pawn_single_push, single | double);
 
         let (pawn_capture_e, pawn_capture_w) = bb.pawn_attacks_ew(pawns_w, Color::White);
-        assert_eq!(pawn_capture_e & opponent, d3);
+        assert_eq!(pawn_capture_e & opponent, Bitboard::D3);
 
-        assert_eq!(pawn_capture_w & opponent, a4 | g5);
+        assert_eq!(pawn_capture_w & opponent, A4 | G5);
 
         // let ep_square = g6;
         // let (east, west) = bb.pawn_ep_captures(pawns_w, opponent, Color::White, ep_square);
         // assert_eq!(east, g6);
         // assert_eq!(west, g6);
 
-        let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
-        assert_eq!(PreCalc::instance().doubled_pawns(pawns), b4 | c6 | d7);
+        let pc = PreCalc::instance();
+        println!("{}", pc.display(Square::A3, Square::D6, Color::White));
+
+        use crate::bits::bitboard::Bitboard as BB;
+        let pawns = B2 | B4 | C5 | C6 | D3 | D7 | H5;
+        assert_eq!(pc.doubled_pawns(pawns), B4 | C6 | D7);
 
         assert_eq!(
-            PreCalc::instance().open_files(pawns),
-            FILE_A | FILE_E | FILE_F | FILE_G
+            pc.open_files(pawns),
+            Bitboard::FILE_A | Bitboard::FILE_E | Bitboard::FILE_F | Bitboard::FILE_G
         );
-        assert_eq!(PreCalc::instance().pawn_side_isolated(pawns), h5);
-        assert_eq!(PreCalc::instance().pawn_side_isolated(opponent), d3 | g5);
+        assert_eq!(pc.pawn_side_isolated(pawns), Bitboard::H5);
+        assert_eq!(pc.pawn_side_isolated(opponent), D3 | G5);
 
-        let calced =
-            PreCalc::instance().pawn_front_span_union_attack_span(Color::White, Square::B2);
-        let expect = (Bitboard::FILE_A | Bitboard::FILE_B | Bitboard::FILE_C)
-            - (Bitboard::RANK_1 | Bitboard::RANK_2);
+        let calced = pc.pawn_front_span_union_attack_span(Color::White, Square::B2);
+        let expect = (BB::FILE_A | BB::FILE_B | BB::FILE_C) - (BB::RANK_1 | BB::RANK_2);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced =
-            PreCalc::instance().pawn_front_span_union_attack_span(Color::White, Square::A2);
-        let expect = (Bitboard::FILE_A | Bitboard::FILE_B) - (Bitboard::RANK_1 | Bitboard::RANK_2);
+        let calced = pc.pawn_front_span_union_attack_span(Color::White, Square::A2);
+        let expect = (BB::FILE_A | BB::FILE_B) - (BB::RANK_1 | BB::RANK_2);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced =
-            PreCalc::instance().pawn_front_span_union_attack_span(Color::White, Square::H8);
-        let expect = Bitboard::EMPTY;
+        let calced = pc.pawn_front_span_union_attack_span(Color::White, Square::H8);
+        let expect = BB::EMPTY;
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced =
-            PreCalc::instance().pawn_front_span_union_attack_span(Color::Black, Square::D7);
-        let expect = (Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E)
-            - (Bitboard::RANK_8 | Bitboard::RANK_7);
+        let calced = pc.pawn_front_span_union_attack_span(Color::Black, Square::D7);
+        let expect = (BB::FILE_C | BB::FILE_D | BB::FILE_E) - (BB::RANK_8 | BB::RANK_7);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
     }
@@ -806,16 +736,30 @@ mod tests {
     #[test]
     fn bench_precalc_pawns() {
         let mut prof_new = PerfProfiler::new("precalc pawns");
+        let mut prof_stop = PerfProfiler::new("precalc stop");
+        let mut prof_stop_calc = PerfProfiler::new("precalc stop calc");
         let mut prof_clone = PerfProfiler::new("precalc pawns clone");
 
-        let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
-        let pawns_b = a4 | b4 | d3 | g5;
+        let pawns_w = A2 | B3 | C2 | D7 | F5 | G4 | H4 | H5;
+        let pawns_b = A4 | B4 | D3 | G5;
 
         for _ in 0..100 {
             prof_new.bench(|| {
                 let pawns = Pawns::new(black_box(pawns_w), black_box(pawns_b));
                 black_box(pawns);
             });
+        }
+
+        let pc = PreCalc::instance();
+        for c in Color::ALL {
+            for sq in Bitboard::RANKS_234567.squares() {
+                prof_stop.bench(|| {
+                    black_box(pc.pawn_stop(black_box(c), black_box(sq)));
+                });
+                prof_stop_calc.bench(|| {
+                    black_box(black_box(sq).shift(black_box(c).forward()));
+                });
+            }
         }
 
         let pawns = black_box(Pawns::new(pawns_w, pawns_b));
@@ -829,41 +773,25 @@ mod tests {
     #[test]
     fn test_between() {
         let bb = PreCalc::instance();
-        assert_eq!(bb.between(a1.square(), a3.square()), a1 | a2 | a3);
-        assert_eq!(bb.between(a3.square(), a1.square()), a1 | a2 | a3);
-        assert_eq!(bb.between(a1.square(), a8.square()), FILE_A);
-        assert_eq!(bb.between(a1.square(), a1.square()), a1);
-        assert_eq!(bb.between(a1.square(), b2.square()), a1 | b2);
+        assert_eq!(bb.between(A1, A3), A1 | A2 | A3);
+        assert_eq!(bb.between(A3, A1), A1 | A2 | A3);
+        assert_eq!(bb.between(A1, A8), Bitboard::FILE_A);
+        assert_eq!(bb.between(A1, A1), Bitboard::A1);
+        assert_eq!(bb.between(A1, B2), A1 | B2);
 
-        assert_eq!(bb.strictly_between(a1.square(), a3.square()), a2);
-        assert_eq!(bb.strictly_between(a3.square(), a1.square()), a2);
-        assert_eq!(
-            bb.strictly_between(a1.square(), a8.square()),
-            FILE_A - a1 - a8
-        );
-        assert_eq!(
-            bb.strictly_between(a1.square(), a1.square()),
-            Bitboard::empty()
-        );
-        assert_eq!(
-            bb.strictly_between(a1.square(), b2.square()),
-            Bitboard::empty()
-        );
+        assert_eq!(bb.strictly_between(A1, A3), Bitboard::A2);
+        assert_eq!(bb.strictly_between(A3, A1), Bitboard::A2);
+        assert_eq!(bb.strictly_between(A1, A8), Bitboard::FILE_A - (A1 | A8));
+        assert_eq!(bb.strictly_between(A1, A1), Bitboard::empty());
+        assert_eq!(bb.strictly_between(A1, B2), Bitboard::empty());
     }
 
     #[test]
     fn test_within_chebyshev_distance_inclusive() {
         let bb = PreCalc::instance();
-        assert_eq!(
-            bb.within_chebyshev_distance_inclusive(d4.square(), 4),
-            Bitboard::all()
-        );
-        assert_eq!(
-            bb.within_chebyshev_distance_inclusive(a4.square(), 2)
-                .popcount(),
-            15
-        );
-        info!("{}", bb.within_chebyshev_distance_inclusive(c3.square(), 3));
+        assert_eq!(bb.within_chebyshev_distance_inclusive(D4, 4), Bitboard::all());
+        assert_eq!(bb.within_chebyshev_distance_inclusive(A4, 2).popcount(), 15);
+        info!("{}", bb.within_chebyshev_distance_inclusive(C3, 3));
     }
 
     #[test]
@@ -871,42 +799,21 @@ mod tests {
         let bb = PreCalc::instance();
         let a: Bitboard = "8/8/8/8/8/8/5XXX/5XXX".parse().unwrap();
         let n: Bitboard = "8/8/8/8/8/5XXX/8/8".parse().unwrap();
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::G1),
-            (a, n)
-        );
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::H1),
-            (a, n)
-        );
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, G1), (a, n));
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, H1), (a, n));
 
         let a: Bitboard = "8/8/8/8/8/8/XXX5/XXX5".parse().unwrap();
         let n: Bitboard = "8/8/8/8/8/XXX5/8/8".parse().unwrap();
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::A1),
-            (a, n)
-        );
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::B1),
-            (a, n)
-        );
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, A1), (a, n));
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, B1), (a, n));
 
         let a: Bitboard = "XXX5/XXX5/8/8/8/8/8/8".parse().unwrap();
         let n: Bitboard = "8/8/XXX5/8/8/8/8/8".parse().unwrap();
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::Black, Square::A8),
-            (a, n)
-        );
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::Black, Square::B8),
-            (a, n)
-        );
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::Black, A8), (a, n));
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::Black, B8), (a, n));
 
         let a: Bitboard = "8/8/.XXX4/.XXX4/.XXX4/8/8/8".parse().unwrap();
         let n: Bitboard = "8/8/8/8/8/8/8/8".parse().unwrap(); // no rank 3 if off backline
-        assert_eq!(
-            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::C5),
-            (a, n)
-        );
+        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, C5), (a, n));
     }
 }

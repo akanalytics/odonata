@@ -1,5 +1,10 @@
 # Changelog
 
+# Release 0.9.0 (6 Jun 2024)
+- NNUE evaluation (768 - 512x2 - 1 network)
+- Trained using simple self-written CPU-device NN trainer (mini-batch, AdamW), and own self-play and evals.
+- Expected Elo +250 to +300 vs Odonata 0.8.0
+
 # Release 0.8.0 (6 Feb 2024)
 - Connected rooks and doubled rooks evals fixed
 - Training migrated from LBFGS (argmin) to Adam (custom coded) in anticipation of Odonata NNUE

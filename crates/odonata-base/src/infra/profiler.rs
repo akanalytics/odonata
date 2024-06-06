@@ -1,13 +1,12 @@
+use std::fmt;
+use std::hint::black_box;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
 #[cfg(target_os = "linux")]
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
 use super::utils::{DecimalFormatter, IntegerFormatter};
-use std::{
-    fmt,
-    hint::black_box,
-    sync::Mutex,
-    time::{Duration, Instant},
-};
 
 pub struct Flamegraph<'a> {
     #[cfg(target_os = "linux")]
@@ -145,11 +144,7 @@ impl<'a> Flamegraph<'a> {
         let Some(guard) = &self.guard else {
             return Ok(());
         };
-        let Ok(report) = guard
-            .report()
-            .frames_post_processor(frames_post_processor())
-            .build()
-        else {
+        let Ok(report) = guard.report().frames_post_processor(frames_post_processor()).build() else {
             // frames_post_processor(proc()).build() else {
             anyhow::bail!("Unable to build flamegraph report");
         };
@@ -157,27 +152,25 @@ impl<'a> Flamegraph<'a> {
         let Some(name) = &self.name else {
             panic!("name not set on flamegraph profiler");
         };
-        use std::{fs::File, path::Path};
+        use std::fs::File;
+        use crate::infra::resources::workspace_dir;
 
-        let name1 = format!("flamegraph_{name}_1.svg")
-            .replace(':', "_")
-            .replace(' ', "_");
-        let file = File::create(&name1)?;
+        let name1 = format!("flamegraph_{name}_1.svg").replace(':', "_").replace(' ', "_");
+        let path = workspace_dir().join("ext/output/profile");
+        let file = File::create(path.join(&name1))?;
         let mut options = pprof::flamegraph::Options::default();
         options.flame_chart = false;
         report.flamegraph_with_options(file, &mut options)?;
 
-        let name2 = format!("flamegraph_{name}_2.svg")
-            .replace(':', "_")
-            .replace(' ', "_");
-        let file = File::create(&name2)?;
+        let name2 = format!("flamegraph_{name}_2.svg").replace(':', "_").replace(' ', "_");
+        let file = File::create(path.join(&name2))?;
         let mut options = pprof::flamegraph::Options::default();
         options.reverse_stack_order = true;
         report.flamegraph_with_options(file, &mut options)?;
         eprintln!(
-            "Generated file:://{f}  flamegraphs {name1} and {name2} with wd={wd}",
-            f = Path::new(&name1).canonicalize().unwrap().display(),
-            wd = std::env::current_dir().unwrap().display()
+            "Generated file:://  flamegraphs {n1:?} and {n2:?} in dir",
+            n1 = path.join(&name1), 
+            n2 = path.join(&name2), 
         );
         Ok(())
     }
@@ -229,7 +222,7 @@ impl fmt::Display for PerfProfiler {
     }
 }
 
-const NOOP_INSTRUCTION_OVERHEAD: u64 = 76;
+const NOOP_INSTRUCTION_OVERHEAD: u64 = 71;
 const NOOP_BRANCH_OVERHEAD: u64 = 20;
 
 impl PerfProfiler {
@@ -237,8 +230,7 @@ impl PerfProfiler {
     pub fn new(name: &str) -> Self {
         let name = name.to_string();
         let benchmark_iters = if let Ok(s) = std::env::var("RUST_BENCH") {
-            s.parse()
-                .unwrap_or_else(|_| panic!("RUST_BENCH not an integer: {s}"))
+            s.parse().unwrap_or_else(|_| panic!("RUST_BENCH not an integer: {s}"))
         } else {
             1
         };
@@ -352,7 +344,7 @@ impl PerfProfiler {
         let iters = self.iters;
         writeln!(
             w,
-            "PROFH: {:<30}\t{:>13}\t{:>13}\t{:>13}\t{:>13}\t{:>13}\t{:>13}\t{:>13}\t{:>13}", /* \t{:>13}\t{:>13}", */
+            "PROFH: {:<30}\t{:>14}\t{:>10}\t{:>13}\t{:>13}\t{:>13}\t{:>13}\t{:>13}\t{:>13}", // \t{:>13}\t{:>13}",
             "name",
             "instructions",
             "iters",
@@ -365,24 +357,25 @@ impl PerfProfiler {
             // "cycles-per-ins",
             // "cache-hit-%",
         )?;
-        writeln!(w,
-        "PROFD: {n:<30}\t{ins:>13}\t{it:>13}\t{cy:>13}\t{rt:>13}\t{br:>13}\t{bm:>13}\t{cm:>13}\t{cr:>13}\n", // \t{cpi:>13.2}\t{ch:>13.2}\n",
-        n = self.name,
-        ins = (((counts[&self.ins]) / iters).saturating_sub(NOOP_INSTRUCTION_OVERHEAD)).human(),
-        it = iters.human(),
-        // Formatting::u128((0u32).into()),
-        cy = (counts[&self.cycles] / iters).human(),
-        rt = (self.elapsed.as_micros() as f64 / 1000.0 ).dp(3),
-        br = (counts[&self.branches] / iters).human(),  // ((counts[&self.branches] / iters).wrapping_sub(NOOP_BRANCH_OVERHEAD)).human(),
-        bm = (counts[&self.branch_misses] / iters).human(),
-        cm = (counts[&self.cache_misses] / iters).human(),
-        cr = (0u32).human(),
-        // (counts[&self.cache_refs] / iters).human()),
-        // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
-        // cpi = (0u32).human(),
-        // ch = (0u32).human(),
-        // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
-    )?;
+        writeln!(
+            w,
+            "PROFD: {n:<30}\t{ins:>14}\t{it:>10}\t{cy:>13}\t{rt:>13}\t{br:>13}\t{bm:>13}\t{cm:>13}\t{cr:>13}\n", /* \t{cpi:>13.2}\t{ch:>13.2}\n", */
+            n = self.name,
+            ins = (((counts[&self.ins]) / iters).saturating_sub(NOOP_INSTRUCTION_OVERHEAD)).human(),
+            it = iters.human(),
+            // Formatting::u128((0u32).into()),
+            cy = (counts[&self.cycles] / iters).human(),
+            rt = (self.elapsed.as_micros() as f64 / 1000.0).dp(3),
+            br = (counts[&self.branches] / iters).human(), /* ((counts[&self.branches] / iters).wrapping_sub(NOOP_BRANCH_OVERHEAD)).human(), */
+            bm = (counts[&self.branch_misses] / iters).human(),
+            cm = (counts[&self.cache_misses] / iters).human(),
+            cr = (0u32).human(),
+            // (counts[&self.cache_refs] / iters).human()),
+            // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
+            // cpi = (0u32).human(),
+            // ch = (0u32).human(),
+            // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
+        )?;
         Ok(())
     }
 }
@@ -407,8 +400,10 @@ impl Drop for PerfProfiler {
 #[cfg(test)]
 mod tests {
 
-    use crate::{test_log::test, trace::stat::Stat};
     use std::hint::black_box;
+
+    use crate::test_log::test;
+    use crate::trace::stat::Stat;
 
     #[derive(Default)]
     struct Struct {
@@ -498,16 +493,17 @@ mod tests {
     }
 
     use std::cell::Cell;
+
     use thread_local::ThreadLocal;
 
     use super::PerfProfiler;
 
     thread_local! {
-        static COUNTER1A: Cell<u64> = Cell::new(0);
+        static COUNTER1A: Cell<u64> = const { Cell::new(0) };
     }
 
     thread_local! {
-        static COUNTER1B: Cell<u64> = Cell::new(10);
+        static COUNTER1B: Cell<u64> = const { Cell::new(10) };
     }
 
     static COUNTER2: Stat = Stat::new("Counter");
@@ -550,16 +546,5 @@ mod tests {
             });
         }
         assert_eq!(counter3.get_or(|| Cell::new(0)).get(), 10003);
-
-        use crate::bits::Bitboard;
-        let mut pr = PerfProfiler::new("bitboard popcounts");
-        for _iter in 0..10004 {
-            let _count = pr.bench(|| {
-                let bb = Bitboard::RANK_1;
-                let count1 = (bb & Bitboard::FILE_A).popcount();
-                let count2 = (black_box(Bitboard::RANK_3) & Bitboard::FILE_A).popcount();
-                count1 + count2
-            });
-        }
     }
 }

@@ -1,16 +1,12 @@
-use crate::{
-    epd::Epd,
-    infra::component::Component,
-    mv::Move,
-    piece::{Hash, Piece, Repeats},
-    prelude::Board,
-    variation::Variation,
-};
-// use crate::{debug, logger::LogInit};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use super::Position;
+use crate::epd::Epd;
+use crate::infra::component::Component;
+use crate::piece::Repeats;
+use crate::prelude::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -28,6 +24,38 @@ pub struct Repetition {
     root_index: usize,
 }
 
+/// logic:
+/// if we see a single repeat in the search, then we may as well call it
+///  a draw rather than repeat the same moves as before (single repeat = 2 counting current as 1)
+///
+/// we may however need to play a repeat of a played position to get out of a bad position
+/// so dont terminate search on these. 3 matches means the move is the third time in this position => draw
+impl Default for Repetition {
+    fn default() -> Self {
+        Self {
+            enabled:                     true,
+            never_with_null_moves:       false,
+            include_prior_to_null_moves: true, //  +19 elo
+            in_played_threshold:         3,
+            in_search_threshold:         2,
+            root_index:                  0,
+            prior_positions:             Vec::new(),
+        }
+    }
+}
+
+impl Configurable for Repetition {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.never_with_null_moves.set(p.get("never_with_null_moves"))?;
+        self.include_prior_to_null_moves
+            .set(p.get("include_prior_to_null_moves"))?;
+        self.in_played_threshold.set(p.get("in_played_threshold"))?;
+        self.in_search_threshold.set(p.get("in_search_threshold"))?;
+        Ok(p.is_modified())
+    }
+}
+
 impl Component for Repetition {
     fn new_game(&mut self) {
         self.new_position();
@@ -36,27 +64,6 @@ impl Component for Repetition {
     fn new_position(&mut self) {
         self.prior_positions.clear();
         self.root_index = 0;
-    }
-}
-
-/// logic:
-/// if we see a single repeat in the search, then we may as well call it
-///  a draw rather than repeat the same moves as before (single repeat = 2 counting current as 1)
-///
-/// we may however need to play a repeat of a played position to get out of a bad position
-/// so dont terminate search on these. 3 matches means the move is the third time in this position => draw
-
-impl Default for Repetition {
-    fn default() -> Self {
-        Self {
-            enabled:                     true,
-            never_with_null_moves:       false,
-            include_prior_to_null_moves: true,
-            in_played_threshold:         3,
-            in_search_threshold:         2,
-            prior_positions:             Vec::new(),
-            root_index:                  0,
-        }
     }
 }
 
@@ -173,11 +180,7 @@ impl Repetition {
             if i == 0 && self.root_index == 0 {
                 writeln!(f, "------")?;
             }
-            writeln!(
-                f,
-                "{i:>3} {mat}",
-                mat = if b.hash() == hash { "*" } else { "" }
-            )?;
+            writeln!(f, "{i:>3} {mat}", mat = if b.hash() == hash { "*" } else { "" })?;
             if i + 1 == self.root_index {
                 writeln!(f, "------\n\n\n")?;
             }
@@ -200,30 +203,73 @@ impl Repetition {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::catalog::*;
     use test_log::test;
 
+    use super::*;
+    use crate::catalog::*;
+
+    // #[test]
+    // fn test_repetition() {
+    //     let bds: Vec<Board> = (0..20)
+    //         .map(Catalog::chess960)
+    //         .map(|p| p.board().clone())
+    //         .collect();
+    //     let mut rep1 = Repetition::new();
+    //     let b = Catalog::starting_board();
+    //     let knight_mv = b.parse_uci_move("b1c3").unwrap();
+    //     let pawn_mv = b.parse_uci_move("a2a3").unwrap();
+    //     rep1.push_move(knight_mv, &bds[0]);
+    //     rep1.push_move(knight_mv, &bds[1]);
+    //     rep1.push_move(pawn_mv, &bds[2]);
+    //     rep1.push_move(knight_mv, &bds[3]);
+    //     rep1.push_move(knight_mv, &bds[4]);
+    //     rep1.push_move(knight_mv, &bds[5]);
+    //     rep1.push_move(knight_mv, &bds[6]);
+    //     assert_eq!(rep1.count_old(&bds[4].make_move(knight_mv)).in_total(), 1);
+    //     assert_eq!(rep1.count_old(&bds[2].make_move(pawn_mv)).in_total(), 1);
+    //     assert_eq!(rep1.count_old(&bds[0].make_move(knight_mv)).in_total(), 0); // pawn move reset the count
+
+    //     rep1.pop(); // 6
+    //     rep1.pop(); // 5
+    //     rep1.pop(); // 4
+    //     rep1.pop(); // 3
+    //     rep1.pop(); // 2 the pawn move
+    //     rep1.push_move(knight_mv, &bds[2]);
+    //     rep1.push_move(knight_mv, &bds[3]);
+    //     rep1.push_move(knight_mv, &bds[4]);
+    //     rep1.push_move(knight_mv, &bds[5]);
+    //     rep1.push_move(knight_mv, &bds[6]);
+    //     assert_eq!(rep1.count_old(&bds[4].make_move(knight_mv)).in_total(), 1);
+    //     assert_eq!(rep1.count_old(&bds[2].make_move(knight_mv)).in_total(), 1);
+    //     assert_eq!(rep1.count_old(&bds[0].make_move(knight_mv)).in_total(), 1); // no pawn move to reset the hmvc
+    //     rep1.push_move(knight_mv, &bds[6]);
+    //     rep1.push_move(knight_mv, &bds[4]);
+    //     assert_eq!(rep1.count_old(&bds[2].make_move(knight_mv)).in_total(), 1);
+    // }
+
     #[test]
-    fn test_repetition() {
-        let bds: Vec<Board> = (0..20)
-            .map(Catalog::chess960)
-            .map(|p| p.board().clone())
-            .collect();
+    fn test_repetition2() -> anyhow::Result<()> {
+        let b = Catalog::starting_board().make_move_str("e2e4")?.make_move_str("e7e6")?;
+        let bds: Vec<Board> = (0..20).map(|_| b.clone()).collect();
         let mut rep1 = Repetition::new();
-        let b = Catalog::starting_board();
-        let knight_mv = b.parse_uci_move("b1c3").unwrap();
-        let pawn_mv = b.parse_uci_move("a2a3").unwrap();
+        let knight_mv = b.parse_uci_move("b1c3")?;
+        let knight_mv2 = b.parse_uci_move("g1f3")?;
+        let knight_mv3 = b.parse_uci_move("g1h3")?;
+        let knight_mv4 = b.parse_uci_move("b1a3")?;
+        let bishop_mv1 = b.parse_uci_move("f1e2")?;
+        let bishop_mv2 = b.parse_uci_move("f1d3")?;
+        let pawn_mv = b.parse_uci_move("a2a3")?;
         rep1.push_move(knight_mv, &bds[0]);
-        rep1.push_move(knight_mv, &bds[1]);
+        rep1.push_move(knight_mv2, &bds[1]);
         rep1.push_move(pawn_mv, &bds[2]);
-        rep1.push_move(knight_mv, &bds[3]);
+        rep1.push_move(knight_mv3, &bds[3]);
         rep1.push_move(knight_mv, &bds[4]);
-        rep1.push_move(knight_mv, &bds[5]);
-        rep1.push_move(knight_mv, &bds[6]);
+        rep1.push_move(bishop_mv1, &bds[5]);
+        rep1.push_move(bishop_mv2, &bds[6]);
         assert_eq!(rep1.count_old(&bds[4].make_move(knight_mv)).in_total(), 1);
         assert_eq!(rep1.count_old(&bds[2].make_move(pawn_mv)).in_total(), 1);
-        assert_eq!(rep1.count_old(&bds[0].make_move(knight_mv)).in_total(), 0); // pawn move reset the count
+        // pawn move after this knight move reset the count
+        assert_eq!(rep1.count_old(&bds[1].make_move(knight_mv2)).in_total(), 0);
 
         rep1.pop(); // 6
         rep1.pop(); // 5
@@ -231,16 +277,16 @@ mod tests {
         rep1.pop(); // 3
         rep1.pop(); // 2 the pawn move
         rep1.push_move(knight_mv, &bds[2]);
-        rep1.push_move(knight_mv, &bds[3]);
-        rep1.push_move(knight_mv, &bds[4]);
-        rep1.push_move(knight_mv, &bds[5]);
+        rep1.push_move(knight_mv3, &bds[3]);
+        rep1.push_move(knight_mv4, &bds[4]);
+        rep1.push_move(bishop_mv1, &bds[5]);
+        rep1.push_move(bishop_mv2, &bds[6]);
+        assert_eq!(rep1.count_old(&bds[4].make_move(knight_mv4)).in_total(), 1);
+        assert_eq!(rep1.count_old(&bds[2].make_move(knight_mv)).in_total(), 2); // bd0 and bd2
         rep1.push_move(knight_mv, &bds[6]);
-        assert_eq!(rep1.count_old(&bds[4].make_move(knight_mv)).in_total(), 1);
-        assert_eq!(rep1.count_old(&bds[2].make_move(knight_mv)).in_total(), 1);
-        assert_eq!(rep1.count_old(&bds[0].make_move(knight_mv)).in_total(), 1); // no pawn move to reset the hmvc
-        rep1.push_move(knight_mv, &bds[6]);
         rep1.push_move(knight_mv, &bds[4]);
-        assert_eq!(rep1.count_old(&bds[2].make_move(knight_mv)).in_total(), 1);
+        assert_eq!(rep1.count_old(&bds[2].make_move(knight_mv)).in_total(), 3);
+        Ok(())
     }
 
     #[test]

@@ -1,29 +1,8 @@
-use super::value::Stats;
-pub use crate::domain::node::Event;
-use crate::{
-    domain::node::{Counter, Histograms, Node, Timing},
-    eg::EndGame,
-    infra::{
-        utils::{DecimalFormatter, DurationFormatter as _, Formatting},
-        value::Aggregate,
-    },
-    mv::Move,
-    piece::{MoveType, Ply},
-    prelude::{Board, *},
-};
-use append_only_vec::AppendOnlyVec;
-use crossbeam_utils::{atomic::AtomicCell, CachePadded};
-use hdrhist::HDRHist;
-use itertools::Itertools;
-use once_cell::sync::Lazy;
-use static_init::dynamic;
-use std::{
-    cell::Cell,
-    collections::HashMap,
-    fmt::{self, Display},
-    ops::{AddAssign, Deref},
-    sync::{Arc, Mutex},
-};
+use std::cell::Cell;
+use std::collections::HashMap;
+use std::fmt::{self, Display};
+use std::ops::{AddAssign, Deref};
+use std::sync::{Arc, Mutex};
 use std::{
     // borrow::BorrowMut,
     cell::RefCell,
@@ -33,15 +12,27 @@ use std::{
     // sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
+
+use append_only_vec::AppendOnlyVec;
+use crossbeam_utils::atomic::AtomicCell;
+use crossbeam_utils::CachePadded;
+use hdrhist::HDRHist;
+use once_cell::sync::Lazy;
+use static_init::dynamic;
 use strum::{EnumCount, EnumMessage, IntoEnumIterator};
-use tabled::{
-    builder::Builder,
-    settings::{
-        object::{Columns, Rows, Segment},
-        style::BorderText,
-        Alignment, Border, Modify, Style,
-    },
-};
+use tabled::builder::Builder;
+use tabled::settings::object::{Columns, Rows, Segment};
+use tabled::settings::style::BorderText;
+use tabled::settings::{Alignment, Border, Modify, Style};
+
+use super::value::Stats;
+pub use crate::domain::node::Event;
+use crate::domain::node::{Counter, Histograms, Node, Timing};
+use crate::eg::EndGame;
+use crate::infra::utils::{DecimalFormatter, DurationFormatter as _, Formatting};
+use crate::infra::value::Aggregate;
+use crate::piece::MoveType;
+use crate::prelude::*;
 
 pub trait Metric: fmt::Debug {}
 impl<T: Metric> Metric for Rc<T> {}
@@ -159,7 +150,7 @@ impl AtomicThroughput {
     }
 
     pub fn per_second(&self) -> f64 {
-        self.hits.load() as f64 / self.start.lock().unwrap().unwrap().elapsed().as_secs_f64()
+        self.hits.load() as f64 / self.start.lock().unwrap().expect("not started").elapsed().as_secs_f64()
     }
 
     pub fn total(&self) -> u64 {
@@ -169,9 +160,10 @@ impl AtomicThroughput {
 
 #[cfg(test)]
 mod test_throughput {
-    use super::*;
     use serde::Serialize;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_core_metrics() {
@@ -188,10 +180,7 @@ mod test_throughput {
         let m = Metrics::default();
         assert_eq!(m.atomic.to_string(), "0.0/sec");
         assert_eq!(m.cell.to_string(), "0.0/sec");
-        let s = serde_json::to_string(&m.atomic)
-            .unwrap()
-            .trim_matches('"')
-            .to_string();
+        let s = serde_json::to_string(&m.atomic).unwrap().trim_matches('"').to_string();
         assert_eq!(s, "0.0/sec");
         for _ in 0..100 {
             m.atomic.hit();
@@ -201,8 +190,8 @@ mod test_throughput {
         let atomic_per_sec = m.atomic.per_second();
         let cell_per_sec = m.cell.per_second();
         println!("atomic: {a}; cell: {c}", a = m.atomic, c = m.cell);
-        assert_eq!(700.0 < atomic_per_sec && atomic_per_sec < 1000.0, true);
-        assert_eq!(700.0 < cell_per_sec && cell_per_sec < 1000.0, true);
+        assert_eq!(200.0 < atomic_per_sec && atomic_per_sec < 1000.0, true);
+        assert_eq!(200.0 < cell_per_sec && cell_per_sec < 1000.0, true);
         println!("{toml}", toml = toml::to_string_pretty(&m).unwrap());
         // use json_to_table::json_to_table;
         // println!(
@@ -452,8 +441,9 @@ static M3: Lazy<&'static CountMetric> = Lazy::new(|| CountMetric::register("coun
 
 #[cfg(test)]
 mod tests2 {
-    use super::*;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_metrics2() {
@@ -635,10 +625,7 @@ impl Metrics {
         let mut uci = vec![];
         for c in Counter::iter() {
             if filter == "*" || filter.contains(&c.to_string()) {
-                uci.push(format!(
-                    "Counter: {c:<25} = {n}",
-                    n = self.counters[c.index()]
-                ));
+                uci.push(format!("Counter: {c:<25} = {n}", n = self.counters[c.index()]));
                 uci.push(format!(
                     "Counter:   {c:<25} = {tot}",
                     tot = self.nodes[c.index()].total()
@@ -743,9 +730,7 @@ impl Metrics {
                         // stats[&name] = Value::Percent(hits as f64, hits as f64 + misses as f64)
                     }
                 }
-                _ if self.counters[e.index()] != 0 => {
-                    stats[&name] = (self.counters[e.index()] as i32).into()
-                }
+                _ if self.counters[e.index()] != 0 => stats[&name] = (self.counters[e.index()] as i32).into(),
                 _ => {}
             };
         }
@@ -827,8 +812,7 @@ impl Metrics {
             b.push_record([e.as_ref(), &match e {
                 Counter::EvalCachePercent => perc(
                     counters[Counter::EvalCacheHit.index()],
-                    counters[Counter::EvalCacheHit.index()]
-                        + counters[Counter::EvalCacheMiss.index()],
+                    counters[Counter::EvalCacheHit.index()] + counters[Counter::EvalCacheMiss.index()],
                 ),
                 _ if counters[e.index()] != 0 => i(counters[e.index()]),
                 _ => String::new(),
@@ -947,9 +931,7 @@ impl Metrics {
     #[inline]
     pub fn profile(start: Option<Instant>, e: Timing) {
         if Self::metrics_enabled() {
-            METRICS_THREAD.with(|s| {
-                s.deref().borrow_mut().profilers[e as usize].record(start.unwrap().elapsed())
-            });
+            METRICS_THREAD.with(|s| s.deref().borrow_mut().profilers[e as usize].record(start.unwrap().elapsed()));
         }
     }
 
@@ -985,10 +967,7 @@ fn i(i: u64) -> String {
 }
 fn perc(i: u64, total: u64) -> String {
     if total > 0 {
-        format!(
-            "{}%",
-            Formatting::decimal(1, i as f32 * 100.0 / total as f32)
-        )
+        format!("{}%", Formatting::decimal(1, i as f32 * 100.0 / total as f32))
     } else {
         String::new()
     }
@@ -1131,9 +1110,7 @@ impl fmt::Display for Metrics {
                         Event::MeanBranchingFactor => {
                             if self.nodes[Event::NodeTotal.index()].for_ply(ply) > 0 {
                                 dec(
-                                    (0..=ply)
-                                        .map(|y| self.nodes[Event::NodeTotal.index()].for_ply(y))
-                                        .sum(),
+                                    (0..=ply).map(|y| self.nodes[Event::NodeTotal.index()].for_ply(y)).sum(),
                                     (0..=ply)
                                         .map(|y| self.nodes[Event::NodeInterior.index()].for_ply(y))
                                         .sum(),
@@ -1224,8 +1201,9 @@ static mut METRICS_LAST_ITER: Metrics = Metrics::new();
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_metrics() {

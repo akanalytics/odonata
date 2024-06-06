@@ -1,22 +1,21 @@
-use crate::cache::tt2::{EvalFromTt, TranspositionTable2};
-use odonata_base::{
-    boards::Position,
-    clock::Clock,
-    domain::{
-        node::{Event, Node, Timing},
-        score::ToScore,
-        staticeval::StaticEval,
-        BoundType,
-    },
-    eg::EndGame,
-    infra::{component::Component, metric::Metrics},
-    prelude::*,
-    Epd,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::{controller::Controller, trail::Trail};
+use odonata_base::boards::Position;
+use odonata_base::clock::Clock;
+use odonata_base::domain::node::{Event, Node, Timing};
+use odonata_base::domain::score::ToScore;
+use odonata_base::domain::staticeval::StaticEval;
+use odonata_base::domain::BoundType;
+use odonata_base::eg::EndGame;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::Metrics;
+use odonata_base::prelude::*;
+use odonata_base::Epd;
+use serde::{Deserialize, Serialize};
+
+use super::controller::Controller;
+use super::trail::Trail;
+use crate::cache::tt2::{EvalFromTt, TranspositionTable2};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -46,29 +45,59 @@ pub struct Qs {
 
 impl Default for Qs {
     fn default() -> Self {
-        Qs {
-            enabled:                      true,
-            only_on_capture:              false,
+        Self {
+            checks_max_ply:               -1,
+            delta_prune:                  true,
             delta_prune_discovered_check: true,
             delta_prune_gives_check:      false,
+            delta_prune_min_pieces:       0,
+            delta_prune_move_margin:      Score::from_cp(50),
+            delta_prune_move_pawn_margin: Score::from_cp(100),
             delta_prune_near_promos:      true,
+            delta_prune_node_margin:      Score::from_cp(0),
+            enabled:                      true,
+            even_exchange_max_ply:        2,
+            max_ply:                      16,
+            only_on_capture:              false,
+            probe_tt:                     true,
+            promo_piece:                  Some(Piece::Queen),
+            promos:                       true,
+            recapture_score:              0,
             see_prune_discovered_check:   false,
             see_prune_gives_check:        true,
             see_prune_near_promos:        true,
-            delta_prune_min_pieces:       0,
-            even_exchange_max_ply:        2,
-            promos:                       false,
-            promo_piece:                  Some(Piece::Queen),
-            max_ply:                      10,
-            delta_prune:                  true,
-            delta_prune_move_margin:      Score::from_cp(200),
-            delta_prune_move_pawn_margin: Score::from_cp(100),
-            delta_prune_node_margin:      Score::from_cp(0),
-            checks_max_ply:               2,
-            recapture_score:              0,
-            probe_tt:                     true,
             use_hash_move:                true,
         }
+    }
+}
+
+impl Configurable for Qs {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.checks_max_ply.set(p.get("checks_max_ply"))?;
+        self.delta_prune.set(p.get("delta_prune"))?;
+        self.delta_prune_discovered_check
+            .set(p.get("delta_prune_discovered_check"))?;
+        self.delta_prune_gives_check.set(p.get("delta_prune_gives_check"))?;
+        self.delta_prune_min_pieces.set(p.get("delta_prune_min_pieces"))?;
+        self.delta_prune_move_margin.set(p.get("delta_prune_move_margin"))?;
+        self.delta_prune_move_pawn_margin
+            .set(p.get("delta_prune_move_pawn_margin"))?;
+        self.delta_prune_near_promos.set(p.get("delta_prune_near_promos"))?;
+        self.delta_prune_node_margin.set(p.get("delta_prune_node_margin"))?;
+        self.enabled.set(p.get("enabled"))?;
+        self.even_exchange_max_ply.set(p.get("even_exchange_max_ply"))?;
+        self.max_ply.set(p.get("max_ply"))?;
+        self.only_on_capture.set(p.get("only_on_capture"))?;
+        self.probe_tt.set(p.get("probe_tt"))?;
+        // self.promo_piece.set(p.get("promo_piece"))?;  // BUG
+        self.promos.set(p.get("promos"))?;
+        self.recapture_score.set(p.get("recapture_score"))?;
+        self.see_prune_discovered_check
+            .set(p.get("see_prune_discovered_check"))?;
+        self.see_prune_gives_check.set(p.get("see_prune_gives_check"))?;
+        self.see_prune_near_promos.set(p.get("see_prune_near_promos"))?;
+        self.use_hash_move.set(p.get("use_hash_move"))?;
+        Ok(p.is_modified())
     }
 }
 
@@ -100,12 +129,7 @@ impl RunQs<'_> {
     // and a mate score might cut a genuine mate score elsewhere
     // since we only consider captures, repeats aren't an issue
 
-    pub fn qsearch(
-        &mut self,
-        n: &Node,
-        pos: &mut Position,
-        lm: Option<Move>,
-    ) -> Result<Score, Score> {
+    pub fn qsearch(&mut self, n: &Node, pos: &mut Position, lm: Option<Move>) -> Result<Score, Score> {
         debug_assert_eq!(n.depth, 0);
         Metrics::incr_node(n, Event::NodeQsLeaf);
         if n.is_zw() {
@@ -138,12 +162,7 @@ impl RunQs<'_> {
         res
     }
 
-    pub fn qs(
-        &mut self,
-        mut n: Node,
-        pos: &mut Position,
-        lm: Option<Move>,
-    ) -> Result<Score, Score> {
+    pub fn qs(&mut self, mut n: Node, pos: &mut Position, lm: Option<Move>) -> Result<Score, Score> {
         debug_assert!(n.alpha < n.beta && n.ply >= 0 && n.depth <= 0, "{n}");
         // if n.beta.is_mate() && n.beta < 0.cp()  {
         //     let s = n.beta; // self.eval.static_evaldb).pov_score()eval);
@@ -156,8 +175,7 @@ impl RunQs<'_> {
         Metrics::incr_node(&n, Event::NodeQs);
         self.clock.inc_q_nodes();
         if EndGame::is_insufficient_material(pos.board()) {
-            self.trail
-                .terminal(&n, Score::DRAW, Event::QsCatInsufficientMaterial);
+            self.trail.terminal(&n, Score::DRAW, Event::QsCatInsufficientMaterial);
             return Err(Score::DRAW);
         }
 
@@ -189,8 +207,7 @@ impl RunQs<'_> {
             // ?? you cant stand pat unless theres already a move/pv (alpha=finite)
             if pat > n.alpha {
                 // && n.alpha.is_finite() && n.ply >= 1 {
-                self.trail
-                    .terminal(&n, pat, Event::QsStandingPatAlphaRaised);
+                self.trail.terminal(&n, pat, Event::QsStandingPatAlphaRaised);
                 n.alpha = pat;
             }
             // coarse delta prune - where margin bigger than any possible move
@@ -205,8 +222,8 @@ impl RunQs<'_> {
             // }
             // calculate value of best enemy + pawn + static_margin (=0) => most_gain = most you can gain.
             // if min pieces && pat + most_gain < alpha   -> prune
-            let pawn = self.eval.piece_eval(Piece::Pawn, pos.board());
-            let mvp = self.eval.piece_eval(p, pos.board()) + pawn;
+            let pawn = self.eval.piece_material_eval(Piece::Pawn, pos.board());
+            let mvp = self.eval.piece_material_eval(p, pos.board()) + pawn;
             // let ph = bd.phase(&self.eval.phaser);
             // let pawn = self.eval.mb.piece_weights[Piece::Pawn].interpolate(ph);
             // let mvp = self.eval.mb.piece_weights[p].interpolate(ph) + pawn;
@@ -217,7 +234,7 @@ impl RunQs<'_> {
                 | pos.board().pawns() & pos.board().black() & Bitboard::RANK_2)
                 .any()
             {
-                let queen = self.eval.piece_eval(Piece::Queen, pos.board());
+                let queen = self.eval.piece_material_eval(Piece::Queen, pos.board());
                 // let queen = self.eval.mb.piece_weights[Piece::Queen].interpolate(ph);
                 margin = margin + Score::from_f64(queen - pawn);
             }
@@ -226,8 +243,7 @@ impl RunQs<'_> {
                 && pat + margin <= n.alpha
             {
                 Metrics::incr_node(&n, Event::QsCatAllDeltaPruneNode);
-                self.trail
-                    .prune_node(&n, pat + margin, Event::QsCatAllDeltaPruneNode);
+                self.trail.prune_node(&n, pat + margin, Event::QsCatAllDeltaPruneNode);
                 return Err((pat + margin).clamp_score());
             }
         } else {
@@ -238,7 +254,9 @@ impl RunQs<'_> {
         let mut moves = MoveList::new();
         self.gen_sorted_moves(in_check, &n, pos.board(), lm, hm, &mut moves);
 
-        // if in_check && moves.is_empty()
+        // if in_check && moves.is_empty() {
+        //     return Ok(Score::from_mate_in_moves(0).clamp_score());
+        // }
 
         let mut unpruned_move_count = 0;
         let mut bs = None; // Some(pat);
@@ -272,15 +290,7 @@ impl RunQs<'_> {
 
     // sort moves
     //
-    fn gen_sorted_moves(
-        &self,
-        in_check: bool,
-        n: &Node,
-        bd: &Board,
-        lm: Option<Move>,
-        hm: Move,
-        moves: &mut MoveList,
-    ) {
+    fn gen_sorted_moves(&self, in_check: bool, n: &Node, bd: &Board, lm: Option<Move>, hm: Move, moves: &mut MoveList) {
         let t = Metrics::timing_start();
         match (in_check, self.config.promos, self.config.promo_piece) {
             (true, ..) => bd.legal_moves_with(|mv| moves.push(mv)),
@@ -394,13 +404,13 @@ impl RunQs<'_> {
                 }
                 EvalFromTt::UseTtEval => {
                     *pat = ttn.eval;
-                    if *pat != self.eval.static_eval(pos).pov_score() {
-                        println!(
-                            "\n\n\n\n{tt} != {s} for board {pos} node {n}\n\n\n\n\n",
-                            tt = *pat,
-                            s = self.eval.static_eval(pos).pov_score()
-                        )
-                    }
+                    // if *pat != self.eval.static_eval(pos).pov_score() {
+                    //     println!(
+                    //         "\n\n\n\n{tt} != {s} for board {pos} node {n}\n\n\n\n\n",
+                    //         tt = *pat,
+                    //         s = self.eval.static_eval(pos).pov_score()
+                    //     )
+                    // }
                 }
                 // EvalFromTt::UseTtScore if ttn.nt == BoundType::ExactPv => {
                 //     *pat = ttn.score.as_score(n.ply);
@@ -414,13 +424,14 @@ impl RunQs<'_> {
                 // },
                 EvalFromTt::UseTtScore => {
                     *pat = ttn.eval;
-                    if *pat != self.eval.static_eval(pos).pov_score() {
-                        println!(
-                            "\n\n\n\n{tt} != {s} for board {pos} node {n}\n\n\n\n\n",
-                            tt = *pat,
-                            s = self.eval.static_eval(pos).pov_score()
-                        )
-                    }
+
+                    // if *pat != self.eval.static_eval(pos).pov_score() {
+                    //     println!(
+                    //         "\n\n\n\n{tt} != {s} for board {pos} node {n}\n\n\n\n\n",
+                    //         tt = *pat,
+                    //         s = self.eval.static_eval(pos).pov_score()
+                    //     )
+                    // }
                 }
             };
             let s = ttn.score.as_score(n.ply);
@@ -508,11 +519,12 @@ impl RunQs<'_> {
 
 #[cfg(test)]
 mod tests {
+    use odonata_base::catalog::Catalog;
+    use odonata_base::infra::profiler::PerfProfiler;
+    use odonata_base::other::tags::EpdOps as _;
+
     use super::*;
-    use crate::{engine::Engine, search::engine::ThreadedSearch};
-    use anyhow::Result;
-    use odonata_base::{catalog::Catalog, infra::profiler::PerfProfiler};
-    use std::ops::Deref;
+    use crate::search::engine::ThreadedSearch;
 
     #[test]
     fn qsearch_serde_test() {
@@ -536,10 +548,7 @@ mod tests {
 
         invoke("8/1p4PR/1k6/3pNK2/5P2/r7/2p2n2/8 w - - 0 74", 1);
         invoke(&Catalog::bratko_kopec()[4].board().to_fen(), 7);
-        invoke(
-            "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2NB1N2/PP3PPP/R1BQK2R b KQ - 2 6",
-            1,
-        );
+        invoke("rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2NB1N2/PP3PPP/R1BQK2R b KQ - 2 6", 1);
     }
 
     #[test]
@@ -556,7 +565,7 @@ mod tests {
             let node = Node::root(0);
             let mut qs = RunQs {
                 controller: &eng.search.controller,
-                eval:       eng.search.eval.deref(),
+                eval:       &eng.search.eval,
                 clock:      &eng.search.clock,
                 tt:         &eng.search.tt,
                 config:     &eng.search.qs,
@@ -590,7 +599,7 @@ mod tests {
             println!(
                 "search:  {pv_act:<20}  {pos_act}\nexpected:{pv_exp:<20}  {pos_exp}\n",
                 pv_act = res.pv().to_string(),
-                pos_act = res.to_epd(),
+                pos_act = res.to_results_epd(),
                 pv_exp = epd.var("pv").unwrap().to_string(),
                 pos_exp = epd,
                 // res = eng.algo.results,
@@ -598,13 +607,7 @@ mod tests {
 
             // position wil be POV of mover at end of PV line
             let q_pos = Position::from_epd(epd.clone());
-            let mut static_eval = eng
-                .search
-                .eval
-                .static_eval(&q_pos)
-                .pov_score()
-                .cp()
-                .unwrap();
+            let mut static_eval = eng.search.eval.static_eval(&q_pos).pov_score().cp().unwrap();
             if q_pos.board().color_us() != epd.board().color_us() {
                 static_eval = -static_eval;
             }

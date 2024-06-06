@@ -1,19 +1,16 @@
-use crate::search::{algo::Search, trail::Trail};
-use odonata_base::{
-    domain::{
-        node::{Event, Node},
-        score::Score,
-        BoundType,
-    },
-    eg::{EndGame, LikelyOutcome},
-    infra::{component::Component, metric::Metrics},
-    mv::Move,
-    piece::Ply,
-    prelude::Board,
-    Color,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use odonata_base::domain::node::{Event, Node};
+use odonata_base::domain::staticeval::StaticEval;
+use odonata_base::domain::BoundType;
+use odonata_base::eg::{EndGame, LikelyOutcome};
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::Metrics;
+use odonata_base::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use crate::search::algo::Search;
+use crate::search::trail::Trail;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -21,6 +18,15 @@ pub struct Recognizer {
     enabled:        bool,
     min_depth:      Ply,
     terminal_depth: Ply,
+}
+
+impl Configurable for Recognizer {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.terminal_depth.set(p.get("terminal_depth"))?;
+        Ok(p.is_modified())
+    }
 }
 
 impl Default for Recognizer {
@@ -48,12 +54,7 @@ impl fmt::Display for Recognizer {
 
 impl Search {
     #[inline]
-    pub fn lookup(
-        &mut self,
-        trail: &mut Trail,
-        b: &Board,
-        n: &mut Node,
-    ) -> (Option<Score>, Option<Move>) {
+    pub fn lookup(&mut self, trail: &mut Trail, b: &Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
         if n.ply == 0 {
             return (None, None);
         }
@@ -229,9 +230,12 @@ impl Search {
 
 #[cfg(test)]
 mod tests {
-    use crate::search::engine::ThreadedSearch;
-    use odonata_base::{domain::node::Node, eg::EndGame, Epd};
+    use odonata_base::domain::node::Node;
+    use odonata_base::eg::EndGame;
+    use odonata_base::Epd;
     use test_log::test;
+
+    use crate::search::engine::ThreadedSearch;
 
     #[test]
     fn test_recog_simple() {

@@ -1,8 +1,7 @@
-use crate::{
-    bits::{bitboard::Bitboard, precalc::PreCalc},
-    piece::{Color, FlipSide},
-    prelude::Board,
-};
+use crate::bits::bitboard::Bitboard;
+use crate::bits::precalc::PreCalc;
+use crate::piece::{Color, FlipSide};
+use crate::prelude::Board;
 
 pub struct BoardCalcs {}
 
@@ -30,7 +29,7 @@ impl BoardCalcs {
         };
         let color_us = bd.color(king_color);
         let color_them = bd.color(king_color.flip_side());
-        let king_sq = kings.square();
+        let king_sq = bd.king(king_color);
 
         let pc = PreCalc::instance();
         // let xray_sliding_checkers = Self::attacked_by(kings, Bitboard::EMPTY, bd) &
@@ -100,8 +99,7 @@ impl BoardCalcs {
         let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & bd.black();
         let mut attackers = white | black;
 
-        for each in targets.iter() {
-            let sq = each.square();
+        for sq in targets.squares() {
             attackers |= attack_gen.knight_attacks(sq) & knights
                 | attack_gen.king_attacks(sq) & kings
                 | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
@@ -115,29 +113,34 @@ impl BoardCalcs {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        catalog::*, globals::constants::*, infra::profiler::PerfProfiler, mv::Move, other::Perft,
-    };
     use std::hint::black_box;
+
     use test_log::test;
+    use Square::*;
+
+    use super::*;
+    use crate::bits::Square;
+    use crate::catalog::*;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::mv::Move;
+    use crate::other::Perft;
 
     #[test]
     fn test_threats_to() {
         let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1").unwrap();
         let bb = BoardCalcs::all_attacks_on(&board, Color::White, board.occupied());
         println!("{}", !bb);
-        let ans = a1 | b1 | d1 | e1 | f1 | h1 | c2 | d2 | e2 | g2;
-        let ans = ans | h2 | e3 | a4 | e4 | a5 | e5 | a6 | b6 | h6 | g8;
+        let ans = A1 | B1 | D1 | E1 | F1 | H1 | C2 | D2 | E2 | G2;
+        let ans = ans | H2 | E3 | A4 | E4 | A5 | E5 | A6 | B6 | H6 | G8;
         assert_eq!(!bb, ans);
     }
 
     #[test]
     fn test_attacked_by() {
         let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1").unwrap();
-        let bb = BoardCalcs::attacked_by(f4, board.white() | board.black(), &board);
+        let bb = BoardCalcs::attacked_by(Bitboard::F4, board.white() | board.black(), &board);
         println!("{bb}");
-        assert_eq!(bb, g3 | g5 | e3 | d3 | f8);
+        assert_eq!(bb, G3 | G5 | E3 | D3 | F8);
     }
 
     #[test]
@@ -152,11 +155,9 @@ mod tests {
     fn test_discovered_check() {
         let positions = Catalog::discovered_check();
         for epd in positions {
-            let discoverers =
-                BoardCalcs::pinned_and_discoverers(&epd.board(), epd.board().color_us()).1;
+            let discoverers = BoardCalcs::pinned_and_discoverers(&epd.board(), epd.board().color_us()).1;
             assert_eq!(discoverers, epd.bitboard("Sq").unwrap(), "{epd}");
-            let discoverers =
-                BoardCalcs::pinned_and_discoverers(&epd.board(), epd.board().color_us()).1;
+            let discoverers = BoardCalcs::pinned_and_discoverers(&epd.board(), epd.board().color_us()).1;
             assert_eq!(discoverers, epd.bitboard("Sq").unwrap(), "{epd}");
         }
     }

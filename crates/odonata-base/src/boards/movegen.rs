@@ -1,20 +1,17 @@
 use anyhow::anyhow;
 use itertools::Itertools;
 
-use crate::{
-    bits::{
-        bitboard::{Bitboard, Dir},
-        castling::CastlingRights,
-        precalc::PreCalc,
-        square::Square,
-    },
-    boards::{boardcalcs::BoardCalcs, Board},
-    domain::node::{Counter, Timing},
-    infra::metric::Metrics,
-    movelist::MoveList,
-    mv::Move,
-    piece::Piece,
-};
+use crate::bits::bitboard::{Bitboard, Dir};
+use crate::bits::castling::CastlingRights;
+use crate::bits::precalc::PreCalc;
+use crate::bits::square::Square;
+use crate::boards::boardcalcs::BoardCalcs;
+use crate::boards::Board;
+use crate::domain::node::{Counter, Timing};
+use crate::infra::metric::Metrics;
+use crate::movelist::MoveList;
+use crate::mv::Move;
+use crate::piece::Piece;
 
 #[derive(Debug)]
 pub struct LegalMoves<'a, F: FnMut(Move)> {
@@ -83,7 +80,7 @@ where
         let attack_gen = PreCalc::instance();
         let them = bd.them();
         let occ = bd.occupied();
-        let king_sq = (bd.kings() & us).square();
+        let king_sq = bd.our_king();
         let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::all_attacks_on(bd, bd.color_us(), occ - our_kings);
         let attacks = (king_att & !us & self.capture_mask) - king_danger;
@@ -91,71 +88,86 @@ where
             if to.is_in(them) {
                 (self.callback)(Move::new_capture(Piece::King, king_sq, to, bd));
             } else {
-                (self.callback)(Move::new_quiet(Piece::King, king_sq, to));
+                (self.callback)(Move::new_quiet(Piece::King, king_sq, to, bd));
             }
         }
     }
 
-    pub fn generate(&mut self) {
-        let t = Metrics::timing_start();
+    fn evasions_single_checker(&mut self, the_checker: Square) {
+        let gen = PreCalc::instance();
         let b = self.board;
 
         let us = b.us();
         let them = b.them();
-        let our_kings = b.kings() & us;
+
+        let king_sq = b.our_king(); // safe as checkers => king present
+                                    // Captr checker -> capture-sq & piece not pinned & (checker)
+                                    // Block checker -> to & piece not pinned & (xrays to checker excl)
+        let blocking = gen.between(king_sq, the_checker) | the_checker.as_bb(); // "| checkers" is for knight checkers
+        for &p in Piece::ALL_BAR_KING.iter() {
+            for fr in (b.pieces(p) & us & !b.pinned(b.color_us())).squares() {
+                let attacks = self.capture_mask & blocking & gen.attacks(b.color_us(), p, us, them, fr) & !us;
+                self.add_moves(attacks, p, fr, b);
+            }
+        }
+        self.add_moves_en_passant();
+        self.king_legal();
+    }
+
+    pub fn generate(&mut self) {
+        let t = Metrics::timing_start();
         // if our_kings.is_empty() {
         //     return Self::pseudo_legals(b, moves);
         // }
+        let b = self.board;
         let checkers = b.checkers_of(b.color_us());
         if checkers.popcount() >= 2 {
-            return self.king_legal();
-        }
-        let gen = PreCalc::instance();
-        if checkers.popcount() == 1 {
-            let the_checker = checkers.square();
-            let king_sq = our_kings.square();
-            // Captr checker -> capture-sq & piece not pinned & (checker)
-            // Block checker -> to & piece not pinned & (xrays to checker excl)
-            let blocking = gen.between(king_sq, the_checker) | checkers; // "| checkers" is for knight checkers
-            for &p in Piece::ALL_BAR_KING.iter() {
-                for fr in (b.pieces(p) & us & !b.pinned(b.color_us())).squares() {
-                    let attacks = self.capture_mask
-                        & blocking
-                        & gen.attacks(b.color_us(), p, us, them, fr)
-                        & !us;
-                    self.add_moves(attacks, p, fr, b);
-                }
-            }
-            self.add_moves_en_passant();
             self.king_legal();
-        } else {
-            let pinned = b.pinned(b.color_us());
-            let king_sq = if pinned.is_empty() {
-                Square::null()
-            } else {
-                our_kings.square()
-            };
+            Metrics::profile(t, Timing::TimingMoveGen);
+            return;
+        }
+
+        if checkers.popcount() == 1 {
+            self.evasions_single_checker(checkers.find_first_square().expect("single checker"));
+            Metrics::profile(t, Timing::TimingMoveGen);
+            return;
+        }
+
+        let gen = PreCalc::instance();
+        let pinned = b.pinned(b.color_us());
+        let b = self.board;
+
+        let us = b.us();
+        let them = b.them();
+        if pinned.is_empty() {
             for &p in Piece::ALL_BAR_KING.iter() {
                 // not in check
                 for fr in (b.pieces(p) & us).squares() {
-                    let attacks =
-                        self.capture_mask & gen.attacks(b.color_us(), p, us, them, fr) & !us;
+                    let attacks = self.capture_mask & gen.attacks(b.color_us(), p, us, them, fr) & !us;
+                    self.add_moves(attacks, p, fr, b);
+                }
+            }
+        } else {
+            let king_sq = b.our_king(); // pinners => king
+            for &p in Piece::ALL_BAR_KING.iter() {
+                // not in check
+                for fr in (b.pieces(p) & us).squares() {
+                    let attacks = self.capture_mask & gen.attacks(b.color_us(), p, us, them, fr) & !us;
                     if !fr.is_in(pinned) {
-                        // all non pinned pieces
+                        // all non pinned pieces can move anywhere
                         self.add_moves(attacks, p, fr, b);
                     } else {
-                        // Pinned -> psuedo-to in ray along king and pinner incl
+                        // Pinned pieces only move -> psuedo-to in ray along king and pinner incl
                         let blocking = gen.line_through(fr, king_sq);
                         // will exlude knights anyway
                         self.add_moves(attacks & blocking, p, fr, b);
                     }
                 }
             }
-            self.add_moves_en_passant();
-            self.king_legal();
-            self.castles();
         }
-        Metrics::profile(t, Timing::TimingMoveGen);
+        self.add_moves_en_passant();
+        self.king_legal();
+        self.castles();
     }
 
     pub fn add_moves_en_passant(&mut self) {
@@ -168,8 +180,8 @@ where
         // }
         let us = bd.color_us();
         let them = bd.color_them();
-        let to = to.as_bb();
-        let capture_sq = to.shift(them.forward());
+        let to_bb = to.as_bb();
+        let capture_sq = to_bb.shift(them.forward());
         if capture_sq.disjoint(self.capture_mask) {
             return;
         }
@@ -177,18 +189,18 @@ where
         if checkers.popcount() == 1 {
             // any non-pinned pawn can capture the checker
             if capture_sq == checkers {
-                let fr_e = to.shift(them.pawn_capture_west());
+                let fr_e = to_bb.shift(them.pawn_capture_west());
                 if (fr_e & bd.pawns() & bd.us() & !bd.pinned(us)).any() {
-                    (self.callback)(Move::new_ep_capture(fr_e.square(), to.square(), bd));
+                    (self.callback)(Move::new_ep_capture(fr_e.find_first_square().unwrap(), to, bd));
                 }
-                let fr_w = to.shift(them.pawn_capture_east());
+                let fr_w = to_bb.shift(them.pawn_capture_east());
                 if (fr_w & bd.pawns() & bd.us() & !bd.pinned(us)).any() {
-                    (self.callback)(Move::new_ep_capture(fr_w.square(), to.square(), bd));
+                    (self.callback)(Move::new_ep_capture(fr_w.find_first_square().unwrap(), to, bd));
                 }
             }
         } else if checkers.popcount() == 0 {
-            let fr_e = to.shift(them.pawn_capture_west());
-            let fr_w = to.shift(them.pawn_capture_east());
+            let fr_e = to_bb.shift(them.pawn_capture_west());
+            let fr_w = to_bb.shift(them.pawn_capture_east());
             for fr in ((fr_e | fr_w) & bd.pawns() & bd.us()).squares() {
                 // this optimization is not valid, as a bishop can pin a pawn in the direction of capture
                 // which allows the pawn to capture
@@ -196,7 +208,7 @@ where
                 //     continue;
                 // }
                 // special case: will removing the capture piece AND moving the pawn result in check
-                let m = Move::new_ep_capture(fr, to.square(), bd);
+                let m = Move::new_ep_capture(fr, to, bd);
                 if m.is_valid(bd) {
                     (self.callback)(m);
                 }
@@ -211,7 +223,7 @@ where
                 if to.is_in(bd.them()) {
                     (self.callback)(Move::new_capture(p, fr, to, bd))
                 } else {
-                    (self.callback)(Move::new_quiet(p, fr, to))
+                    (self.callback)(Move::new_quiet(p, fr, to, bd))
                 }
             }
         } else {
@@ -237,10 +249,10 @@ where
                 (self.callback)(Move::new_promo_capture(fr, to, Piece::Rook, bd));
                 (self.callback)(Move::new_promo_capture(fr, to, Piece::Bishop, bd));
             } else {
-                (self.callback)(Move::new_promo(fr, to, Piece::Queen));
-                (self.callback)(Move::new_promo(fr, to, Piece::Knight));
-                (self.callback)(Move::new_promo(fr, to, Piece::Rook));
-                (self.callback)(Move::new_promo(fr, to, Piece::Bishop));
+                (self.callback)(Move::new_promo(fr, to, Piece::Queen, bd));
+                (self.callback)(Move::new_promo(fr, to, Piece::Knight, bd));
+                (self.callback)(Move::new_promo(fr, to, Piece::Rook, bd));
+                (self.callback)(Move::new_promo(fr, to, Piece::Bishop, bd));
             }
         }
     }
@@ -256,7 +268,7 @@ where
             // allow no kings
             return;
         }
-        let king_sq = king.square();
+        let king_sq = b.our_king();
         let rights = b.castling();
 
         let right = CastlingRights::king_side_right(c);
@@ -264,10 +276,8 @@ where
             let rook_to = king.shift(Dir::E);
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
-            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them)
-                && king_to.intersects(self.capture_mask)
-            {
-                let m = Move::new_castle(king_sq, king_to.square());
+            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) && king_to.intersects(self.capture_mask) {
+                let m = Move::new_castle(king_sq, king_to.find_first_square().expect("king to (short)"), b);
                 (self.callback)(m);
             }
         }
@@ -277,12 +287,10 @@ where
             let rook_to = king.shift(Dir::W);
             let king_to = rook_to.shift(Dir::W);
             let king_moves = king | rook_to | king_to;
-            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them)
-                && king_to.intersects(self.capture_mask)
-            {
-                let king_to = king_to.square();
+            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) && king_to.intersects(self.capture_mask) {
+                let king_to = king_to.find_first_square().expect("king to (long)");
                 // let rook_from = king_to.shift(Dir::W).shift(Dir::W);
-                let m = Move::new_castle(king_sq, king_to);
+                let m = Move::new_castle(king_sq, king_to, b);
                 (self.callback)(m);
             }
         }
@@ -291,24 +299,28 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        bits::Square, catalog::*, globals::constants::*, infra::profiler::PerfProfiler,
-        other::Perft, Color, Piece, PreCalc,
-    };
+    use std::hint::black_box;
+    use std::str::FromStr;
+
     use anyhow::Result;
-    use std::{hint::black_box, str::FromStr};
     use test_log::test;
+
+    use super::*;
+    use crate::boards::board::BoardBuilder;
+    use crate::catalog::*;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::other::Perft;
+    use crate::Color;
 
     #[test]
     fn test_king_legal() {
-        let b = Board::parse_piece_placement("rk6/8/8/8/8/8/8/1K6").unwrap();
+        let b = BoardBuilder::parse_piece_placement("rk6/8/8/8/8/8/8/1K6").unwrap().build();
         let mut moves = MoveList::new();
         let _lm = LegalMoves::new(&b, Bitboard::all(), |mv| moves.push(mv));
         moves.retain(|m| b.piece(m.from()) == Some(Piece::King));
         assert_eq!(moves.sort().to_string(), "b1b2, b1c1, b1c2");
 
-        let b = Board::parse_piece_placement("rk6/8/8/8/8/8/K7/8").unwrap();
+        let b = BoardBuilder::parse_piece_placement("rk6/8/8/8/8/8/K7/8").unwrap().build();
         let mut moves = MoveList::new();
         let _lm = LegalMoves::new(&b, Bitboard::all(), |mv| moves.push(mv));
         // xray prevents a2a1
@@ -318,20 +330,16 @@ mod tests {
     #[test]
     fn test_is_pseudo_legal_move() {
         let bd = Board::parse_fen("8/k7/8/8/4Q3/8/8/1K6 w - - 9 4").unwrap();
-        let mv = Move::new_quiet(Piece::King, Square::B1, Square::H1);
+        let mv = Move::new_quiet(Piece::King, Square::B1, Square::H1, &bd);
         assert_eq!(mv.to_inner().validate(&bd).is_ok(), false, "{mv} is legal");
 
-        let bd = Board::parse_fen("5rk1/6p1/Qp1q3p/3pr2P/Pp2p1P1/1Pp1P3/2P2P2/3RR1K1 b - g3 0 4")
-            .unwrap();
-        let mv = Move::new_quiet(Piece::Pawn, Square::E4, Square::G3);
+        let bd = Board::parse_fen("5rk1/6p1/Qp1q3p/3pr2P/Pp2p1P1/1Pp1P3/2P2P2/3RR1K1 b - g3 0 4").unwrap();
+        let mv = Move::new_quiet(Piece::Pawn, Square::E4, Square::G3, &bd);
         let precalc = PreCalc::instance();
         let mover = mv.mover_piece(&bd);
         let destinations = precalc.attacks(bd.color_us(), mover, bd.us(), bd.them(), mv.from());
 
-        if !mv.to().is_in(destinations)
-            && !bd.is_en_passant_square(mv.to())
-            && !mv.to_inner().is_castle(&bd)
-        {
+        if !mv.to().is_in(destinations) && !bd.is_en_passant_square(mv.to()) && !mv.to_inner().is_castle(&bd) {
             println!("bad attack");
         }
         println!(
@@ -344,12 +352,11 @@ mod tests {
 
     #[test]
     fn test_pseudo_legal_moves() -> Result<()> {
-        let mut buf =
-            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
-        buf.set(a2, ".")?;
-        buf.set(d2, ".")?;
-        buf.set(d4, "P")?;
-        let board = buf;
+        let mut bb = BoardBuilder::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")?;
+        bb.set(Bitboard::A2, ".")?;
+        bb.set(Bitboard::D2, ".")?;
+        bb.set(Bitboard::D4, "P")?;
+        let board = bb.try_build()?;
         let moves = board.legal_moves();
         assert_eq!(moves.len(), 32);
         // println!("{}\n{:#?}", board, moves);
@@ -375,10 +382,7 @@ mod tests {
 
         let bd = Board::parse_fen("8/8/8/8/8/8/PPP5/8 w - - 0 0 id PPP").unwrap();
         let mut moves = bd.legal_moves();
-        assert_eq!(
-            moves.sort().to_string(),
-            "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4"
-        );
+        assert_eq!(moves.sort().to_string(), "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4");
 
         let bd = Board::parse_fen("8/8/8/8/8/p1p5/1P6/8 w - - 0 0 id P 'capture white'").unwrap();
         let mut moves = bd.legal_moves();
@@ -396,13 +400,10 @@ mod tests {
     #[test]
     fn pawn_en_passant() {
         let bd = Board::parse_fen("8/8/8/pP6/8/8/8/8 w - a6 0 0 id en-passant-#1").unwrap();
-        assert_eq!(bd.en_passant_square(), Some(a6.square()));
+        assert_eq!(bd.en_passant_square(), Some(Square::A6));
         assert_eq!(bd.legal_moves().sort().to_string(), "b5a6, b5b6");
         let bd = Board::parse_fen("8/8/8/PpP5/8/8/8/8 w - b6 0 0 id 'en passant #2'").unwrap();
-        assert_eq!(
-            bd.legal_moves().sort().to_string(),
-            "a5a6, a5b6, c5b6, c5c6"
-        );
+        assert_eq!(bd.legal_moves().sort().to_string(), "a5a6, a5b6, c5b6, c5c6");
     }
 
     #[test]
@@ -461,8 +462,7 @@ mod tests {
 
     #[test]
     fn moves_in_check() {
-        let bd = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2")
-            .unwrap();
+        let bd = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2").unwrap();
         assert!(bd.en_passant_square().is_none());
         // FIXME! assert b1.validate_move(Move.parse('e8e7'))
         // assert!(bd.pseudo_legal_moves().contains(Move.parse("e8e7")));
@@ -537,11 +537,8 @@ mod tests {
             // where bm has mover
             assert_eq!(
                 mvs.iter()
-                    .any(|m| m.to_inner_with_mover(&wrong_board)
-                        == mv.to_inner_with_mover(&wrong_board)),
-                mv.to_inner_with_mover(&wrong_board)
-                    .validate(&wrong_board)
-                    .is_ok(),
+                    .any(|m| m.to_inner_with_mover(&wrong_board) == mv.to_inner_with_mover(&wrong_board)),
+                mv.to_inner_with_mover(&wrong_board).validate(&wrong_board).is_ok(),
                 "{wrong_board} move: {mv:?} legals: {mvs:?}",
             );
         };
@@ -574,45 +571,40 @@ mod tests {
         let bd2 = Catalog::test_position();
         let mvs = b.parse_uci_variation("a2a3 e7e6 b2b4")?;
         assert_eq!(b.validate_moves(&mvs.moves().collect_vec()).is_ok(), true);
-        assert_eq!(
-            bd2.board()
-                .validate_moves(&mvs.moves().collect_vec())
-                .is_ok(),
-            false
-        );
+        assert_eq!(bd2.board().validate_moves(&mvs.moves().collect_vec()).is_ok(), false);
         Ok(())
     }
 
     #[test]
     fn test_is_a_valid_move() {
         let b = Catalog::starting_board();
-        let a2sq = a2.square();
-        let a3sq = a3.square();
-        let a6sq = a6.square();
-        let a7sq = a7.square();
+        let a2sq = Square::A2;
+        let a3sq = Square::A3;
+        let a6sq = Square::A6;
+        let a7sq = Square::A7;
         assert_eq!(
-            Move::new_quiet(Piece::Pawn, a2sq, a3sq)
+            Move::new_quiet(Piece::Pawn, a2sq, a3sq, &b)
                 .to_inner()
                 .validate(&b)
                 .is_ok(),
             true
         );
         assert_eq!(
-            Move::new_quiet(Piece::Pawn, a2sq, a6sq)
+            Move::new_quiet(Piece::Pawn, a2sq, a6sq, &b)
                 .to_inner()
                 .validate(&b)
                 .is_ok(),
             false
         );
         assert_eq!(
-            Move::new_quiet(Piece::Pawn, a7sq, a6sq)
+            Move::new_quiet(Piece::Pawn, a7sq, a6sq, &b)
                 .to_inner()
                 .validate(&b)
                 .is_ok(),
             false
         );
         assert_eq!(
-            Move::new_quiet(Piece::Pawn, a7sq, a6sq)
+            Move::new_quiet(Piece::Pawn, a7sq, a6sq, &b)
                 .to_inner()
                 .validate(&b)
                 .is_ok(),
@@ -631,9 +623,7 @@ mod tests {
 
     #[test]
     fn test_is_legal_variation() {
-        let b =
-            Board::from_str("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")
-                .unwrap();
+        let b = Board::from_str("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12").unwrap();
         let var = b.parse_uci_variation("d3d1 b4c6 e2c4").unwrap();
         assert_eq!(var.len(), 3);
         b.validate_moves(&var.moves().collect_vec()).unwrap();
@@ -676,5 +666,33 @@ mod tests {
             legal_moves_into.bench(|| black_box(bd).legal_moves_with(|mv| dest.push(mv)));
         };
         Perft::<true>::perft_with(&mut starting_pos, 3, &mut func);
+    }
+
+    #[test]
+    fn bench_movegen_lm() {
+        let mut starting_pos = Board::starting_pos();
+        let mut legal_moves = PerfProfiler::new("board.legal_moves");
+        let mut func_lm = |bd: &Board, _mv: Move| {
+            legal_moves.bench(|| black_box(bd).legal_moves());
+        };
+        // let mut func_lmi = |bd: &Board, _mv: Move| {
+        //     let mut dest = MoveList::new();
+        //     legal_moves_into.bench(|| {
+        //         dest.clear();
+        //         black_box(bd).legal_moves_with(|mv| dest.push(mv))
+        //     });
+        // };
+        Perft::<true>::perft_with(&mut starting_pos, 3, &mut func_lm);
+    }
+
+    #[test]
+    fn bench_movegen_lmc() {
+        let mut starting_pos = Board::starting_pos();
+        let mut legal_moves_count = PerfProfiler::new("board.legal_moves.count");
+        let mut func_lmc = |bd: &Board, _mv: Move| {
+            let mut count = 0;
+            legal_moves_count.bench(|| black_box(bd).legal_moves_with(|_| count += 1));
+        };
+        Perft::<true>::perft_with(&mut starting_pos, 3, &mut func_lmc);
     }
 }

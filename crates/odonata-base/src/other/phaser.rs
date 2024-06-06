@@ -1,7 +1,10 @@
-use crate::{domain::Material, infra::component::Component, prelude::Board, Piece};
+use std::{cmp, fmt};
 
 use serde::{Deserialize, Serialize};
-use std::{cmp, fmt};
+
+use crate::domain::Material;
+use crate::infra::component::Component;
+use crate::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Default, Serialize, Deserialize)]
 pub struct Phase(pub i32);
@@ -27,6 +30,15 @@ impl Default for Phaser {
             method:         "SO".to_string(),
             half_way_score: 3200,
         }
+    }
+}
+
+impl Configurable for Phaser {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.method.set(p.get("method"))?;
+        self.half_way_score.set(p.get("half_way_score"))?;
+        Ok(p.is_modified())
     }
 }
 
@@ -92,11 +104,8 @@ impl Phaser {
         const ROOK_PHASE: i32 = 2;
         const QUEEN_PHASE: i32 = 4;
 
-        const TOTAL_PHASE: i32 = PAWN_PHASE * 16
-            + KNIGHT_PHASE * 4
-            + BISHOP_PHASE * 4
-            + ROOK_PHASE * 4
-            + QUEEN_PHASE * 2;
+        const TOTAL_PHASE: i32 =
+            PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
 
         let mut phase = TOTAL_PHASE;
 
@@ -136,9 +145,10 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
+    use test_log::test;
+
     use super::*;
     use crate::catalog::Catalog;
-    use anyhow::Result;
 
     #[test]
     fn test_phase() -> Result<()> {

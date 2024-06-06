@@ -1,6 +1,10 @@
-use crate::{boards::Position, domain::node::Node, prelude::*};
-use indexmap::IndexMap;
 use std::fmt::{Debug, Display};
+
+use indexmap::IndexMap;
+
+use crate::boards::Position;
+use crate::domain::node::Node;
+use crate::prelude::*;
 
 #[derive(Default, Clone, Debug)]
 pub struct EvalExplain {
@@ -45,14 +49,15 @@ impl Display for EvalExplain {
             if category == "Total" {
                 #[rustfmt::skip] writeln!(f, "+------------+-------------+-------------+-------------+")?;
             }
-            writeln!(f, "|{category:>11} | {s0:>5.2} {s1:>5.2} | {s2:>5.2} {s3:>5.2} | {s4:>5.2} {s5:>5.2} |")?;
+            writeln!(
+                f,
+                "|{category:>11} | {s0:>5.2} {s1:>5.2} | {s2:>5.2} {s3:>5.2} | {s4:>5.2} {s5:>5.2} |"
+            )?;
             if category == "Total" {
                 #[rustfmt::skip] writeln!(f, "+------------+-------------+-------------+-------------+")?;
             }
         }
-        if f.alternate() {
-            writeln!(f, "{}", self.additional_info)?;
-        }
+        writeln!(f, "{}", self.additional_info)?;
         Ok(())
     }
 }
@@ -64,7 +69,7 @@ pub trait StaticEval: Debug {
     fn static_eval_explain(&self, pos: &Position) -> EvalExplain;
     fn move_material_eval(&self, mv: Move, b: &Board) -> Score;
     fn eval_move_see(&self, mv: Move, b: &Board) -> Score;
-    fn piece_eval(&self, piece: Piece, b: &Board) -> f64;
+    fn piece_material_eval(&self, piece: Piece, b: &Board) -> f64;
     fn eval_draw(&self, b: &Board, ply: Ply) -> Score;
 }
 

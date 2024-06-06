@@ -1,16 +1,16 @@
-use crate::{
-    bits::{castling::CastlingRights, square::Square},
-    domain::node::Counter,
-    infra::metric::*,
-    mv::Move,
-    piece::{Color, Hash, Piece},
-    prelude::Board,
-};
+use std::fmt;
+
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use static_init::dynamic;
 
-use std::fmt;
+use crate::bits::castling::CastlingRights;
+use crate::bits::square::Square;
+use crate::domain::node::Counter;
+use crate::infra::metric::*;
+use crate::mv::Move;
+use crate::piece::{Color, Hash, Piece};
+use crate::prelude::Board;
 
 // CPW:
 // One number for each piece at each square
@@ -28,7 +28,7 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Hasher {
     seed:                u64,
-    squares:             [[[u64; Square::len()]; Piece::len()]; Color::len()], /* [colour][piece][square] */
+    squares:             [[[u64; Square::len()]; Piece::len()]; Color::len()], // [colour][piece][square]
     ep:                  [u64; 8],
     castling_by_bitflag: [u64; 16],
     side:                u64,
@@ -158,13 +158,8 @@ impl Hasher {
     pub fn hash_pawns(&self, b: &Board) -> Hash {
         Metrics::incr(Counter::CalcHashPawns);
         let mut hash = 0; // b.color_us().chooser_wb(0, self.side);
-        for bb in b.pawns().iter() {
-            let sq = bb.first_square();
-            if b.color(Color::White).contains(bb) {
-                hash ^= self.get(Color::White, Piece::Pawn, sq);
-            } else {
-                hash ^= self.get(Color::Black, Piece::Pawn, sq);
-            }
+        for sq in b.pawns().squares() {
+            hash ^= self.get(b.color_of(sq).unwrap(), Piece::Pawn, sq);
         }
         if hash == 0 {
             hash = self.side;
@@ -213,8 +208,7 @@ impl Hasher {
         hash ^= self.get(us, mover, m.from());
         hash ^= self.get(us, mover, m.to());
 
-        let castling_rights_change =
-            pre_move.castling() & CastlingRights::rights_lost(m.from(), m.to());
+        let castling_rights_change = pre_move.castling() & CastlingRights::rights_lost(m.from(), m.to());
         hash ^= self.castling_by_bitflag[castling_rights_change.bits() as usize];
 
         if let Some(promo) = m.promo_piece() {
@@ -252,11 +246,12 @@ impl Hasher {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        catalog::Catalog, globals::constants::*, infra::profiler::PerfProfiler, other::Perft,
-    };
     use std::hint::black_box;
+
+    use super::*;
+    use crate::catalog::Catalog;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::other::Perft;
 
     #[test]
     #[ignore]
@@ -288,26 +283,20 @@ mod tests {
         assert_eq!(hasher1.ep[0], 15632562519469102039);
 
         // a1a2 hash
-        assert_eq!(a1.first_square().index(), 0);
-        assert_eq!(g1.first_square().index(), 6);
-        assert_eq!(h3.first_square().index(), 23);
+        assert_eq!(Square::A1.index(), 0);
+        assert_eq!(Square::G1.index(), 6);
+        assert_eq!(Square::H3.index(), 23);
         let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0]
             ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
         assert_eq!(hash_a1a2, 4947796874932763259);
-        assert_eq!(
-            hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side,
-            17278715166005629523
-        );
+        assert_eq!(hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side, 17278715166005629523);
 
         // g1h3 hash
         let hash_g1h3 = hasher1.squares[Color::White.index()][Piece::Knight.index()][6]
             ^ hasher1.squares[Color::White.index()][Piece::Knight.index()][23];
         assert_eq!(hash_g1h3, 2343180499638894504);
         assert_eq!(hash_g1h3 ^ hasher1.side, 5987230143978898519);
-        assert_eq!(
-            hash_g1h3 ^ hasher1.ep[0] ^ hasher1.side,
-            10080444449497094016
-        );
+        assert_eq!(hash_g1h3 ^ hasher1.ep[0] ^ hasher1.side, 10080444449497094016);
     }
 
     #[test]
@@ -326,13 +315,10 @@ mod tests {
         let mut bd1_plus_nulls = bd1.clone();
         bd1_plus_nulls.set_halfmove_clock(2); // 0+2
         bd1_plus_nulls.set_ply(2); // 0+2
-        bd1_plus_nulls.set_en_passant(None);    
+        bd1_plus_nulls.set_en_passant(None);
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
-        assert_eq!(
-            bd2, bd1_plus_nulls,
-            "double null move {bd2:#} {bd1_plus_nulls:#}"
-        );
+        assert_eq!(bd2, bd1_plus_nulls, "double null move {bd2:#} {bd1_plus_nulls:#}");
 
         let bd1 = bd1.make_move(bd1.parse_san_move("e4").unwrap());
         assert_eq!(bd1.halfmove_clock(), 0); // coz pawn move
@@ -342,10 +328,7 @@ mod tests {
         bd1_plus_nulls.set_fullmove_number(1 + 1);
         bd1_plus_nulls.set_ply(3);
         let bd2 = bd1.make_move(Move::new_null()).make_move(Move::new_null());
-        assert_eq!(
-            bd2, bd1_plus_nulls,
-            "e4 + double null move {bd2:#} {bd1_plus_nulls:#}"
-        );
+        assert_eq!(bd2, bd1_plus_nulls, "e4 + double null move {bd2:#} {bd1_plus_nulls:#}");
     }
 
     #[test]

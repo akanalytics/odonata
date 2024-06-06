@@ -1,35 +1,45 @@
-use odonata_base::{
-    boards::Position,
-    domain::{
-        info::{Info, InfoKind},
-        node::Node,
-    },
-    infra::{
-        component::{Component, State},
-        metric::Metrics,
-        utils::calculate_branching_factor_by_nodes_and_depth,
-    },
-    other::outcome::Outcome,
-    piece::MAX_PLY,
-    prelude::*,
-    variation::MultiVariation,
-    Epd,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use odonata_base::domain::node::{Counter, Event};
+use odonata_base::boards::Position;
+use odonata_base::domain::info::{Info, InfoKind};
+use odonata_base::domain::node::{Counter, Event, Node};
+use odonata_base::infra::component::{Component, State};
+use odonata_base::infra::metric::Metrics;
+use odonata_base::infra::utils::calculate_branching_factor_by_nodes_and_depth;
+use odonata_base::other::outcome::Outcome;
+use odonata_base::piece::MAX_PLY;
+use odonata_base::prelude::*;
+use odonata_base::variation::MultiVariation;
 
-use super::{algo::Search, search_results::SearchResults, trail::Trail};
+use super::algo::Search;
+use super::search_results::Response;
+use super::trail::Trail;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct IterativeDeepening {
     pub enabled:   bool,
-    pub part_ply:  bool,
     pub step_size: Ply,
     pub start_ply: Ply,
     pub end_ply:   Ply,
+}
+
+impl Default for IterativeDeepening {
+    fn default() -> Self {
+        Self {
+            enabled:   true,
+            step_size: 1,
+            start_ply: 1,
+            end_ply:   MAX_PLY - 1,
+        }
+    }
+}
+
+impl Configurable for IterativeDeepening {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.step_size.set(p.get("step_size"))?;
+        Ok(p.is_modified())
+    }
 }
 
 impl Component for IterativeDeepening {
@@ -44,28 +54,9 @@ impl Component for IterativeDeepening {
     }
 }
 
-impl Default for IterativeDeepening {
-    fn default() -> Self {
-        Self {
-            enabled:   true,
-            part_ply:  false,
-            step_size: 1,
-
-            start_ply: 1,
-            end_ply:   MAX_PLY - 1,
-            // iterations: Vec::new(),
-        }
-    }
-}
-
 impl fmt::Display for IterativeDeepening {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "part_ply         : {}", self.part_ply)?;
-        writeln!(f, "step_size        : {}", self.step_size)?;
-        writeln!(f, "start_ply        : {}", self.start_ply)?;
-        writeln!(f, "end_ply          : {}", self.end_ply)?;
-        Ok(())
+        writeln!(f, "{self:#?}")
     }
 }
 
@@ -90,11 +81,10 @@ impl Search {
         // seldepth: Option<Ply>,
         trail: &mut Trail,
         infos: &[Info],
-    ) -> SearchResults {
+    ) -> Response {
         let nodes_thread_cumul = search.clock.cumul_nodes_this_thread();
-        let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
-            .unwrap_or_default();
-        SearchResults {
+        let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth).unwrap_or_default();
+        Response {
             supplied_move: multi_pv.best_move().unwrap_or_default(),
             // .get(0)
             // .map(|var| var.0.first().unwrap_or_default())
@@ -112,8 +102,8 @@ impl Search {
             multi_pv,
             infos: infos.to_vec(),
             emt: search.clock.elapsed_search().time,
-            pos: Some(Epd::from_board(search.position.board().clone())),
-            tc: Some(search.mte.time_control().clone()),
+            input: search.response.input.clone(),
+            tc: search.mte.time_control().clone(),
             // tree: Some(trail.take_tree()),
             // metrics: None,
         }
@@ -125,7 +115,7 @@ impl Search {
         // let mut last_good_multi_pv = Vec::new();
         let mut score = Score::zero();
         // let mut sel_depth = None;
-        let mut last_results = SearchResults::new();
+        let mut last_results = Response::new();
         let mut book_move = false;
         let mut infos = vec![];
 
@@ -148,12 +138,7 @@ impl Search {
                     book_move = true;
                     Variation::new().append(mv)
                 } else {
-                    score = match self.aspirated_search(
-                        trail,
-                        &mut pos.clone(),
-                        &mut Node::root(ply),
-                        score,
-                    ) {
+                    score = match self.aspirated_search(trail, &mut pos.clone(), &mut Node::root(ply), score) {
                         Ok((score, _event)) => score,
                         Err(_evt) => Score::INFINITY,
                     };
@@ -222,11 +207,7 @@ impl Search {
                 break 'outer;
             }
             last_results = sr;
-            if book_move
-                || self.mte.probable_timeout(ply)
-                || ply >= self.ids.end_ply
-                || ply >= MAX_PLY / 2
-            {
+            if book_move || self.mte.probable_timeout(ply) || ply >= self.ids.end_ply || ply >= MAX_PLY / 2 {
                 break 'outer;
             }
             ply += self.ids.step_size;
@@ -236,11 +217,11 @@ impl Search {
         // self.game
         //     .make_engine_move(results.clone(), Duration::from_millis(results.time_millis)); // *self.mte.time_control());
 
-        self.results = last_results;
+        self.response = last_results;
 
         // capture the piece that is the best move
         if Metrics::metrics_enabled() {
-            let mv = self.results.pv().first();
+            let mv = self.response.pv().first();
             if let Some(mv) = mv {
                 let mover_piece = mv.mover_piece(&self.board);
                 let counter = match mover_piece {
@@ -257,7 +238,7 @@ impl Search {
 
         let info = Info {
             kind: InfoKind::BestMove,
-            pv: Some(self.results.pv()),
+            pv: Some(self.response.pv()),
             ..Info::default()
         };
         self.controller.invoke_callback(&info);

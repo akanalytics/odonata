@@ -1,9 +1,83 @@
-use std::{fmt, str::FromStr};
+use std::fmt::{self, Display};
+use std::str::FromStr;
 
 use itertools::Itertools;
-use statrs::function::erf;
 
-use crate::{other::outcome::Outcome, Color};
+use crate::other::outcome::Outcome;
+use crate::prelude::Math;
+use crate::Color;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum WdlOutcome {
+    WhiteWin,
+    Draw,
+    BlackWin,
+}
+
+impl WdlOutcome {
+    pub fn color_flip(&self) -> Self {
+        match self {
+            Self::WhiteWin => Self::BlackWin,
+            Self::Draw => Self::Draw,
+            Self::BlackWin => Self::WhiteWin,
+        }
+    }
+
+    pub fn to_white_win_fraction(&self) -> f64 {
+        match self {
+            Self::WhiteWin => 1.0,
+            Self::Draw => 0.5,
+            Self::BlackWin => 0.0,
+        }
+    }
+
+    pub fn to_white_win_fraction_str(&self) -> &str {
+        match self {
+            Self::WhiteWin => "1",
+            Self::Draw => "0.5",
+            Self::BlackWin => "0",
+        }
+    }
+    pub fn to_pgn_wdl(&self) -> &'static str {
+        match self {
+            Self::WhiteWin => "1-0",
+            Self::Draw => "1/2-1/2",
+            Self::BlackWin => "0-1",
+        }
+    }
+
+    pub fn parse_pgn(s: &str) -> anyhow::Result<Option<Self>> {
+        match s {
+            "*" => Ok(None),
+            _ => Ok(Some(s.parse()?)),
+        }
+    }
+
+    pub fn to_pgn(outcome: Option<WdlOutcome>) -> &'static str {
+        match outcome {
+            Some(o) => o.to_pgn_wdl(),
+            None => "*",
+        }
+    }
+}
+impl Display for WdlOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.to_pgn_wdl().fmt(f)
+    }
+}
+
+impl FromStr for WdlOutcome {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "1-0" => Ok(Self::WhiteWin),
+            "1/2-1/2" => Ok(Self::Draw),
+            "0-1" => Ok(Self::BlackWin),
+            s => Err(anyhow::anyhow!("{s} is not 1-0, 1/2-1/2 or 0-1")),
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default, PartialOrd, Ord, Hash)]
 pub struct ScoreWdl {
@@ -50,48 +124,13 @@ impl ScoreWdl {
         ScoreWdl::new(0, 0, 0)
     }
 
-    pub fn sigmoid_inv(p: f32) -> f32 {
-        -400.0 * f32::ln(1.0 / p - 1.0) / f32::ln(10.0)
-    }
-
     // Test page: https://www.3dkingdoms.com/chess/elo.htm
     //
-    pub fn elo(&self) -> f32 {
-        let score = self.w as f32 + self.d as f32 / 2.0;
-        let total = self.w as f32 + self.d as f32 + self.l as f32;
+    pub fn elo(&self) -> f64 {
+        let score = self.w as f64 + self.d as f64 / 2.0;
+        let total = self.w as f64 + self.d as f64 + self.l as f64;
         let percentage = score / total;
-        Self::sigmoid_inv(percentage)
-    }
-
-    /// erf = 2 / sqrt(pi) * integral[0..x] exp(-t^2) dt
-    ///
-    /// https://en.wikipedia.org/wiki/Error_function
-    ///
-    /// erf[ a / (sigma *sqrt(2)) ] = proba that sample lies in (-a, a)
-    ///
-    /// Prob(x in [l1, l2]) is   1/2 x [ erf (l2-mean) / sqrt(2)sigma - erf (l1-mean) / sqrt(2)sigma
-    fn erf(x: f32) -> f32 {
-        erf::erf(x as f64) as f32
-        // libm::erf(x)
-    }
-
-    /// inverse of error function
-    ///
-    /// erf_inv(-1) = -∞
-    /// erf_inv( 0) =  0
-    /// erf_inv(-1) = +∞
-    fn erf_inv(x: f32) -> f32 {
-        erf::erf_inv(x as f64) as f32
-    }
-
-    ///  phi(x)     = 0.5 + 0.5 * erf(x / sqrt(2))
-    ///  phi_inv(p) = sqrt(2) * erfinv(2 * p - 1.0)
-    fn phi_inv(p: f32) -> f32 {
-        f32::sqrt(2.) * Self::erf_inv(2. * p - 1.)
-    }
-
-    fn phi(p: f32) -> f32 {
-        0.5 + 0.5 * Self::erf(p / f32::sqrt(2.0))
+        Math::sigmoid_inv(percentage) * 400.
     }
 
     /// The likelihood of superiority (LOS) denotes how
@@ -99,10 +138,10 @@ impl ScoreWdl {
     /// to reach a certain result
     ///
     /// LOS = ϕ((wins - losses)/√(wins + losses))
-    fn los(&self) -> f32 {
-        let wins = self.w as f32;
-        let losses = self.l as f32;
-        Self::phi((wins - losses) / f32::sqrt(wins + losses))
+    fn los(&self) -> f64 {
+        let wins = self.w as f64;
+        let losses = self.l as f64;
+        Math::phi((wins - losses) / f64::sqrt(wins + losses))
     }
 
     /// total games played
@@ -111,18 +150,18 @@ impl ScoreWdl {
     }
 
     /// points where: w=1 d=1/2 l=0
-    pub fn points(&self) -> f32 {
-        self.w as f32 + 0.5 * self.d as f32
+    pub fn points(&self) -> f64 {
+        self.w as f64 + 0.5 * self.d as f64
     }
 
     /// at 97
-    pub fn elo_error_margin(&self, confidence_level: f32) -> f32 {
+    pub fn elo_error_margin(&self, confidence_level: f64) -> f64 {
         // total
-        let n = self.n() as f32;
+        let n = self.n() as f64;
 
-        let w = self.w as f32;
-        let d = self.d as f32;
-        let l = self.l as f32;
+        let w = self.w as f64;
+        let d = self.d as f64;
+        let l = self.l as f64;
 
         // mean
         let μ = self.points() / n;
@@ -138,15 +177,15 @@ impl ScoreWdl {
         let ld = lp * (0.0 - μ).powi(2);
 
         // standard deviation
-        let sigma = f32::sqrt(wd + dd + ld) / f32::sqrt(n);
+        let sigma = f64::sqrt(wd + dd + ld) / f64::sqrt(n);
 
         // confidence interval
         let cl = 1.0 - confidence_level;
         let ch = confidence_level;
-        let μ0 = μ + Self::phi_inv(cl) * sigma;
-        let μ1 = μ + Self::phi_inv(ch) * sigma;
+        let μ0 = μ + Math::phi_inv(cl) * sigma;
+        let μ1 = μ + Math::phi_inv(ch) * sigma;
 
-        0.5 * (Self::sigmoid_inv(μ1) - Self::sigmoid_inv(μ0))
+        0.5 * (Math::sigmoid_inv(μ1) - Math::sigmoid_inv(μ0)) * 400.
     }
 
     // 	m_bayesElo = 200.0 * std::log10(p.pWin() / p.pLoss() *
@@ -207,8 +246,9 @@ impl std::iter::Sum for ScoreWdl {
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::wdl::ScoreWdl;
     use test_log::test;
+
+    use crate::domain::wdl::ScoreWdl;
 
     #[test]
     fn test_score_wdl() {
@@ -223,9 +263,6 @@ mod tests {
         assert_eq!(wdl138, ScoreWdl::new(109, 206, 309));
         assert_eq!(-wdl138, ScoreWdl::new(309, 206, 109));
         // checked by https://www.3dkingdoms.com/chess/elo.htm
-        assert_eq!(
-            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
-            "24.02"
-        );
+        assert_eq!(format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()), "24.02");
     }
 }

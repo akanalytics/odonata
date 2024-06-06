@@ -1,13 +1,12 @@
-use odonata_base::{
-    bits::bitboard::Dir,
-    domain::node::Node,
-    infra::component::Component,
-    piece::{MoveType, Ply},
-    prelude::*,
-    Piece,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use odonata_base::bits::bitboard::Dir;
+use odonata_base::domain::node::Node;
+use odonata_base::domain::staticeval::StaticEval;
+use odonata_base::infra::component::Component;
+use odonata_base::piece::MoveType;
+use odonata_base::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::algo::Search;
 
@@ -36,40 +35,68 @@ pub struct Extensions {
     pv_enabled: bool,
 }
 
+impl Default for Extensions {
+    fn default() -> Self {
+        Extensions {
+            enabled:                true,
+            check_max_depth:        2,
+            check_only_captures:    false,
+            check_see_threshold:    Score::zero(),
+            check_see:              false,
+            gives_check_enabled:    true,
+            in_check_enabled:       false,
+            max_extend:             1,
+            near_promo_enabled:     false,
+            near_promo_max_depth:   1,
+            pawn_double_attacks:    false,
+            promo_enabled:          false,
+            promo_max_depth:        1,
+            pv_enabled:             false,
+            recapture_enabled:      false,
+            recapture_max_depth:    3,
+            recapture_only_pv_node: false,
+            recapture_same_square:  true,
+        }
+    }
+}
+
+impl Configurable for Extensions {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.enabled.set(p.get("enabled"))?;
+        self.check_max_depth.set(p.get("check_max_depth"))?;
+        self.check_only_captures.set(p.get("check_only_captures"))?;
+        self.check_see_threshold.set(p.get("check_see_threshold"))?;
+        self.check_see.set(p.get("check_see"))?;
+        self.gives_check_enabled.set(p.get("gives_check_enabled"))?;
+        self.in_check_enabled.set(p.get("in_check_enabled"))?;
+        self.max_extend.set(p.get("max_extend"))?;
+        self.near_promo_enabled.set(p.get("near_promo_enabled"))?;
+        self.near_promo_max_depth.set(p.get("near_promo_max_depth"))?;
+        self.pawn_double_attacks.set(p.get("pawn_double_attacks"))?;
+        self.promo_enabled.set(p.get("promo_enabled"))?;
+        self.promo_max_depth.set(p.get("promo_max_depth"))?;
+        self.pv_enabled.set(p.get("pv_enabled"))?;
+        self.recapture_enabled.set(p.get("recapture_enabled"))?;
+        self.recapture_max_depth.set(p.get("recapture_max_depth"))?;
+        self.recapture_only_pv_node.set(p.get("recapture_only_pv_node"))?;
+        self.recapture_same_square.set(p.get("recapture_same_square"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for Extensions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
+    }
+}
+
 impl Component for Extensions {
     fn new_game(&mut self) {
         self.new_position();
     }
 
     fn new_position(&mut self) {}
-}
-
-impl Default for Extensions {
-    fn default() -> Self {
-        Extensions {
-            enabled:             true,
-            max_extend:          1,
-            gives_check_enabled: true,
-            in_check_enabled:    false,
-            check_max_depth:     2,
-            check_see:           false,
-            check_see_threshold: Score::zero(),
-            check_only_captures: false,
-
-            promo_enabled:        false,
-            promo_max_depth:      1,
-            near_promo_enabled:   false,
-            near_promo_max_depth: 1,
-
-            recapture_enabled:      false,
-            recapture_same_square:  true,
-            recapture_only_pv_node: false,
-            recapture_max_depth:    3,
-            pawn_double_attacks:    false,
-
-            pv_enabled: false,
-        }
-    }
 }
 
 impl Search {
@@ -97,8 +124,7 @@ impl Search {
             #[allow(clippy::collapsible_else_if)]
             if n.depth <= self.ext.check_max_depth
                 && (!self.ext.check_only_captures || mv.is_capture())
-                && (!self.ext.check_see
-                    || self.eval.eval_move_see(mv, before) >= self.ext.check_see_threshold)
+                && (!self.ext.check_see || self.eval.eval_move_see(mv, before) >= self.ext.check_see_threshold)
             {
                 // algo.search_stats().inc_ext_check(n.ply);
                 ext += 1;
@@ -125,12 +151,11 @@ impl Search {
                 Color::White => {
                     let white_attacks = to.shift(Dir::NW) | to.shift(Dir::NE);
                     (white_attacks & (after.black() - after.pawns())).two_or_more()
-                },
+                }
                 Color::Black => {
                     let black_attacks = to.shift(Dir::SW) | to.shift(Dir::SE);
                     (black_attacks & (after.white() - after.pawns())).two_or_more()
-                },
-                
+                }
             };
             if forks {
                 ext += 1;
@@ -166,13 +191,6 @@ impl Search {
         //     extend += self.ext.promo_extend;
         // }
         std::cmp::min(ext, self.ext.max_extend)
-    }
-}
-
-impl fmt::Display for Extensions {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
-        Ok(())
     }
 }
 

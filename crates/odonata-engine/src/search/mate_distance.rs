@@ -1,11 +1,13 @@
-use odonata_base::{prelude::*, infra::{component::Component, metric::{Event, Metrics}}, domain::node::Node};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use odonata_base::domain::node::Node;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::prelude::*;
 
 use super::algo::Search;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct MateDistance {
     pub enabled:     bool,
     pub raise_alpha: bool,
@@ -30,6 +32,21 @@ impl Default for MateDistance {
     }
 }
 
+impl Configurable for MateDistance {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.raise_alpha.set(p.get("raise_alpha"))?;
+        self.reduce_beta.set(p.get("reduce_beta"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for MateDistance {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
+    }
+}
+
 impl Search {
     #[inline]
     pub fn mate_distance(&mut self, n: &mut Node) -> Option<Score> {
@@ -50,13 +67,6 @@ impl Search {
             return Some(n.alpha);
         }
         None
-    }
-}
-
-impl fmt::Display for MateDistance {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        Ok(())
     }
 }
 

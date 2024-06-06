@@ -1,10 +1,10 @@
-use crate::{
-    other::outcome::Outcome,
-    piece::{FlipSide, Ply, Repeats},
-    prelude::{Board, Hash, Move, Result, Variation},
-    Epd,
-};
 use std::fmt::{Debug, Display};
+
+use crate::other::outcome::Outcome;
+use crate::other::tags::EpdOps;
+use crate::piece::{FlipSide, Ply, Repeats};
+use crate::prelude::{Board, Hash, Move, Result, Variation};
+use crate::Epd;
 
 /// initial board >---(starting-moves)--> root_board >---(search-variation)--> board
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -36,7 +36,7 @@ impl Display for Position {
                 "{fen} moves {mvs}; pv {pv}; rc {rc}",
                 fen = b.to_fen(),
                 mvs = self.played_moves().to_san(&b),
-                pv = self.search_variation().to_san(&self.root_board()),
+                pv = self.search_variation().to_san(self.root_board()),
                 rc = self.played_reps(),
             )
         }
@@ -118,19 +118,15 @@ impl Position {
         self.hash
     }
 
-    pub fn root_board(&self) -> Board {
+    pub fn root_board(&self) -> &Board {
         self.get_board(self.played_history().len())
     }
 
-    fn get_board(&self, index: usize) -> Board {
-        self.history
-            .get(index)
-            .map(|(b, _h, _mv)| b)
-            .unwrap_or(&self.board)
-            .clone()
+    fn get_board(&self, index: usize) -> &Board {
+        self.history.get(index).map(|(b, _h, _mv)| b).unwrap_or(&self.board)
     }
 
-    pub(super) fn played_history(&self) -> &[(Board, Hash, Move)] {
+    pub fn played_history(&self) -> &[(Board, Hash, Move)] {
         let played_history_len = self.history.len() - self.ply;
         &self.history[0..played_history_len]
     }
@@ -139,13 +135,19 @@ impl Position {
         self.ply as Ply
     }
 
-    pub(super) fn search_history(&self) -> &[(Board, Hash, Move)] {
+    pub fn search_history(&self) -> &[(Board, Hash, Move)] {
         let played_history_len = self.history.len() - self.ply;
         &self.history[played_history_len..]
     }
 
+    /// reassigns search moves to played moves
+    pub fn play_search_moves(&mut self) {
+        self.ply = 0;
+        self.sel_ply = 0;
+    }
+
     pub fn setup_board(&self) -> Board {
-        self.get_board(0)
+        self.get_board(0).clone()
     }
 
     pub fn played_moves(&self) -> Variation {
@@ -185,10 +187,12 @@ impl Position {
     }
 
     #[inline]
-    pub fn pop_move(&mut self) {
+    pub fn pop_move(&mut self) -> Move {
         debug_assert!(self.ply > 0);
-        (self.board, self.hash, _) = self.history.pop().unwrap();
+        let mv;
+        (self.board, self.hash, mv) = self.history.pop().unwrap();
         self.ply -= 1;
+        mv
     }
 
     /// current position counts as 1
@@ -266,11 +270,7 @@ impl Position {
 
 impl Position {
     pub fn parse_uci(uci: &str) -> Result<Position> {
-        let uci = uci
-            .trim_start()
-            .strip_prefix("position")
-            .unwrap_or(uci)
-            .trim_start();
+        let uci = uci.trim_start().strip_prefix("position").unwrap_or(uci).trim_start();
         let (fen, moves) = if let Some((fen, moves)) = uci.split_once("moves") {
             (fen.trim(), Some(moves.trim()))
         } else {
@@ -303,12 +303,15 @@ impl Position {
 
 #[cfg(test)]
 mod tests {
-    use std::{hint::black_box, mem::size_of};
+    use std::hint::black_box;
+    use std::mem::size_of;
 
-    use crate::{catalog::Catalog, infra::profiler::PerfProfiler, Color};
+    use test_log::test;
 
     use super::*;
-    use test_log::test;
+    use crate::catalog::Catalog;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::Color;
 
     #[test]
     fn test_position_basics() {
@@ -329,10 +332,7 @@ mod tests {
     fn test_position_parse_uci() {
         let start = Position::from_board(Board::starting_pos());
         assert_eq!(start, Position::parse_uci("position startpos").unwrap());
-        assert_eq!(
-            start,
-            Position::parse_uci("position startpos moves").unwrap()
-        );
+        assert_eq!(start, Position::parse_uci("position startpos moves").unwrap());
         assert_eq!(start, Position::parse_uci("startpos").unwrap());
         assert_eq!(start, Position::parse_uci(" startpos  moves ").unwrap());
         assert_eq!(
@@ -345,16 +345,12 @@ mod tests {
         );
         assert_eq!(
             Position::parse_uci("position startpos moves e2e4").unwrap(),
-            Position::from_epd(
-                Epd::parse_epd(&(Board::starting_pos().to_fen() + " moves e4;")).unwrap()
-            )
+            Position::from_epd(Epd::parse_epd(&(Board::starting_pos().to_fen() + " moves e4;")).unwrap())
         );
         let mut pos = Position::parse_uci("position startpos moves e2e4 e7e5").unwrap();
         assert_eq!(
             pos,
-            Position::from_epd(
-                Epd::parse_epd(&(Board::starting_pos().to_fen() + " moves e4 e5;")).unwrap()
-            )
+            Position::from_epd(Epd::parse_epd(&(Board::starting_pos().to_fen() + " moves e4 e5;")).unwrap())
         );
         pos.push_moves_str("a2a4 a7a6").unwrap();
         assert_eq!(pos.search_variation().len(), 2);
@@ -372,10 +368,7 @@ mod tests {
         println!("{p:#?}");
         let setup = &p.setup_board();
         let root = &p.root_board();
-        assert_eq!(
-            p.played_moves().to_san(setup),
-            "Rh1 Ka8 Rh2 Ka7 Rh1 Ka8 Rh2 Ka7"
-        );
+        assert_eq!(p.played_moves().to_san(setup), "Rh1 Ka8 Rh2 Ka7 Rh1 Ka8 Rh2 Ka7");
         assert_eq!(p.search_variation().to_san(root), "Rh1 Ka8 Rh2 Ka7 Rh1 Ka8");
         assert_eq!(p.played_reps(), 3);
         assert_eq!(p.search_reps(), 2);

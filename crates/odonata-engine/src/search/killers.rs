@@ -1,11 +1,11 @@
-use odonata_base::{mv::BareMove, piece::MAX_PLY, prelude::*, infra::component::Component};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use odonata_base::domain::node::Node;
+use odonata_base::infra::component::Component;
+use odonata_base::mv::BareMove;
+use odonata_base::prelude::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Killers {
     enabled:                 bool,
     clear_every_move:        bool,
@@ -19,13 +19,7 @@ pub struct Killers {
     max_depth:               Ply,
     min_ply:                 Ply,
     max_ply:                 Ply,
-
-    #[serde(skip, default = "killers_default")]
-    killers: Vec<[(BareMove, u32); 2]>,
-}
-
-fn killers_default() -> Vec<[(BareMove, u32); 2]> {
-    vec![[(BareMove::null(), 0); 2]; MAX_PLY as usize]
+    killers_by_ply:          Vec<[(BareMove, u32); 2]>,
 }
 
 impl Default for Killers {
@@ -35,36 +29,54 @@ impl Default for Killers {
             clear_every_move:        false,
             clear_scores_every_move: true,
             use_ply_below:           true,
-            castles:                 false,
+            castles:                 true,
             captures:                false,
-            record_mover:            false,
+            record_mover:            true,
             order:                   false,
             min_depth:               0,
-            max_depth:               100,
+            max_depth:               256,
             min_ply:                 0,
-            max_ply:                 100,
-            killers:                 killers_default(),
+            max_ply:                 256,
+            killers_by_ply:          vec![],
         }
+    }
+}
+
+impl Configurable for Killers {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.clear_every_move.set(p.get("clear_every_move"))?;
+        self.clear_scores_every_move.set(p.get("clear_scores_every_move"))?;
+        self.use_ply_below.set(p.get("use_ply_below"))?;
+        self.castles.set(p.get("castles"))?;
+        self.captures.set(p.get("captures"))?;
+        self.record_mover.set(p.get("record_mover"))?;
+        self.order.set(p.get("order"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.max_depth.set(p.get("max_depth"))?;
+        self.min_ply.set(p.get("min_ply"))?;
+        self.max_ply.set(p.get("max_ply"))?;
+        Ok(p.is_modified())
     }
 }
 
 impl Component for Killers {
     fn new_game(&mut self) {
-        self.killers.fill([(BareMove::null(), 0); 2]);
+        self.killers_by_ply.clear();
     }
 
     fn new_position(&mut self) {
         if self.clear_every_move {
-            self.killers.fill([(BareMove::null(), 0); 2]);
-        } else {
+            self.killers_by_ply.clear();
+        } else if self.killers_by_ply.len() >= 2 {
             // reduce the ply count by 2
-            self.killers.remove(0);
-            self.killers.push([(BareMove::null(), 0); 2]);
-            self.killers.remove(0);
-            self.killers.push([(BareMove::null(), 0); 2]);
+            self.killers_by_ply.remove(0);
+            self.killers_by_ply.push([(BareMove::null(), 0); 2]);
+            self.killers_by_ply.remove(0);
+            self.killers_by_ply.push([(BareMove::null(), 0); 2]);
         }
         if self.clear_scores_every_move {
-            for sm in self.killers.iter_mut() {
+            for sm in self.killers_by_ply.iter_mut() {
                 sm[0].1 = 0;
                 sm[1].1 = 0;
             }
@@ -76,11 +88,7 @@ impl fmt::Display for Killers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled                 : {}", self.enabled)?;
         writeln!(f, "clear_every_move        : {}", self.clear_every_move)?;
-        writeln!(
-            f,
-            "clear_scores_every_move : {}",
-            self.clear_scores_every_move
-        )?;
+        writeln!(f, "clear_scores_every_move : {}", self.clear_scores_every_move)?;
         writeln!(f, "use_ply_below           : {}", self.use_ply_below)?;
         writeln!(f, "captures                : {}", self.captures)?;
         writeln!(f, "castles                 : {}", self.castles)?;
@@ -121,64 +129,68 @@ impl Killers {
     }
 
     fn legal_moves_for_single_ply(&self, n: &Node, y: Ply, b: &Board, moves: &mut MoveList) {
+        let y = y as usize;
         if self.order
             && (n.depth <= self.max_depth && n.depth >= self.min_depth
                 || n.ply <= self.max_ply && n.ply >= self.min_ply)
-            && self.killers[y as usize][1].1 > self.killers[y as usize][0].1
+            && y < self.killers_by_ply.len()
         {
-            self.add_if_valid(self.killers[y as usize][1].0, b, moves);
-            self.add_if_valid(self.killers[y as usize][0].0, b, moves);
-        } else {
-            self.add_if_valid(self.killers[y as usize][0].0, b, moves);
-            self.add_if_valid(self.killers[y as usize][1].0, b, moves);
+            if self.killers_by_ply[y][1].1 > self.killers_by_ply[y][0].1 {
+                self.add_if_valid(self.killers_by_ply[y][1].0, b, moves);
+                self.add_if_valid(self.killers_by_ply[y][0].0, b, moves);
+            } else {
+                self.add_if_valid(self.killers_by_ply[y][0].0, b, moves);
+                self.add_if_valid(self.killers_by_ply[y][1].0, b, moves);
+            }
         }
     }
-
     pub fn store(&mut self, n: &Node, m: &Move, b: &Board) {
         // killers are quiet
         if !self.enabled || (m.is_castle(b) && !self.castles) || m.is_capture() || m.is_null() {
             return;
         }
-        let y = n.ply;
+        let y = n.ply as usize;
+        if y >= self.killers_by_ply.len() {
+            self.killers_by_ply.resize(y + 1, [(BareMove::null(), 0); 2]);
+        }
         let mut bm = m.to_inner();
         if self.record_mover {
             bm.mover = Some(m.mover_piece(b))
         }
         // dont store duplicates
-        if bm == self.killers[y as usize][0].0 {
-            self.killers[y as usize][0].1 = self.killers[y as usize][0].1.saturating_add(1);
+        if bm == self.killers_by_ply[y][0].0 {
+            self.killers_by_ply[y][0].1 = self.killers_by_ply[y][0].1.saturating_add(1);
             return;
         }
-        if bm == self.killers[y as usize][1].0 {
-            self.killers[y as usize][0].1 = self.killers[y as usize][1].1.saturating_add(1);
+        if bm == self.killers_by_ply[y][1].0 {
+            self.killers_by_ply[y][0].1 = self.killers_by_ply[y][1].1.saturating_add(1);
             return;
         }
-        // self.killers[y as usize][3] = self.killers[y as usize][2];
-        // self.killers[y as usize][2] = self.killers[y as usize][1];
+        // self.killers[y][3] = self.killers[y][2];
+        // self.killers[y][2] = self.killers[y][1];
         if self.order
             && (n.depth <= self.max_depth && n.depth >= self.min_depth
                 || n.ply <= self.max_ply && n.ply >= self.min_ply)
         {
-            if self.killers[y as usize][0].1 > self.killers[y as usize][1].1 {
-                self.killers[y as usize][1] = (bm, 0);
-                self.killers[y as usize][0].1 = 0;
+            if self.killers_by_ply[y][0].1 > self.killers_by_ply[y][1].1 {
+                self.killers_by_ply[y][1] = (bm, 0);
+                self.killers_by_ply[y][0].1 = 0;
             } else {
-                self.killers[y as usize][0] = (bm, 0);
-                self.killers[y as usize][1].1 = 0;
+                self.killers_by_ply[y][0] = (bm, 0);
+                self.killers_by_ply[y][1].1 = 0;
             }
         } else {
-            self.killers[y as usize][1] = self.killers[y as usize][0];
-            self.killers[y as usize][0] = (bm, 0);
+            self.killers_by_ply[y][1] = self.killers_by_ply[y][0];
+            self.killers_by_ply[y][0] = (bm, 0);
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use odonata_base::{
-        catalog::Catalog, domain::timecontrol::TimeControl, infra::utils::DecimalFormatter,
-    };
-    use crate::engine::Engine;
+    use odonata_base::catalog::Catalog;
+    use odonata_base::domain::timecontrol::TimeControl;
+    use odonata_base::infra::utils::DecimalFormatter;
     use test_log::test;
 
     use crate::search::engine::ThreadedSearch;

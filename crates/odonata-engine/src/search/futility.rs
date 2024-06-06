@@ -1,54 +1,51 @@
+use std::fmt;
+
+use odonata_base::domain::node::Node;
+use odonata_base::domain::staticeval::StaticEval;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::piece::MoveType;
+use odonata_base::prelude::*;
+use strum_macros::EnumString;
+
 use super::algo::Search;
-use odonata_base::{
-    domain::{node::Node, staticeval::StaticEval},
-    infra::{
-        component::Component,
-        metric::{Event, Metrics},
-    },
-    piece::MoveType,
-    prelude::*,
-    Piece,
-};
-use serde::{Deserialize, Serialize};
-use std::{fmt, ops::Deref};
 
 // 5+0.04 => 165/1600
 // 10+0.08 => 82/1189 (3000 sims)
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, EnumString)]
 pub enum MoveEvalMethod {
     Classical,
     Weighted,
     See,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Futility {
-    pub alpha_enabled:    bool,
-    pub beta_enabled:     bool,
-    prune_remaining:      bool,
-    in_check:             bool,
-    giving_check:         bool,
     discoverer:           bool,
     first_move:           bool,
-    prune_extensions:     bool,
-    prune_fw_node:        bool,
+    giving_check:         bool,
+    in_check:             bool,
+    margin_ply:           i32,
+    margin_qs:            i32,
+    max_depth_captures:   Ply,
+    max_depth:            Ply,
+    max_pawn_rank:        u8,
+    min_pieces_depth:     Ply,
+    min_pieces:           i32,
+    move_eval_method:     MoveEvalMethod,
+    move_types_forbidden: MoveType,
     prune_alpha_mate:     bool,
     prune_beta_mate:      bool,
-    max_pawn_rank:        u8,
-    max_depth:            Ply,
-    max_depth_captures:   Ply,
-    min_pieces:           i32,
-    min_pieces_depth:     Ply,
-    move_eval_method:     MoveEvalMethod,
-    margin_qs:            i32,
-    margin1:              i32,
-    margin2:              i32,
-    margin3:              i32,
-    margin4:              i32,
-    margin_ply:           i32,
-    move_types_forbidden: MoveType,
+    prune_extensions:     bool,
+    prune_fw_node:        bool,
+    prune_remaining:      bool,
+    pub alpha_enabled:    bool,
+    pub beta_enabled:     bool,
+    pub margin1:          i32,
+    pub margin2:          i32,
+    pub margin3:          i32,
+    pub margin4:          i32,
 }
 
 impl Component for Futility {
@@ -64,29 +61,65 @@ impl Default for Futility {
         Futility {
             alpha_enabled:        true,
             beta_enabled:         false,
-            prune_remaining:      false,
-            in_check:             true,
-            giving_check:         false,
             discoverer:           false,
             first_move:           false,
-            prune_extensions:     false,
-            prune_fw_node:        false,
-            prune_alpha_mate:     false,
-            prune_beta_mate:      false,
-            min_pieces:           0,
-            min_pieces_depth:     0,
-            max_pawn_rank:        7,
-            max_depth:            2, // not sure > 2 really makes sense
-            max_depth_captures:   2,
-            move_eval_method:     MoveEvalMethod::Classical,
-            margin_qs:            0,
-            margin1:              100,
-            margin2:              250,
-            margin3:              1500,
-            margin4:              1850,
+            giving_check:         false,
+            in_check:             false,
             margin_ply:           100,
+            margin_qs:            0,
+            margin1:              65,
+            margin2:              200,
+            margin3:              825,
+            margin4:              1000,
+            max_depth_captures:   2,
+            max_depth:            20, // not sure > 2 really makes sense
+            max_pawn_rank:        5,
+            min_pieces_depth:     1,
+            min_pieces:           0,
+            move_eval_method:     MoveEvalMethod::Classical,
             move_types_forbidden: MoveType::empty(), // MoveType::Hash | MoveType::Killer, // HK
+            prune_alpha_mate:     false,
+            prune_beta_mate:      true,
+            prune_extensions:     false,
+            prune_fw_node:        true,
+            prune_remaining:      false,
         }
+    }
+}
+
+impl Configurable for Futility {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.alpha_enabled.set(p.get("alpha_enabled"))?;
+        self.beta_enabled.set(p.get("beta_enabled"))?;
+        self.discoverer.set(p.get("discoverer"))?;
+        self.first_move.set(p.get("first_move"))?;
+        self.giving_check.set(p.get("giving_check"))?;
+        self.in_check.set(p.get("in_check"))?;
+        self.margin_ply.set(p.get("margin_ply"))?;
+        self.margin_qs.set(p.get("margin_qs"))?;
+        self.margin1.set(p.get("margin1"))?;
+        self.margin2.set(p.get("margin2"))?;
+        self.margin3.set(p.get("margin3"))?;
+        self.margin4.set(p.get("margin4"))?;
+        self.max_depth_captures.set(p.get("max_depth_captures"))?;
+        self.max_depth.set(p.get("max_depth"))?;
+        self.max_pawn_rank.set(p.get("max_pawn_rank"))?;
+        self.min_pieces_depth.set(p.get("min_pieces_depth"))?;
+        self.min_pieces.set(p.get("min_pieces"))?;
+        self.move_eval_method.set(p.get("move_eval_method"))?;
+        Configurable::set(&mut self.move_types_forbidden, p.get("move_types_forbidden"))?;
+        self.prune_alpha_mate.set(p.get("prune_alpha_mate"))?;
+        self.prune_beta_mate.set(p.get("prune_beta_mate"))?;
+        self.prune_extensions.set(p.get("prune_extensions"))?;
+        self.prune_fw_node.set(p.get("prune_fw_node"))?;
+        self.prune_remaining.set(p.get("prune_remaining"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for Futility {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
     }
 }
 
@@ -250,8 +283,7 @@ impl Search {
 
         // position wise, passed pawn promos make a huge impact so exclude them
         if mv.mover_piece(before) == Piece::Pawn
-            && mv.from().rank_number_as_white(before.color_us())
-                > self.futility.max_pawn_rank as usize
+            && mv.from().rank_number_as_white(before.color_us()) > self.futility.max_pawn_rank as usize
         {
             Metrics::incr_node(n, Event::FutilityDeclinePawnMaxRank);
             return None;
@@ -277,7 +309,7 @@ impl Search {
 
         // not a capture or promo => gain = 0
         // let gain = before.eval_move_material(&self.eval, mv);
-        let gain = self.eval_move_material(before, self.eval.deref(), mv);
+        let gain = self.eval_move_material(before, &self.eval, mv);
         // if est_score <= n.alpha
         //     && EndGame::from_board(after).likely_outcome(after) != LikelyOutcome::UnknownOutcome
         // {
@@ -293,7 +325,7 @@ impl Search {
                 2 => Event::FutilityD2,
                 _ => Event::FutilityD3,
             };
-            self.explain_futility(before, mv, mt, est_score, n, category);
+            // self.explain_futility(before, mv, mt, est_score, n, category);
             Metrics::incr_node(n, category);
 
             return Some(est_score);
@@ -464,13 +496,6 @@ impl Search {
 //         }
 //     }
 // }
-
-impl fmt::Display for Futility {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
-        Ok(())
-    }
-}
 
 #[cfg(test)]
 mod tests {

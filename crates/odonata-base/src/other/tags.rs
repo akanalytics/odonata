@@ -1,10 +1,140 @@
-use crate::prelude::Board;
-use anyhow::Result;
+use std::collections::HashMap;
+use std::fmt::{self, Display};
+
+use anyhow::{Context as _, Result};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::{Serialize, Deserialize};
-use std::{collections::HashMap, fmt};
+use serde::{Deserialize, Serialize};
+
+use crate::domain::score::Score;
+use crate::domain::wdl::WdlOutcome;
+use crate::movelist::ScoredMoveList;
+use crate::prelude::{Board, Move};
+use crate::variation::Variation;
+use crate::{Epd, MoveList};
+
+pub trait TagOps: Display {
+    fn tags_mut(&mut self) -> &mut Tags;
+    fn tags(&self) -> &Tags;
+
+    fn get(&self, key: &str) -> Option<&str> {
+        self.tags().get(key)
+    }
+
+    fn ensure(&self, key: &str) -> Result<()> {
+        self.ensure_one_of(&[key])
+    }
+
+    fn ensure_one_of(&self, keys: &[&str]) -> Result<()> {
+        match self.find(keys) {
+            Some(_) => Ok(()),
+            _ => anyhow::bail!("Expected {} in {self}", keys.join(",")),
+        }
+    }
+
+    fn find(&self, keys: &[&str]) -> Option<&str> {
+        for k in keys {
+            let v = self.get(k);
+            if v.is_some() {
+                return v;
+            }
+        }
+        None
+    }
+
+    fn res(&self) -> Option<WdlOutcome> {
+        self.get(Tags::RES).and_then(|s| s.parse().ok())
+    }
+
+    /// score is from the stm's pov
+    ///
+    /// Opcode "ce": centipawn evaluation
+    /// The opcode "ce" indicates the evaluation of the indicated position in centipawn
+    /// units. It takes a single operand, an optionally signed integer that gives an evaluation
+    /// of the position from the viewpoint of the active player; i.e., the player with the move.
+    fn score(&self) -> Option<Score> {
+        self.tags()
+            .get(Tags::CE)
+            .and_then(|s| s.parse().ok())
+            .map(Score::from_cp)
+    }
+
+    fn score_from_tag(&self, tag: &str) -> Option<Score> {
+        self.get(tag).and_then(|s| s.parse().ok()).map(Score::from_cp)
+    }
+
+    /// score is from the stm's pov
+    fn set_score(&mut self, pov_score: Score) {
+        self.tags_mut().set(Tags::CE, &pov_score.as_i16().to_string());
+    }
+
+    fn is_book_move(&self) -> bool {
+        self.get("eco").is_some()
+    }
+}
+
+pub trait EpdOps: TagOps {
+    fn board(&self) -> Board;
+
+    fn scored_move_list(&self) -> Option<ScoredMoveList> {
+        let bsm = self.find(&[Tags::BSM, Tags::ASM, Tags::ESM])?;
+        ScoredMoveList::parse_san(bsm, &self.board()).ok()
+    }
+
+    /// from ce, Bsm, Asm, Esm. Empty Bsm => None
+    fn score_any(&self) -> Option<Score> {
+        if let Some(ce) = self.get(Tags::CE) {
+            return ce.parse().ok().map(Score::from_cp);
+        }
+        if let Some(bsm) = self.find(&[Tags::BSM, Tags::ASM, Tags::ESM]) {
+            let bsm = ScoredMoveList::parse_san(bsm, &self.board()).ok()?;
+            return bsm.best_score();
+        }
+        None
+    }
+
+    fn var(&self, tag: &str) -> Option<Variation> {
+        self.board()
+            .parse_san_variation(self.get(tag)?)
+            .with_context(|| self.to_string())
+            .unwrap()
+            .into()
+    }
+
+    fn mv(&self, tag: &str) -> Option<Move> {
+        self.board()
+            .parse_san_move(self.get(tag)?)
+            .with_context(|| self.to_string())
+            .unwrap()
+            .into()
+    }
+
+    fn moves(&self, tag: &str) -> Option<MoveList> {
+        self.board()
+            .parse_san_movelist(self.get(tag)?)
+            .context(self.to_string())
+            .unwrap()
+            .into()
+    }
+
+    fn best_move(&self) -> Option<Move> {
+        self.mv(Tags::SM)
+            .or_else(|| self.moves(Tags::BM).and_then(|ml| ml.iter().next().copied()))
+    }
+
+    fn centipawn_loss(&self) -> Option<i16> {
+        let sm = self.best_move()?;
+        let loss = self.scored_move_list()?.centipawn_loss(sm)?;
+        loss.cp()
+    }
+}
+
+impl EpdOps for Epd {
+    fn board(&self) -> Board {
+        self.board()
+    }
+}
 
 /// to support EPD and PGN formats
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -22,7 +152,18 @@ impl fmt::Display for Tags {
     }
 }
 
+impl TagOps for Tags {
+    fn tags_mut(&mut self) -> &mut Tags {
+        self
+    }
+
+    fn tags(&self) -> &Tags {
+        self
+    }
+}
+
 impl Tags {
+    // http://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm
     pub const VERB_DATA_NORMALIZATION: &'static str = "pfdn";
     pub const VERB_GENERAL_ANALYSIS: &'static str = "pfga";
     pub const VERB_MATE_SEARCH: &'static str = "pfms";
@@ -33,6 +174,7 @@ impl Tags {
     pub const AM: &'static str = "am";
     pub const BM: &'static str = "bm";
     pub const ASM: &'static str = "Asm"; // ann scored moves "Asm a4:+45 Nf6:-56;"
+    pub const BSM: &'static str = "Bsm"; // best scored moves "Bsm a4:+45 Nf6:-56;"
     pub const ESM: &'static str = "Esm"; // eng scored moves "Esm a4:+45 Nf6:-56;"
     pub const BF: &'static str = "Bf";
     pub const PV: &'static str = "pv";
@@ -44,6 +186,7 @@ impl Tags {
     pub const ACN: &'static str = "acn";
     pub const ACS: &'static str = "acs";
     pub const ACMS: &'static str = "Acms";
+    pub const PC: &'static str = "Pc"; // pgn "PlyCount" - total game moves from pgn
     pub const CC: &'static str = "cc";
     pub const CE: &'static str = "ce";
     pub const CPL: &'static str = "Cpl"; // centipawn loss
@@ -52,7 +195,7 @@ impl Tags {
     pub const FMVN: &'static str = "fmvn";
     pub const HMVC: &'static str = "hmvc";
     pub const PM: &'static str = "pm";
-    pub const RC: &'static str = "rc";
+    pub const RC: &'static str = "rc"; // repetition count
     pub const NOOP: &'static str = "noop";
     pub const SM: &'static str = "sm";
     pub const SV: &'static str = "sv";
@@ -60,22 +203,14 @@ impl Tags {
     pub const SQ: &'static str = "Sq";
     pub const RES: &'static str = "Res";
     pub const TS: &'static str = "ts";
-    pub const COMMENTS: [&'static str; 10] =
-        ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
+    pub const COMMENTS: [&'static str; 10] = ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
     pub const PERFTS: [&'static str; 8] = ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"];
     pub const DRAW_REJECT: &'static str = "draw_reject";
 
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
-    const ENGINE_RESULTS: &'static [&'static str] = &[
-        Self::PV,
-        Self::MPV,
-        Self::SM,
-        Self::BM,
-        Self::CE,
-        Self::BF,
-        Self::CPL,
-    ];
+    const ENGINE_RESULTS: &'static [&'static str] =
+        &[Self::PV, Self::MPV, Self::SM, Self::BM, Self::CE, Self::BF, Self::CPL];
 
     const ANNOTATOR_RESULTS: &'static [&'static str] = &[Self::ASM, Self::CPL];
 
@@ -83,11 +218,16 @@ impl Tags {
         Self::default()
     }
 
+    pub fn from(k: &str, v: &str) -> Self {
+        let mut t = Tags::new();
+        t.set(k, v);
+        t
+    }
+
     pub fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).map(|s| s.as_str())
     }
 
-    
     pub fn keys(&self) -> impl Iterator<Item = &str> {
         self.0.keys().map(|s| s.as_str())
     }
@@ -112,10 +252,8 @@ impl Tags {
         self.0.insert(k.to_string(), v.to_string());
     }
 
-    #[must_use]
-    pub fn set(mut self, k: &str, v: &str) -> Tags {
+    pub fn set(&mut self, k: &str, v: &str) {
         self.0.insert(k.to_string(), v.to_string());
-        self
     }
 
     pub fn is_empty(&self) -> bool {
@@ -205,7 +343,8 @@ impl Tags {
 
     pub fn parse_single_tag(_b: &Board, v: &str) -> Result<Tags> {
         let words: Vec<&str> = Self::split_into_words(v);
-        let tags = Tags::new().set(words[0], &words[1..].join(" "));
+        let mut tags = Tags::new();
+        tags.set(words[0], &words[1..].join(" "));
         Ok(tags)
     }
 
@@ -426,10 +565,12 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     // use serde_json::{value::Value, Map};
     use std::mem::size_of;
+
     use test_log::test;
+
+    use super::*;
 
     // #[test]
     // fn tags_basics() {
@@ -493,7 +634,7 @@ mod tests {
     //     assert_eq!(tags.clone().filter(pred).comments[1], Some("1".to_string()));
     //     assert_eq!(tags.clone().filter(pred).to_epd(b), " acd 3; sv e4; c1 1;");
     //     // JSON
-    //     // FIXME: json parsing of Tags - failing due to nulls
+    //     //  json parsing of Tags - failing due to nulls
     //     // assert_eq!(
     //     //     jsonrpc_core::to_string(&tags).unwrap(),
     //     //     r#"{"acd":"3", "eco":"", "pv":"e4 e5 d4 Nc6", "sv":"e4"}"#
@@ -544,25 +685,15 @@ mod tests {
     #[test]
     fn test_split_into_tags() {
         let vec = Tags::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
-        assert_eq!(vec, vec![
-            "cat\"meo;w\"",
-            "\"mouse\"",
-            "\"toad;;;;;;\" ",
-            "zebra"
-        ]);
+        assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
 
         let vec = Tags::split_into_tags(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
-        assert_eq!(vec, vec![
-            "cat\'meo;w\'",
-            "\'mouse\'",
-            "\'toad;;;;;;\' ",
-            "zebra"
-        ]);
+        assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
 
         let vec = Tags::split_into_tags(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
         assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
 
-        // FIXME! OK, but not desirable (unmatched quote parsing)
+        // OK, but not desirable (unmatched quote parsing)
         let vec = Tags::split_into_tags(r#";ca"t;mouse;"#);
         assert_eq!(vec, vec!["t", "mouse"]);
         // let vec = split_on_regex("cat;mat;sat;");
@@ -595,10 +726,11 @@ mod tests {
 
     #[test]
     fn test_parse_epd_tags() {
-        let s = r#"acd 1000; bm e4; draw_reject; id "TEST CASE.1";"#;
+        let s = r#"acd 1000; bm e4; ce 123; draw_reject; id "TEST CASE.1";"#;
         let tags = Tags::parse_epd_tags(&Board::starting_pos(), s).unwrap();
         assert_eq!(tags.get("acd"), Some("1000"));
         assert_eq!(tags.get("bm"), Some("e4"));
+        assert_eq!(tags.score(), Some(Score::from_cp(123)));
         assert_eq!(tags.get("draw_reject"), Some(""));
         assert_eq!(tags.get("id"), Some("TEST CASE.1"));
         assert_eq!(format!("{tags}"), " ".to_string() + s);

@@ -1,12 +1,10 @@
-use crate::{
-    bits::square::Square,
-    prelude::Board,
-    piece::{Color, FlipSide},
-    trace::stat::{SliceStat, Stat},
-    Bitboard, PreCalc,
-};
+use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumCount, EnumIter, IntoStaticStr};
+
+use crate::prelude::*;
+use crate::trace::stat::{SliceStat, Stat};
+use crate::PreCalc;
 
 /// Recognize several known end games, and determine
 /// (a) what the action should be in search (stop / continue / reduce depth)
@@ -23,6 +21,38 @@ pub enum LikelyOutcome {
     DrawImmediate,
     WhiteLossOrDraw,
     WhiteLoss,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct EndGameScoring {
+    enabled:           bool,
+    win_bonus:         Score,
+    certain_win_bonus: Score,
+    likely_draw_scale: f32,
+    scale_by_hmvc:     bool,
+}
+
+impl Default for EndGameScoring {
+    fn default() -> Self {
+        Self {
+            enabled:           true,
+            win_bonus:         0.cp(),
+            certain_win_bonus: 1000.cp(),
+            likely_draw_scale: 1.0,
+            scale_by_hmvc:     true,
+        }
+    }
+}
+
+impl Configurable for EndGameScoring {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.win_bonus.set(p.get("win_bonus"))?;
+        self.certain_win_bonus.set(p.get("certain_win_bonus"))?;
+        self.likely_draw_scale.set(p.get("likely_draw_scale"))?;
+        self.scale_by_hmvc.set(p.get("scale_by_hmvc"))?;
+        Ok(p.is_modified())
+    }
 }
 
 #[derive(Copy, Default, Clone, PartialEq, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
@@ -195,13 +225,16 @@ impl EndGame {
         match self {
             Eg::KBNk | Eg::Kkbn => {
                 use std::cmp::max;
-                let ksq = (b.kings() & b.color(loser)).square();
-                let wksq = (b.kings() & b.color(winner)).square();
+                let ksq = b.king(loser);
+                let wksq = b.king(winner);
                 let endgame_metric1 = 40 * Self::king_distance_to_bishops_corner(b, ksq, wksq);
                 let king_distance = Self::king_distance(b);
-                let ksq = (b.kings() & b.color(loser)).square();
-                let nsq = (b.knights() & b.color(winner)).square();
-                let bsq = (b.bishops() & b.color(winner)).square();
+                let nsq = (b.knights() & b.color(winner))
+                    .find_first_square()
+                    .expect("missing knight");
+                let bsq = (b.bishops() & b.color(winner))
+                    .find_first_square()
+                    .expect("missing bishop");
                 let knight_distance = max(0, PreCalc::instance().chebyshev_distance(nsq, ksq));
                 let bishop_distance = max(0, PreCalc::instance().chebyshev_distance(bsq, ksq));
                 let endgame_metric2 = 20 * king_distance
@@ -212,32 +245,85 @@ impl EndGame {
             }
 
             Eg::KBbk | Eg::KkBb => {
-                let endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, loser);
-                let endgame_metric2 = 10 * Self::king_distance(b);
+                let endgame_metric1 = 30 * Self::king_distance_to_any_corner(b, loser);
+                let endgame_metric2 = 20 * Self::king_distance(b);
                 Some((endgame_metric1, endgame_metric2))
             }
 
             Eg::KRk | Eg::Kkr | Eg::KQk | Eg::Kkq => {
-                let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
-                let endgame_metric2 = 10 * Self::king_distance(b);
+                let endgame_metric1 = 30 * Self::king_distance_to_side(b, loser);
+                let endgame_metric2 = 20 * Self::king_distance(b);
                 Some((endgame_metric1, endgame_metric2))
             }
             _ => Option::None,
         }
     }
 
+    pub fn endgame_score_adjust(&self, b: &Board, mut pov: Score, es: &EndGameScoring) -> Score {
+        if !es.enabled {
+            return pov;
+        }
+        if es.scale_by_hmvc {
+            pov = Score::from_f32((100 - b.halfmove_clock()) as f32 / 100.0 * pov.as_i16() as f32);
+        }
+        if let Some(winner) = self.likely_winner(b) {
+            let us = winner == b.turn();
+            if let Some((metric1, metric2)) = self.metrics(winner, b) {
+                pov = if us {
+                    pov + 3 * Score::from_cp(-metric1) + 3 * Score::from_cp(-metric2)
+                } else {
+                    pov + 3 * Score::from_cp(metric1) + 3 * Score::from_cp(metric2)
+                };
+
+                // win specific scoring, so we award win_bonus as other features will be ignored
+                if us {
+                    pov = pov + es.win_bonus;
+
+                    // as we wont be adding structural or mobility things we add another bonus
+                    pov = pov + es.certain_win_bonus;
+                } else {
+                    pov = pov - es.win_bonus;
+
+                    // as we wont be adding structural or mobility things we add another bonus
+                    pov = pov - es.certain_win_bonus;
+                }
+
+                return pov;
+            }
+            // award a win bonus even if we dont have win-specific scoring
+            if us {
+                pov = pov + es.win_bonus;
+            } else {
+                pov = pov - es.win_bonus;
+            }
+            return pov;
+        }
+
+        match self.likely_outcome(b) {
+            LikelyOutcome::LikelyDraw => {
+                return Score::from_f32(es.likely_draw_scale * pov.as_i16() as f32);
+            }
+            LikelyOutcome::DrawImmediate => {
+                return Score::DRAW;
+            }
+            _ => {}
+        };
+
+        pov
+    }
+
     fn king_distance(b: &Board) -> i32 {
-        let wk = b.kings() & b.white();
-        let bk = b.kings() & b.black();
-        PreCalc::instance().chebyshev_distance(wk.square(), bk.square())
+        let wk = b.king(Color::White);
+        let bk = b.king(Color::Black);
+        PreCalc::instance().chebyshev_distance(wk, bk)
     }
 
     fn king_distance_to_side(b: &Board, c: Color) -> i32 {
         use std::cmp::min;
-        let k = b.kings() & b.color(c);
-        if k.popcount() == 1 {
-            let r = k.square().rank_index() as i32;
-            let f = k.square().file_index() as i32;
+        let ksq = (b.kings() & b.color(c)).find_first_square();
+        if let Some(ksq) = ksq {
+            let r = ksq.rank_index() as i32;
+            let f = ksq.file_index() as i32;
             let m1 = min(r, f);
             let m2 = min(7 - r, 7 - f);
             min(m1, m2)
@@ -248,9 +334,8 @@ impl EndGame {
 
     fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
         use std::cmp::min;
-        let k = b.kings() & b.color(c);
-        if k.popcount() == 1 {
-            let ksq = k.square();
+        let ksq = (b.kings() & b.color(c)).find_first_square();
+        if let Some(ksq) = ksq {
             let d1 = PreCalc::instance().chebyshev_distance(Square::A1, ksq);
             let d2 = PreCalc::instance().chebyshev_distance(Square::A8, ksq);
             let d3 = PreCalc::instance().chebyshev_distance(Square::H1, ksq);
@@ -509,10 +594,12 @@ impl EndGame {
 
 #[cfg(test)]
 mod tests {
+    use std::hint::black_box;
+
+    use test_log::test;
+
     use super::*;
     use crate::infra::profiler::PerfProfiler;
-    use std::hint::black_box;
-    use test_log::test;
 
     #[test]
     fn test_endgame() {
@@ -595,6 +682,16 @@ mod tests {
         assert_eq!(eg, EndGame::KQkp);
 
         println!("{}", EndGame::counts_to_string());
+    }
+
+    #[test]
+    fn test_eg_score() {
+        let b = Board::parse_fen("2k5/7Q/8/8/8/3K4/8/8 w - - 3 1 ").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::KQk);
+        let es = EndGameScoring::default();
+        let _sc = eg.endgame_score_adjust(&b, Score::zero(), &es);
+        // assert_eq!(sc, Score::from_cp(0 - 50));
     }
 
     #[test]

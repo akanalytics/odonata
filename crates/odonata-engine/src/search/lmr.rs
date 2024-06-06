@@ -1,25 +1,31 @@
-use odonata_base::{
-    domain::{node::Node, BoundType},
-    infra::{
-        component::Component,
-        metric::{Event, Metrics},
-    },
-    piece::MoveType,
-    prelude::*,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Debug;
+
+use odonata_base::domain::node::Node;
+use odonata_base::domain::BoundType;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::piece::MoveType;
+use odonata_base::prelude::*;
+use serde::{Deserialize, Serialize};
+use strum_macros::EnumString;
 
 use super::algo::Search;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, from = "LmrConfig", into = "LmrConfig")]
 pub struct Lmr {
-    config: LmrConfig,
-    table:  Box<[[f32; 64]; 64]>,
+    pub cfg: LmrConfig,
+    table:   Box<[[f32; 64]; 64]>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+impl Debug for Lmr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&self.cfg, f)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, EnumString)]
 pub enum LmrDepthReductionStrategy {
     LogFormula,
     BinaryFormula,
@@ -29,12 +35,12 @@ impl LmrDepthReductionStrategy {}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct LmrConfig {
+pub struct LmrConfig {
     pub enabled:           bool,
     depth_reduction_strat: LmrDepthReductionStrategy,
-    table_intercept:       f32,
-    table_gradient:        f32,
-    table_aspect:          f32,
+    pub table_intercept:   f32,
+    pub table_gradient:    f32,
+    pub table_aspect:      f32,
     first_move:            bool,
     fw_node:               bool,
     only_nt_all:           bool,
@@ -68,34 +74,50 @@ struct LmrConfig {
 // re-search=true, pawns=true => 255
 // alpha_numeric=true => 252
 
+impl Configurable for Lmr {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.cfg.enabled.set(p.get("enabled"))?;
+        self.cfg.depth_reduction_strat.set(p.get("depth_reduction_strat"))?;
+        let modified = self.cfg.table_intercept.set(p.get("table_intercept"))?
+            || self.cfg.table_gradient.set(p.get("table_gradient"))?
+            || self.cfg.table_aspect.set(p.get("table_aspect"))?;
+        modified.then(|| self.regen_table());
+        Ok(p.is_modified())
+    }
+}
+
 impl From<Lmr> for LmrConfig {
     fn from(lmr: Lmr) -> Self {
-        lmr.config
+        lmr.cfg
     }
 }
 
 impl From<LmrConfig> for Lmr {
     fn from(config: LmrConfig) -> Self {
         let mut me = Self {
-            config,
+            cfg:   config,
             table: Box::new([[0.0; 64]; 64]),
         };
+        me.regen_table();
+        me
+    }
+}
+
+impl Lmr {
+    pub fn regen_table(&mut self) {
         let log_formula = |depth: Ply, mv: usize| {
-            me.config.table_intercept
-                + f32::ln(depth as f32)
-                    * f32::ln(mv as f32 * me.config.table_aspect)
-                    * me.config.table_gradient
+            self.cfg.table_intercept
+                + f32::ln(depth as f32) * f32::ln(mv as f32 * self.cfg.table_aspect) * self.cfg.table_gradient
         };
-        let binary_formula = |depth: Ply, mv: usize|  if (depth-1)*(mv as i32 - 2) < 80 {  0 } else {1} as f32;
+        let binary_formula = |depth: Ply, mv: usize| if (depth - 1) * (mv as i32 - 2) < 80 { 0 } else { 1 } as f32;
         for depth in 1..64 {
             for mv in 2..64 {
-                me.table[depth][mv] = match me.config.depth_reduction_strat {
+                self.table[depth][mv] = match self.cfg.depth_reduction_strat {
                     LmrDepthReductionStrategy::LogFormula => log_formula(depth as Ply, mv),
                     LmrDepthReductionStrategy::BinaryFormula => binary_formula(depth as Ply, mv),
                 };
             }
         }
-        me
     }
 }
 
@@ -110,27 +132,30 @@ impl Default for LmrConfig {
         LmrConfig {
             enabled:               true,
             depth_reduction_strat: LmrDepthReductionStrategy::LogFormula,
-            table_intercept:       0.6,
-            table_gradient:        0.4,
-            table_aspect:          1.2,
+            // table_intercept:       0.12,
+            // table_gradient:        0.50,
+            // table_aspect:          1.32,
+            table_intercept:       0.000818,
+            table_gradient:        0.508495,
+            table_aspect:          1.466703,
             first_move:            false,
-            fw_node:               false,
+            fw_node:               true,
             only_nt_all:           false,
             alpha_numeric:         false,
             beta_numeric:          false,
             bad_captures:          true,
             pawns:                 true,
             max_pawn_rank:         6, // dont allow promos
-            killers:               false,
-            in_check:              true,
+            killers:               true,
+            in_check:              false,
             gives_check:           false,
             discoverer:            false,
             extensions:            false,
-            reduce_pv:             -1.0,
-            reduce_killer:         -1.0,
+            reduce_pv:             -0.97,
+            reduce_killer:         -0.85,
             reduce_bad_capture:    0.0,
-            reduce_hash:           -1.0,
-            min_remaining_depth:   1,
+            reduce_hash:           0.0,
+            min_remaining_depth:   0,
             iir:                   5.0,
         }
     }
@@ -178,22 +203,22 @@ impl Search {
         ext: Ply,
         _tt_mv: Move,
     ) -> Ply {
-        if !self.lmr.config.enabled {
+        if !self.lmr.cfg.enabled {
             return 0;
         }
         if n.is_qs() {
             return 0;
         }
 
-        if !self.lmr.config.first_move && mv_num <= 1 {
+        if !self.lmr.cfg.first_move && mv_num <= 1 {
             return 0;
         }
 
-        if !self.lmr.config.fw_node && n.is_fw() {
+        if !self.lmr.cfg.fw_node && n.is_fw() {
             return 0;
         }
 
-        if n.depth <= self.lmr.config.min_remaining_depth {
+        if n.depth <= self.lmr.cfg.min_remaining_depth {
             return 0;
         }
 
@@ -207,20 +232,19 @@ impl Search {
         let mut reduce = self.lmr.table[n.depth.min(63) as usize][mv_num.min(63) as usize];
 
         reduce += match stage {
-            MoveType::BadCapture => self.lmr.config.reduce_bad_capture,
-            MoveType::Killer => self.lmr.config.reduce_killer,
-            MoveType::Hash => self.lmr.config.reduce_hash,
+            MoveType::BadCapture => self.lmr.cfg.reduce_bad_capture,
+            MoveType::Killer => self.lmr.cfg.reduce_killer,
+            MoveType::Hash => self.lmr.cfg.reduce_hash,
             _ => 0.0,
         };
 
         reduce += match n.is_fw() {
-            true => self.lmr.config.reduce_pv,
+            true => self.lmr.cfg.reduce_pv,
             _ => 0.0,
         };
 
         if mv.mover_piece(before) == Piece::Pawn
-            && mv.from().rank_number_as_white(before.color_us())
-                > self.lmr.config.max_pawn_rank as usize
+            && mv.from().rank_number_as_white(before.color_us()) > self.lmr.cfg.max_pawn_rank as usize
         {
             Metrics::incr_node(n, Event::LmrDeclinePawnRank);
             reduce = 0.0;
@@ -228,34 +252,34 @@ impl Search {
 
         // depth - lmr - 1 >= min_remaining_depth
         // => lmr <= depth - 1 - min_remaining_depth
-        let reduce = (reduce as i32).clamp(0, n.depth - 1 - self.lmr.config.min_remaining_depth);
+        let reduce = (reduce as i32).clamp(0, n.depth - 1 - self.lmr.cfg.min_remaining_depth);
 
-        if !self.lmr.config.pawns && mv.mover_piece(before) == Piece::Pawn {
+        if !self.lmr.cfg.pawns && mv.mover_piece(before) == Piece::Pawn {
             return 0;
         }
-        if !self.lmr.config.killers && stage == MoveType::Killer
-            || !self.lmr.config.bad_captures && stage == MoveType::BadCapture
+        if !self.lmr.cfg.killers && stage == MoveType::Killer
+            || !self.lmr.cfg.bad_captures && stage == MoveType::BadCapture
         {
             Metrics::incr_node(n, Event::LmrDeclineKiller);
             return 0;
         }
-        if self.lmr.config.only_nt_all && nt != BoundType::UpperAll {
+        if self.lmr.cfg.only_nt_all && nt != BoundType::UpperAll {
             return 0;
         }
-        if !self.lmr.config.extensions && ext > 0
-            || !self.lmr.config.in_check && before.is_in_check(before.color_us())
-            || !self.lmr.config.discoverer && before.maybe_gives_discovered_check(mv)
+        if !self.lmr.cfg.extensions && ext > 0
+            || !self.lmr.cfg.in_check && before.is_in_check(before.color_us())
+            || !self.lmr.cfg.discoverer && before.maybe_gives_discovered_check(mv)
             ||
             // gives check a more precise and costly version of discoverers
-            !self.lmr.config.gives_check && after.is_in_check(after.color_us())
+            !self.lmr.cfg.gives_check && after.is_in_check(after.color_us())
         {
             return 0;
         }
-        if self.lmr.config.alpha_numeric && !n.alpha.is_numeric() {
+        if self.lmr.cfg.alpha_numeric && !n.alpha.is_numeric() {
             return 0;
         }
 
-        if self.lmr.config.beta_numeric && !n.beta.is_numeric() {
+        if self.lmr.cfg.beta_numeric && !n.beta.is_numeric() {
             return 0;
         }
 
@@ -282,8 +306,9 @@ impl fmt::Display for Lmr {
 #[cfg(test)]
 
 mod tests {
-    use crate::search::engine::ThreadedSearch;
     use test_log::test;
+
+    use crate::search::engine::ThreadedSearch;
 
     #[test]
     fn test_lmr() {

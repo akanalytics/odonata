@@ -1,13 +1,11 @@
-use odonata_base::{
-    prelude::Board,
-    domain::node::{Counter, Node},
-    infra::{component::Component, metric::Metrics},
-    mv::Move,
-    piece::{Color, Piece, Ply},
-    Bitboard,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Debug;
+
+use odonata_base::domain::node::{Counter, Node};
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::Metrics;
+use odonata_base::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default)]
 struct MoveTally {
@@ -19,7 +17,7 @@ struct MoveTally {
     count3: i64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CounterMove {
     enabled:          bool,
@@ -30,6 +28,43 @@ pub struct CounterMove {
 
     #[serde(skip, default = "counter_moves_default")]
     counter_moves: Box<[[[MoveTally; 64]; 64]; 2]>,
+}
+
+impl Default for CounterMove {
+    fn default() -> Self {
+        CounterMove {
+            enabled:          true,
+            clear_every_move: false,
+            age_factor:       10,
+            min_depth:        4,
+            max_ply:          128,
+            counter_moves:    counter_moves_default(),
+        }
+    }
+}
+
+impl Configurable for CounterMove {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.clear_every_move.set(p.get("clear_every_move"))?;
+        self.age_factor.set(p.get("age_factor"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.max_ply.set(p.get("max_ply"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl Debug for CounterMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CounterMove")
+            .field("enabled", &self.enabled)
+            .field("clear_every_move", &self.clear_every_move)
+            .field("age_factor", &self.age_factor)
+            .field("min_depth", &self.min_depth)
+            .field("max_ply", &self.max_ply)
+            .field("counter_moves", &"<omitted>")
+            .finish()
+    }
 }
 
 impl Component for CounterMove {
@@ -49,19 +84,6 @@ fn counter_moves_default() -> Box<[[[MoveTally; 64]; 64]; 2]> {
     Box::new([[[MoveTally::default(); 64]; 64]; 2])
 }
 
-impl Default for CounterMove {
-    fn default() -> Self {
-        CounterMove {
-            enabled:          true,
-            clear_every_move: false,
-            age_factor:       4,
-            min_depth:        4,
-            max_ply:          5,
-            counter_moves:    counter_moves_default(),
-        }
-    }
-}
-
 impl fmt::Display for CounterMove {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
@@ -74,9 +96,9 @@ impl CounterMove {
         for c in Color::ALL {
             for p in Piece::ALL {
                 for to in Bitboard::all().squares() {
-                    self.counter_moves[c][p][to].count1 *= age_factor as i64 / 128;
-                    self.counter_moves[c][p][to].count1 *= age_factor as i64 / 128;
-                    self.counter_moves[c][p][to].count1 *= age_factor as i64 / 128;
+                    self.counter_moves[c][p.index()][to].count1 *= age_factor as i64 / 128;
+                    self.counter_moves[c][p.index()][to].count1 *= age_factor as i64 / 128;
+                    self.counter_moves[c][p.index()][to].count1 *= age_factor as i64 / 128;
                 }
             }
         }
@@ -108,12 +130,7 @@ impl CounterMove {
     /// The color is the player of the move being stored
     #[inline]
     pub fn store(&mut self, c: Color, parent: Move, mv: Move, n: &Node, b: &Board) {
-        if !self.enabled
-            || mv.is_capture()
-            || mv.is_castle(b)
-            || n.depth < self.min_depth
-            || n.ply > self.max_ply
-        {
+        if !self.enabled || mv.is_capture() || mv.is_castle(b) || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
 

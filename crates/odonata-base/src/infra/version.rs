@@ -1,6 +1,5 @@
-use odonata_base::infra::metric::Metrics;
-use odonata_base::infra::utils::ToStringOr;
-
+use crate::infra::metric::Metrics;
+use crate::infra::utils::ToStringOr;
 
 pub struct Version {}
 
@@ -33,7 +32,6 @@ impl Version {
         "Odonata"
     }
 
-
     pub fn name_and_version() -> String {
         let mut lc_name = Self::prog_name().to_string();
         let camel_case_name = lc_name.remove(0).to_uppercase().to_string() + &lc_name;
@@ -55,7 +53,6 @@ impl Version {
     }
 
     thread_local! { static METRICS_ENABLED: std::cell::Cell<bool>  = cfg!(any(feature = "metrics", debug_assertions)).into(); }
-
 
     pub fn compiled_profile_name() -> &'static str {
         // https://stackoverflow.com/questions/73595435/
@@ -107,32 +104,19 @@ impl Version {
             built_info::OPT_LEVEL
         );
         s += &format!("compiled at  : {}\n", built_info::BUILT_TIME_UTC);
-        s += &format!(
-            "git version  : {}\n",
-            built_info::GIT_VERSION.to_string_or("")
-        );
-        s += &format!(
-            "git branch   : {}\n",
-            built_info::GIT_HEAD_REF.to_string_or("")
-        );
+        s += &format!("git version  : {}\n", built_info::GIT_VERSION.to_string_or(""));
+        s += &format!("git branch   : {}\n", built_info::GIT_HEAD_REF.to_string_or(""));
         s += &format!(
             "git commit   : {}\n",
             built_info::GIT_COMMIT_HASH_SHORT.to_string_or("")
         );
         s += &format!("git message  : {}\n", Self::GIT_COMMIT_MSG);
-        s += &format!(
-            "uncommitted  : {}\n",
-            built_info::GIT_DIRTY.to_string_or("")
-        );
+        s += &format!("uncommitted  : {}\n", built_info::GIT_DIRTY.to_string_or(""));
         s += &format!("compiler     : {}\n", built_info::RUSTC_VERSION);
         s += &format!("features     : {}\n", built_info::FEATURES_STR);
         s += &format!(
             "debug asserts: {}\n",
-            if cfg!(debug_assertions) {
-                "enabled"
-            } else {
-                "disabled"
-            }
+            if cfg!(debug_assertions) { "enabled" } else { "disabled" }
         );
         s += &format!(
             "metrics      : {}\n",
@@ -169,7 +153,9 @@ mod tests {
 
     #[test]
     fn test_version() {
-        assert_eq!(Version::VERSION_NUMBER.is_empty(), false);
+        // cargo  t --cargo-profile=release/tournament test_version --nocapture
+        let version = Version::VERSION_NUMBER;
+        assert_eq!(version.is_empty(), false);
         // assert_eq!(Version::AUTHORS.is_empty(), false);
         assert_eq!(Version::prog_name(), "Odonata");
         // assert_eq!(Version::HOMEPAGE.is_empty(), false);

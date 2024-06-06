@@ -1,12 +1,15 @@
+use std::fmt::{self, Debug};
+use std::ops::Index;
+
 use anyhow::Context;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{domain::score::Score, movelist::ScoredMoveList, mv::Move, piece::Ply, prelude::Board};
-use std::{
-    fmt::{self, Debug},
-    ops::Index,
-};
+use crate::domain::score::Score;
+use crate::movelist::ScoredMoveList;
+use crate::mv::Move;
+use crate::piece::Ply;
+use crate::prelude::Board;
 
 #[derive(Clone, PartialEq, Hash, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -37,9 +40,7 @@ impl Default for Variation {
 
 impl fmt::Debug for Variation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Variation")
-            .field("moves", &self.to_uci())
-            .finish()
+        f.debug_struct("Variation").field("moves", &self.to_uci()).finish()
     }
 }
 
@@ -138,7 +139,7 @@ impl Variation {
     // }
 
     #[inline]
-    pub fn moves(&self) -> impl DoubleEndedIterator<Item = Move> + '_ {
+    pub fn moves(&self) -> impl DoubleEndedIterator<Item = Move> + ExactSizeIterator<Item = Move> + '_ {
         self.moves.iter().cloned()
     }
 
@@ -169,10 +170,7 @@ impl Variation {
     }
 
     pub fn to_uci(&self) -> String {
-        self.moves()
-            .map(|mv| mv.to_uci())
-            .collect::<Vec<String>>()
-            .join(" ")
+        self.moves().map(|mv| mv.to_uci()).collect::<Vec<String>>().join(" ")
     }
 
     pub fn parse_uci(s: &str, bd: &Board) -> anyhow::Result<Variation> {
@@ -244,10 +242,7 @@ impl Variation {
         let mut s = Vec::new();
         for mv in self.moves() {
             if !mv.is_null() && mv.to_inner().validate(&b2).is_err() {
-                panic!(
-                    "{uci}: {mv} is not legal for board {b}",
-                    uci = self.to_uci(),
-                );
+                panic!("{uci}: {mv} is not legal for board {b}", uci = self.to_uci(),);
             }
             s.push(b2.to_san(mv));
             b2 = b2.make_move(mv);
@@ -309,12 +304,7 @@ impl Variation {
         } else if ply < self.moves.len() {
             self.moves.truncate(ply);
         } else {
-            debug_assert!(
-                ply > self.moves.len(),
-                "Assert {} > {}",
-                ply,
-                self.moves.len()
-            );
+            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len());
             let len = ply - self.moves.len();
             for _ in 0..len {
                 self.moves.push(mv);
@@ -399,7 +389,7 @@ impl ScoredVariation {
     pub fn parse_uci(s: &str, bd: &Board) -> anyhow::Result<Self> {
         if let Some((sc, var)) = s.split_once(':') {
             Ok(Self {
-                score: Score::parse_pgn(sc)?,
+                score: Score::parse_pgn_pawn_value(sc)?,
                 var:   Variation::parse_uci(var.trim(), bd)?,
             })
         } else {
@@ -410,7 +400,7 @@ impl ScoredVariation {
     pub fn parse_san(s: &str, bd: &Board) -> anyhow::Result<Self> {
         if let Some((sc, var)) = s.split_once(':') {
             Ok(Self {
-                score: Score::parse_pgn(sc)?,
+                score: Score::parse_pgn_pawn_value(sc)?,
                 var:   Variation::parse_san(var.trim(), bd)?,
             })
         } else {
@@ -452,13 +442,9 @@ impl MultiVariation {
     }
 
     pub fn find_by_move(&self, mv: Move) -> Option<&ScoredVariation> {
-        self.vars_and_scores.iter().find_map(|v| {
-            if v.var.first() == Some(mv) {
-                Some(v)
-            } else {
-                None
-            }
-        })
+        self.vars_and_scores
+            .iter()
+            .find_map(|v| if v.var.first() == Some(mv) { Some(v) } else { None })
     }
 
     pub fn score_for(&self, var: &Variation) -> Option<Score> {
@@ -476,13 +462,9 @@ impl MultiVariation {
     }
 
     pub fn find_first_starting_with(&self, var: &Variation) -> Option<&ScoredVariation> {
-        self.vars_and_scores.iter().find_map(|v| {
-            if v.var.starts_with(var) {
-                Some(v)
-            } else {
-                None
-            }
-        })
+        self.vars_and_scores
+            .iter()
+            .find_map(|v| if v.var.starts_with(var) { Some(v) } else { None })
     }
 
     pub fn to_uci(&self) -> String {
@@ -526,13 +508,12 @@ impl MultiVariation {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        catalog::Catalog,
-        prelude::{testing::*, *},
-    };
     use test_log::test;
 
     use super::*;
+    use crate::catalog::Catalog;
+    use crate::prelude::testing::*;
+    use crate::prelude::*;
 
     #[test]
     fn test_variation() -> anyhow::Result<()> {
@@ -562,26 +543,24 @@ mod tests {
     fn test_multi_variation() {
         let bd = Board::starting_pos();
         assert_eq!(
-            MultiVariation::parse_uci("+34:a2a3 a7a6, -20:a2a4", &bd)
+            MultiVariation::parse_uci("+34.00:a2a3 a7a6, -20.00:a2a4", &bd)
                 .unwrap()
                 .to_uci(),
             "+34.00:a2a3 a7a6, -20.00:a2a4"
         );
         assert_eq!(
-            MultiVariation::parse_uci("+1:a2a3, +M2:a2a4", &bd)
+            MultiVariation::parse_uci("+1.00:a2a3, +M2:a2a4", &bd)
                 .unwrap()
                 .to_san(&bd),
             "+1.00:a3, +M2:a4"
         );
 
         // test empty variation
-        let mvar = MultiVariation::parse_uci("+100:a2a3 a7a6, -50:a2a4,-40:", &bd).unwrap();
+        let mvar = MultiVariation::parse_uci("+100.00:a2a3 a7a6, -50.00:a2a4,-40.00:", &bd).unwrap();
         assert_eq!(mvar.len(), 3);
         assert_eq!(mvar.to_uci(), "+100.00:a2a3 a7a6, -50.00:a2a4, -40.00:");
         assert_eq!(
-            MultiVariation::parse_san("+M2:a3 a6, -M2:a4", &bd)
-                .unwrap()
-                .to_uci(),
+            MultiVariation::parse_san("+M2:a3 a6, -M2:a4", &bd).unwrap().to_uci(),
             "+M2:a2a3 a7a6, -M2:a2a4"
         );
     }

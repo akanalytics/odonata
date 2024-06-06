@@ -1,13 +1,10 @@
-use crate::{
-    infra::utils::Formatting,
-    piece::{Ply, MAX_PLY},
-};
-use std::{
-    fmt,
-    sync::atomic::{AtomicI64, AtomicUsize, Ordering},
-};
+use std::fmt;
+use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 
-thread_local!(static THREAD_INDEX: AtomicUsize = AtomicUsize::new(0));
+use crate::infra::utils::Formatting;
+use crate::piece::{Ply, MAX_PLY};
+
+thread_local!(static THREAD_INDEX: AtomicUsize = const { AtomicUsize::new(0) });
 
 #[derive(Default, Debug)]
 #[repr(align(64))]
@@ -32,12 +29,7 @@ impl fmt::Display for SliceStat<'_> {
         writeln!(f, "{:<20} {:>11}", "name", "value")?;
         writeln!(f, "{:<20} {:>11}", "--------------------", "-----------")?;
         for s in self.0.iter() {
-            writeln!(
-                f,
-                "{:<20} {:>11}",
-                s.name(),
-                Formatting::u64(s.get() as u64)
-            )?;
+            writeln!(f, "{:<20} {:>11}", s.name(), Formatting::u64(s.get() as u64))?;
         }
         Ok(())
     }
@@ -66,12 +58,7 @@ impl fmt::Display for ArrayStat<'_> {
         writeln!(f, "{:<20} {:>11}", "name", "value")?;
         writeln!(f, "{:<20} {:>11}", "--------------------", "-----------")?;
         for s in self.0.iter() {
-            writeln!(
-                f,
-                "{:<20} {:>11}",
-                s.name(),
-                Formatting::u64(s.get() as u64)
-            )?;
+            writeln!(f, "{:<20} {:>11}", s.name(), Formatting::u64(s.get() as u64))?;
         }
         Ok(())
     }
@@ -141,9 +128,7 @@ impl Stat {
     pub fn clear(&self) {
         #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         THREAD_INDEX.with(|f| {
-            self.counter[f.load(Ordering::Relaxed)]
-                .0
-                .store(0, Ordering::Relaxed);
+            self.counter[f.load(Ordering::Relaxed)].0.store(0, Ordering::Relaxed);
         });
     }
 
@@ -155,10 +140,7 @@ impl Stat {
 
     #[inline]
     pub fn get(&self) -> i64 {
-        self.counter
-            .iter()
-            .map(|a| a.0.load(Ordering::Relaxed))
-            .sum()
+        self.counter.iter().map(|a| a.0.load(Ordering::Relaxed)).sum()
     }
 
     #[inline]
@@ -178,8 +160,7 @@ impl fmt::Display for ArrayPlyStat<'_> {
 impl PlyStat {
     pub fn new(name: &str) -> PlyStat {
         let mut vec = Vec::with_capacity(MAX_PLY as usize);
-        (0..MAX_PLY)
-            .for_each(|_| vec.push(AtomicI64::new(0)));
+        (0..MAX_PLY).for_each(|_| vec.push(AtomicI64::new(0)));
         Self {
             name:   name.to_string(),
             values: vec.into_boxed_slice(),

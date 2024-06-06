@@ -1,24 +1,20 @@
 use std::cell::Cell;
+use std::path::PathBuf;
 
-use itertools::Itertools;
-use rand::{seq::SliceRandom, thread_rng};
+use odonata_base::infra::component::{Component, State};
+use odonata_base::prelude::*;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
-use odonata_base::{
-    prelude::Board,
-    infra::component::{Component, State},
-    mv::Move,
-};
-
-use crate::search::restrictions::Restrictions;
-
 use super::polyglot::Polyglot;
+use crate::search::restrictions::Restrictions;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OpeningBook {
     pub own_book:       bool,
-    pub book_file:      String,
+    pub book_file:      PathBuf,
     pub best_book_line: bool,
 
     #[serde(skip)]
@@ -32,11 +28,20 @@ impl Default for OpeningBook {
     fn default() -> Self {
         Self {
             own_book:       false,
-            book_file:      String::new(),
+            book_file:      PathBuf::new(),
             best_book_line: true,
             book_exhausted: Cell::new(false),
             polyglot:       Polyglot::new(),
         }
+    }
+}
+
+impl Configurable for OpeningBook {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.own_book.set(p.get("own_book"))?;
+        self.book_file.set(p.get("book_file"))?;
+        self.best_book_line.set(p.get("best_book_line"))?;
+        Ok(p.is_modified())
     }
 }
 
@@ -62,14 +67,14 @@ impl Component for OpeningBook {
 
 impl OpeningBook {
     pub fn reload(&mut self) -> anyhow::Result<()> {
-        if self.own_book && !self.book_file.is_empty() {
+        if self.own_book && !self.book_file.as_os_str().is_empty() {
             self.polyglot.load(&self.book_file)?;
         }
         Ok(())
     }
 
     pub fn lookup(&self, board: &Board, res: &Restrictions) -> Option<Move> {
-        if !self.own_book || self.book_file.is_empty() || self.book_exhausted.get() {
+        if !self.own_book || self.book_file.as_os_str().is_empty() || self.book_exhausted.get() {
             return None;
         }
         let entries = self.polyglot.find_best_matching(board, res).collect_vec();

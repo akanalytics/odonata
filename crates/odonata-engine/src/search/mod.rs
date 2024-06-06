@@ -20,7 +20,5 @@ pub mod qs;
 pub mod razor;
 pub mod restrictions;
 pub mod reverse_futility;
-pub mod search_explainer;
-pub mod stack;
-pub mod trail;
 pub mod search_results;
+pub mod trail;

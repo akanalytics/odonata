@@ -1,18 +1,16 @@
-use itertools::Itertools;
 // use rose_tree::{NodeIndex, };
-use std::{
-    fmt,
-    fmt::{Debug, Display},
-};
+use std::fmt;
+use std::fmt::{Debug, Display};
 
-use crate::{
-    prelude::Board,
-    domain::BoundType,
-    mv::Move,
-    domain::node::{Event, Node},
-    variation::Variation, domain::score::Score,
-};
+use itertools::Itertools;
 use petgraph::graph::NodeIndex;
+
+use crate::domain::node::{Event, Node};
+use crate::domain::score::Score;
+use crate::domain::BoundType;
+use crate::mv::Move;
+use crate::prelude::Board;
+use crate::variation::Variation;
 
 // copied/inspired by https://crates.io/crates/treeline (License MIT)
 // and
@@ -22,7 +20,7 @@ use petgraph::graph::NodeIndex;
 pub type PetGraph<N> = petgraph::Graph<N, (), petgraph::Directed, u32>;
 
 #[derive(Debug, Clone)]
-pub struct Tree<N> {
+struct Tree<N> {
     graph: PetGraph<N>,
     root:  NodeIndex,
 }
@@ -54,12 +52,7 @@ impl Tree<TreeNode> {
             }
 
             let node = &self[leaf];
-            write!(
-                f,
-                "{}{}",
-                node.mv,
-                if node.is_best_move { "*" } else { " " }
-            )?;
+            write!(f, "{}{}", node.mv, if node.is_best_move { "*" } else { " " })?;
 
             for _ in spaces.len()..5 {
                 write!(f, "    ")?;
@@ -145,9 +138,7 @@ impl<N> Tree<N> {
     }
 
     fn _parent(&self, child: NodeIndex) -> Option<NodeIndex> {
-        self.graph
-            .neighbors_directed(child, petgraph::Incoming)
-            .last()
+        self.graph.neighbors_directed(child, petgraph::Incoming).last()
     }
 
     fn children(&self, parent: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
@@ -216,7 +207,7 @@ impl Display for TreeNode {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct SearchTree {
+struct SearchTree {
     pub initial_position: Board,
     pub tree:             Tree<TreeNode>,
 }
@@ -273,7 +264,10 @@ impl SearchTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bits::square::Square, catalog::Catalog, domain::score::Score, test_log::test};
+    use crate::bits::square::Square;
+    use crate::catalog::Catalog;
+    use crate::test_log::test;
+    use crate::Piece;
 
     #[test]
     fn test_generic_tree() {
@@ -300,18 +294,18 @@ mod tests {
 
     #[test]
     fn test_search_tree() {
-        use crate::piece::Piece::Pawn;
-        let mut st = SearchTree::new(Catalog::starting_board());
+        let bd = Catalog::starting_board();
+        let mut st = SearchTree::new(bd.clone());
         let mut var = Variation::new();
 
-        var.push(Move::new_quiet(Pawn, Square::H2, Square::H3));
+        var.push(Move::new_quiet(Piece::Pawn, Square::H2, Square::H3, &bd));
         st.get_or_insert(&var).node = Node {
             alpha: Score::from_cp(4),
             ..Node::default()
         };
         println!("Tree1:\n{st}");
 
-        var.push(Move::new_quiet(Pawn, Square::H7, Square::H6));
+        var.push(Move::new_quiet(Piece::Pawn, Square::H7, Square::H6, &bd));
         st.get_or_insert(&var).node = Node {
             alpha: Score::from_cp(5),
             ..Node::default()

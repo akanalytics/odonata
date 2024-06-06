@@ -1,15 +1,15 @@
-use crate::{engine::Engine, search::engine::ThreadedSearch};
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 use itertools::Itertools;
-use odonata_base::{
-    catalog::*,
-    domain::timecontrol::TimeControl,
-    infra::{
-        component::{Component, State},
-        utils::Formatting,
-    },
-};
-use std::time::{Duration, Instant};
+use odonata_base::catalog::*;
+use odonata_base::domain::timecontrol::TimeControl;
+use odonata_base::infra::component::{Component, State};
+use odonata_base::infra::utils::Formatting;
+use odonata_base::other::tags::EpdOps as _;
+
+use crate::search::engine::ThreadedSearch;
 pub struct Bench;
 
 impl Bench {
@@ -17,9 +17,9 @@ impl Bench {
         let _engine = ThreadedSearch::new();
     }
 
-    pub fn search(tc: TimeControl, threads: Option<u32>) -> Result<u64> {
-        let mut engine = ThreadedSearch::new();
-        engine.search.thread_count = threads.unwrap_or(1);
+    pub fn search(tc: TimeControl, threads: Option<u32>, settings: HashMap<String, String>) -> Result<u64> {
+        let mut engine = ThreadedSearch::with_threads(threads.unwrap_or(1));
+        engine.configure(settings)?;
         let epds = &Catalog::bench();
 
         println!(
@@ -50,7 +50,7 @@ impl Bench {
             let nps = Formatting::f64(res.nodes as f64 / elapsed.as_secs_f64());
             let bf = res.bf;
             let bf_string = Formatting::decimal(2, bf);
-            let fen = res.to_epd().board().to_fen();
+            let fen = res.to_results_epd().board().to_fen();
             total_bf += bf;
             total_time += elapsed;
             total_nodes += res.nodes;
@@ -74,8 +74,9 @@ impl Bench {
         let average_bf = total_bf / epds.len() as f64;
         let nps = total_nodes as f64 / total_time.as_secs_f64();
         println!();
+        println!("eval          : {}", engine.search.eval.eval_kind);
         println!("time control  : {}", tc);
-        println!("threads       : {}", engine.search.thread_count);
+        println!("threads       : {}", engine.thread_count);
         println!("nodes/sec     : {}", Formatting::f64(nps));
         println!("average depth : {}", Formatting::decimal(2, average_depth));
         println!("average bf    : {}", Formatting::decimal(2, average_bf));
@@ -88,11 +89,12 @@ impl Bench {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::engine::Engine;
-    use odonata_base::infra::profiler::PerfProfiler;
     use std::hint::black_box;
+
+    use odonata_base::infra::profiler::PerfProfiler;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn bench_bratko() {
@@ -104,19 +106,36 @@ mod tests {
             TimeControl::NodeCount(1000)
         };
 
-        let mut prof = PerfProfiler::new("bench_bratko");
-        prof.bench(|| total_nodes += Bench::search(tc.clone(), None).unwrap());
-        prof.set_iters(total_nodes / 1000);
+        let mut prof = PerfProfiler::new("bench_bratko_approx");
+        prof.bench(|| total_nodes += Bench::search(tc.clone(), None, HashMap::new()).unwrap());
+        prof.set_iters(total_nodes / 1000); // total number of searches
+
+        let mut prof_accurate = PerfProfiler::new("bench.bratko");
+
+        let mut engine = ThreadedSearch::new();
+        let mut nodes = 0;
+        let tc = TimeControl::NodeCount(1_000);
+
+        for epd in Catalog::bench().iter() {
+            prof_accurate.bench(|| {
+                engine.set_state(State::NewGame);
+                let res = engine.search(epd.clone(), tc.clone()).unwrap();
+                nodes += res.nodes;
+            });
+        }
+        prof.set_iters(Catalog::bench().len() as u64);
     }
 
     #[test]
     fn bench_search() {
         let pos = Catalog::test_position();
-        let eng = ThreadedSearch::new();
-        let mut eng = eng.search;
-        let tc = TimeControl::Depth(8);
+        let mut eng = ThreadedSearch::new();
+        let tc = TimeControl::Depth(10);
         let mut prof = PerfProfiler::new("bench_search");
-        let _ = black_box(prof.bench(|| eng.search(pos.clone(), tc.clone())));
+        let _ = black_box(prof.bench(|| {
+            eng.search.new_game();
+            eng.search(pos.clone(), tc.clone())
+        }));
         // Metrics::flush_thread_local();
         let metrics = eng.metrics("").unwrap();
         info!(target:"metrics","{metrics}");

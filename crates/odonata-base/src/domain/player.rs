@@ -1,7 +1,6 @@
 use std::fmt;
 
 use anyhow::{bail, Context};
-
 use itertools::Itertools;
 
 use crate::infra::utils::Uci;
@@ -36,10 +35,7 @@ impl Uci for Player {
             f,
             "{title} {elo} {kind} {name}",
             title = self.title,
-            elo = self
-                .elo
-                .map(|e| e.to_string())
-                .unwrap_or("none".to_string()),
+            elo = self.elo.map(|e| e.to_string()).unwrap_or("none".to_string()),
             kind = self.kind,
             name = self.name
         )
@@ -60,21 +56,13 @@ impl Uci for Player {
             "none" => None,
             _ => Some(elo.parse().with_context(|| format!("Parsing elo {elo}"))?),
         };
-        let kind = match words
-            .next()
-            .with_context(|| "no player type specified for opponent")?
-        {
+        let kind = match words.next().with_context(|| "no player type specified for opponent")? {
             "human" => PlayerKind::Human,
             "computer" => PlayerKind::Computer,
             text => bail!("unexpected player type {text}"),
         };
         let name = words.join(" ");
-        Ok(Player {
-            name,
-            elo,
-            title,
-            kind,
-        })
+        Ok(Player { name, elo, title, kind })
     }
 }
 

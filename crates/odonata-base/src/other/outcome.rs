@@ -1,7 +1,9 @@
-use crate::piece::{Color, FlipSide};
+use std::fmt;
+
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+
+use crate::piece::{Color, FlipSide};
 
 #[derive(Copy, Hash, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Outcome {
@@ -119,14 +121,9 @@ impl Outcome {
     }
 
     #[must_use]
-    pub fn refine_from_pgn(
-        &self,
-        termination_header: Option<&str>,
-        last_comment: Option<&str>,
-    ) -> Outcome {
+    pub fn refine_from_pgn(&self, termination_header: Option<&str>, last_comment: Option<&str>) -> Outcome {
         use Outcome::*;
-        let s =
-            termination_header.unwrap_or_default().to_string() + last_comment.unwrap_or_default();
+        let s = termination_header.unwrap_or_default().to_string() + last_comment.unwrap_or_default();
         let s = s.to_lowercase();
         match self {
             WinOther(c) if s.contains("mate") || s.contains("checkmate") => WinByCheckmate(*c),
@@ -137,14 +134,10 @@ impl Outcome {
             WinOther(c) if s.contains("infraction") => WinByRulesInfraction(*c),
 
             DrawOther if s.contains("stalemate") => DrawStalemate,
-            DrawOther if s.contains("material") || s.contains("insufficient") => {
-                DrawInsufficientMaterial
-            }
+            DrawOther if s.contains("material") || s.contains("insufficient") => DrawInsufficientMaterial,
             DrawOther if s.contains("agreement") => DrawByAgreement,
             DrawOther if s.contains("adjudication") => DrawByAdjudication,
-            DrawOther if s.contains("repetition") || s.contains("rep") || s.contains("3 fold") => {
-                DrawRepetition3
-            }
+            DrawOther if s.contains("repetition") || s.contains("rep") || s.contains("3 fold") => DrawRepetition3,
             DrawOther if s.contains(" 75") => DrawRule75,
             DrawOther if s.contains(" 50") || s.contains("fifty") => DrawRule50,
             _ => *self,
@@ -208,36 +201,15 @@ mod tests {
         );
 
         assert_eq!(format!("{}", Unterminated), "unterminated");
-        assert_eq!(
-            format!("{}", WinByCheckmate(Color::Black)),
-            "win by checkmate"
-        );
+        assert_eq!(format!("{}", WinByCheckmate(Color::Black)), "win by checkmate");
         assert_eq!(WinByCheckmate(Color::Black).is_draw(), false);
-        assert_eq!(
-            WinByCheckmate(Color::Black).winning_color(),
-            Some(Color::Black)
-        );
-        assert_eq!(
-            WinByCheckmate(Color::White).winning_color(),
-            Some(Color::White)
-        );
-        assert_eq!(
-            WinByResignation(Color::White).winning_color(),
-            Some(Color::White)
-        );
+        assert_eq!(WinByCheckmate(Color::Black).winning_color(), Some(Color::Black));
+        assert_eq!(WinByCheckmate(Color::White).winning_color(), Some(Color::White));
+        assert_eq!(WinByResignation(Color::White).winning_color(), Some(Color::White));
         assert_eq!(DrawRule50.winning_color(), None);
-        assert_eq!(
-            DrawOther.refine_from_pgn(Some("Repetion"), None),
-            DrawRepetition3
-        );
-        assert_eq!(
-            DrawStalemate.refine_from_pgn(Some("Repetion"), None),
-            DrawStalemate
-        );
-        assert_eq!(
-            DrawOther.refine_from_pgn(None, Some("Repetion")),
-            DrawRepetition3
-        );
+        assert_eq!(DrawOther.refine_from_pgn(Some("Repetion"), None), DrawRepetition3);
+        assert_eq!(DrawStalemate.refine_from_pgn(Some("Repetion"), None), DrawStalemate);
+        assert_eq!(DrawOther.refine_from_pgn(None, Some("Repetion")), DrawRepetition3);
         assert_eq!(
             Outcome::try_from_pgn("1-0")
                 .unwrap()

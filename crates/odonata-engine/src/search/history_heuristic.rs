@@ -1,10 +1,13 @@
-use odonata_base::{prelude::*, domain::node::Node, piece::MoveType, infra::component::Component};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::fmt::Debug;
 
+use odonata_base::domain::node::Node;
+use odonata_base::infra::component::Component;
+use odonata_base::piece::MoveType;
+use odonata_base::prelude::*;
+use strum_macros::EnumString;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, EnumString)]
 enum AccumulateMethod {
     Power,
     Squared,
@@ -12,8 +15,7 @@ enum AccumulateMethod {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, EnumString)]
 enum HistoryBoard {
     FromTo,
     PieceTo,
@@ -21,8 +23,7 @@ enum HistoryBoard {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, EnumString)]
 enum ScoreMethod {
     GoodLessBad,
     GoodOverGoodAndBad,
@@ -35,8 +36,7 @@ struct Tally {
     bad:  i64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone)]
 pub struct HistoryHeuristic {
     enabled:      bool,
     age_factor:   i64,
@@ -51,10 +51,69 @@ pub struct HistoryHeuristic {
     board:        HistoryBoard,
     min_depth:    Ply,
     max_ply:      Ply,
-
-    #[serde(skip, default="history_default")]
-    history: Box<[[[[Tally; 64]; 64]; Piece::len()]; 2]>,
+    history:      Box<[[[[Tally; 64]; 64]; Piece::len()]; 2]>,
     // clear_every_move: bool,
+}
+
+impl Default for HistoryHeuristic {
+    fn default() -> Self {
+        HistoryHeuristic {
+            enabled:      true,
+            min_depth:    0,
+            max_ply:      128,
+            age_factor:   4,
+            malus_factor: 10,
+            variation:    false,
+            alpha:        1,
+            beta:         1,
+            alpha_method: AccumulateMethod::Squared,
+            beta_method:  AccumulateMethod::Squared,
+            duff_method:  AccumulateMethod::Squared,
+            score_method: ScoreMethod::GoodOverGoodAndBad,
+            board:        HistoryBoard::PieceTo,
+            history:      Box::new([[[[Tally::default(); 64]; 64]; Piece::len()]; 2]),
+        }
+    }
+}
+
+impl Configurable for HistoryHeuristic {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.max_ply.set(p.get("max_ply"))?;
+        self.age_factor.set(p.get("age_factor"))?;
+        self.malus_factor.set(p.get("malus_factor"))?;
+        self.variation.set(p.get("variation"))?;
+        self.alpha.set(p.get("alpha"))?;
+        self.beta.set(p.get("beta"))?;
+        self.alpha_method.set(p.get("alpha_method"))?;
+        self.beta_method.set(p.get("beta_method"))?;
+        self.duff_method.set(p.get("duff_method"))?;
+        self.score_method.set(p.get("score_method"))?;
+        self.board.set(p.get("board"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl Debug for HistoryHeuristic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HistoryHeuristic")
+            .field("enabled", &self.enabled)
+            .field("age_factor", &self.age_factor)
+            .field("alpha", &self.alpha)
+            .field("beta", &self.beta)
+            .field("malus_factor", &self.malus_factor)
+            .field("variation", &self.variation)
+            .field("alpha_method", &self.alpha_method)
+            .field("beta_method", &self.beta_method)
+            .field("duff_method", &self.duff_method)
+            .field("score_method", &self.score_method)
+            .field("board", &self.board)
+            .field("min_depth", &self.min_depth)
+            .field("max_ply", &self.max_ply)
+            .field("history", &"<omitted>")
+            .finish()
+    }
 }
 
 impl Component for HistoryHeuristic {
@@ -67,49 +126,9 @@ impl Component for HistoryHeuristic {
     }
 }
 
-fn history_default() -> Box<[[[[Tally; 64]; 64]; Piece::len()]; 2]> {
-    Box::new([[[[Tally::default(); 64]; 64]; Piece::len()]; 2])
-}
-
-impl Default for HistoryHeuristic {
-    fn default() -> Self {
-        HistoryHeuristic {
-            enabled:      true,
-            // clear_every_move: true,
-            min_depth:    4,
-            max_ply:      5,
-            age_factor:   4,
-            malus_factor: 10,
-            variation:    false,
-            alpha:        1,
-            beta:         1,
-            alpha_method: AccumulateMethod::Squared,
-            beta_method:  AccumulateMethod::Squared,
-            duff_method:  AccumulateMethod::Squared,
-            score_method: ScoreMethod::GoodLessBadOverGoodAndBad,
-            board:        HistoryBoard::PieceTo,
-            history:      history_default(),
-        }
-    }
-}
-
 impl fmt::Display for HistoryHeuristic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "age.factor       : {}", self.age_factor)?;
-        // writeln!(f, "clear.every.move : {}", self.clear_every_move)?;
-        // for c in Color::ALL {
-        //     for p in Piece::ALL {
-        //         writeln!(f, "{} {}", c, p.name())?;
-        //         for sq in Bitboard::all().flip_vertical().squares() {
-        //             write!(f, "{:>7}", self.history[c][p][sq])?;
-        //             if sq.file_index() == 7 {
-        //                 writeln!(f)?;
-        //             }
-        //         }
-        //     }
-        // }
-        Ok(())
+        writeln!(f, "{self:#?}")
     }
 }
 
@@ -141,12 +160,8 @@ impl HistoryHeuristic {
         use ScoreMethod::*;
         (match self.score_method {
             GoodLessBad => tally.good - tally.bad,
-            GoodOverGoodAndBad => {
-                (tally.good as f32 / (1 + tally.good + tally.bad) as f32 * 500.0) as i64
-            }
-            GoodLessBadOverGoodAndBad => {
-                100 * (tally.good - tally.bad) / ((1 + tally.good + tally.bad) * 100)
-            }
+            GoodOverGoodAndBad => (tally.good as f32 / (1 + tally.good + tally.bad) as f32 * 500.0) as i64,
+            GoodLessBadOverGoodAndBad => 100 * (tally.good - tally.bad) / ((1 + tally.good + tally.bad) * 100),
         }) as i32
     }
 
@@ -256,19 +271,9 @@ impl HistoryHeuristic {
 
 #[cfg(test)]
 mod tests {
-    use odonata_base::bits::square::Square;
     use test_log::test;
 
     use super::*;
-
-    #[test]
-    fn hh_serde_test() {
-        let hh = HistoryHeuristic::default();
-        let text = toml::to_string(&hh).unwrap();
-        info!("toml\n{}", text);
-        let hh2: HistoryHeuristic = toml::from_str(&text).unwrap();
-        info!("from toml\n{}", hh2);
-    }
 
     #[test]
     fn hh_test() {
@@ -276,19 +281,19 @@ mod tests {
         let mut hh = HistoryHeuristic::default();
         hh.get_mut(
             Color::White,
-            Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+            Move::new_quiet(Piece::Pawn, Square::A2, Square::A3, &bd),
             &bd,
         );
         hh.get_mut(
             Color::White,
-            Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+            Move::new_quiet(Piece::Pawn, Square::A2, Square::A3, &bd),
             &bd,
         )
         .good = 1;
         assert_eq!(
             hh.get_mut(
                 Color::White,
-                Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+                Move::new_quiet(Piece::Pawn, Square::A2, Square::A3, &bd),
                 &bd
             )
             .good,

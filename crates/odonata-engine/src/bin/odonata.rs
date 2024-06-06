@@ -1,9 +1,14 @@
+use std::backtrace::Backtrace;
+use std::collections::HashMap;
+use std::panic;
+
+use anyhow::Context;
 use clap::{Parser, Subcommand};
-use odonata_base::{
-    domain::timecontrol::TimeControl, infra::utils::ToStringOr, trace::logger::LoggingSystem,
-};
-use odonata_engine::comms::{bench::Bench, uci_server::UciServer};
-use std::{backtrace::Backtrace, collections::HashMap, panic};
+use odonata_base::domain::timecontrol::TimeControl;
+use odonata_base::infra::utils::ToStringOr;
+use odonata_base::trace::logger::LoggingSystem;
+use odonata_engine::comms::bench::Bench;
+use odonata_engine::comms::uci_server::UciServer;
 use tracing::{debug, error};
 
 #[derive(Parser, Debug, Clone)]
@@ -87,13 +92,10 @@ pub fn main() -> anyhow::Result<()> {
     // }
     let mut settings = HashMap::new();
     for kv in &cli.define {
-        let i = kv
-            .find('=')
-            .ok_or(anyhow::anyhow!("unable to find '=' in -D/--define '{kv}'"))?;
-        let (k, v) = kv.split_at(i);
-        settings.insert(k.to_string(), v[1..].to_string());
+        let (k, v) = kv.split_once('=').context("unable to find '=' in -D/--define '{kv}'")?;
+        settings.insert(k.to_string(), v.to_string());
     }
-    let mut uci = UciServer::configure(settings)?;
+    let mut uci = UciServer::configure(settings.clone())?;
     uci.strict_error_handling = cli.strict;
 
     match cli.command.unwrap_or(Cmd::Engine) {
@@ -104,7 +106,7 @@ pub fn main() -> anyhow::Result<()> {
         Cmd::Profile => Bench::profile_me(),
         Cmd::Perft { depth } => uci.add_prelude(&format!("perft {depth}; quit")).run(),
         Cmd::PerftCat { depth } => uci.add_prelude(&format!("perft_cat {depth}; quit")).run(),
-        Cmd::Search { time_control } => drop(Bench::search(time_control, cli.threads)),
+        Cmd::Search { time_control } => drop(Bench::search(time_control, cli.threads, settings)?),
         Cmd::Uci { command } => uci.add_prelude(&(command + "; isready; quit")).run(),
         Cmd::Engine => uci.add_prelude("compiler").run(),
     };

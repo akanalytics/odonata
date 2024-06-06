@@ -6,7 +6,7 @@ pub mod movegen;
 pub mod position;
 pub mod repetition;
 
-pub use position::Position;
 pub use board::Board;
 pub use boardcalcs::BoardCalcs;
+pub use position::Position;
 pub use repetition::Repetition;

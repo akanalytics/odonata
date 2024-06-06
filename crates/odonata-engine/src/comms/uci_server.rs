@@ -1,35 +1,22 @@
-use crate::{engine::Engine, search::engine::ThreadedSearch};
-use odonata_base::{
-    catalog::Catalog,
-    domain::{
-        info::{Info, InfoKind},
-        timecontrol::TimeControl,
-    },
-    epd::Epd,
-    infra::{
-        component::{Component, State},
-        metric::METRICS_TOTAL,
-        utils::{Formatting, Uci},
-        value::Stats,
-    },
-    movelist::MoveList,
-    mv::Move,
-    other::Perft,
-    prelude::Board,
-    variation::Variation,
-};
-use std::{
-    collections::HashMap,
-    io::{self, Write},
-    ops::Deref,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
-// use crate::logger::LogInit;
-use crate::version::Version;
-use anyhow::{anyhow, bail, Context, Result};
-use itertools::Itertools;
+use std::collections::HashMap;
+use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
+
+use anyhow::{anyhow, bail, Context};
+use odonata_base::catalog::Catalog;
+use odonata_base::domain::info::{Info, InfoKind};
+use odonata_base::domain::staticeval::StaticEval;
+use odonata_base::epd::Epd;
+use odonata_base::infra::component::{Component, State};
+use odonata_base::infra::utils::{Formatting, Uci};
+use odonata_base::infra::value::Stats;
+use odonata_base::infra::version::Version;
+use odonata_base::other::Perft;
+use odonata_base::prelude::*;
+
+use crate::search::engine::ThreadedSearch;
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -114,7 +101,9 @@ impl Component for UciServer {
 #[allow(clippy::useless_format)]
 impl UciServer {
     pub fn configure(settings: HashMap<String, String>) -> anyhow::Result<UciServer> {
-        let engine = Arc::new(Mutex::new(ThreadedSearch::configure(settings)?));
+        let mut eng = ThreadedSearch::with_threads(1);
+        eng.configure(settings)?;
+        let engine = Arc::new(Mutex::new(eng));
         let uci = UciServer {
             board:                 Catalog::starting_board(),
             engine:                Arc::clone(&engine),
@@ -136,7 +125,7 @@ impl UciServer {
     }
 
     pub fn add_prelude(mut self, s: &str) -> Self {
-        self.prelude.extend(s.split(';').map(String::from));
+        self.prelude.extend(Itertools::intersperse(s.split(';'), "isready").map(String::from));
         self
     }
 
@@ -163,14 +152,10 @@ impl UciServer {
     }
 
     pub fn uci_compiler(&self) -> Result<()> {
-        Self::print(&format!(
-            "{} {}",
-            Version::prog_name(),
-            Version::VERSION_NUMBER
-        ));
+        Self::print(&format!("{} {}", Version::prog_name(), Version::VERSION_NUMBER));
         Self::print(&Version::small_splash());
         Self::print("");
-        let mode = self.engine.lock().unwrap().search.eval.kind();
+        let mode = &self.engine.lock().unwrap().search.eval.eval_kind;
         Self::print(&format!("eval mode: {mode}"));
         Self::print(&format!("Please see {} for updates,", Version::HOMEPAGE));
         Self::print("releases and licence details.");
@@ -229,7 +214,7 @@ impl UciServer {
             "ext:legal_moves" => self.ext_uci_legal_moves(&Args::parse(&input)),
             "ext:make_moves" => self.ext_uci_make_moves(&Args::parse(&input)),
             "ext:version" => self.ext_uci_version(&Args::parse(&input)),
-            "ext:move_attributes" => self.ext_uci_move_attributes(&Args::parse(&input)),
+            // "ext:move_attributes" => self.ext_uci_move_attributes(&Args::parse(&input)),
             "sleep" => self.uci_sleep(&words[1..]),
             "perft" => self.uci_perft(&words[1..]),
             "perft_cat" => self.uci_perft_cat(&words[1..]),
@@ -296,9 +281,9 @@ impl UciServer {
         self.running = false;
         // info!("{}", self.algo);
         // warn!("{}", EndGame::counts_to_string());
-        if eng.search.explainer.show_metrics_on_exit {
-            warn!("{}", *METRICS_TOTAL.read());
-        }
+        // if eng.search.explainer.show_metrics_on_exit {
+        //     warn!("{}", *METRICS_TOTAL.read());
+        // }
         Ok(())
     }
 
@@ -377,45 +362,45 @@ impl UciServer {
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
-    // ['from', 'to', 'capture', 'ep', 'legal', 'pseudo_legal', 'san', 'rook_move', 'is_ep', 'is_castle']:
-    fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<()> {
-        let mut b = Board::new_empty();
-        Self::parse_fen(arg, &mut b)?;
-        let var = Self::parse_moves(arg, &b);
-        if let Ok(var) = var {
-            if let Some(mv) = var.first() {
-                let from = mv.from().uci();
-                let to = mv.to().uci();
-                let capture = mv.capture_square(&b).uci();
-                let ep = mv.double_push_en_passant_square().uci();
-                let legal = mv.is_valid(&b);
-                let san = if legal {
-                    b.to_san(mv)
-                } else {
-                    "???".to_string()
-                };
-                let rook_move = mv.rook_move(&b).to_uci();
-                let is_ep = mv.is_ep_capture(&b);
-                let is_castle = mv.is_castle(&b);
-                Self::print(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
-                    from = from,
-                    to = to,
-                    capture = capture,
-                    ep = ep,
-                    // pseudo_legal,
-                    legal = legal,
-                    san = san,
-                    rook_move = rook_move,
-                    is_ep = is_ep,
-                    is_castle = is_castle));
-            } else {
-                bail!("Empty variation. Move not specificed");
-            }
-        } else {
-            Self::print_info_string("result:from 00 to 00 capture 00 ep - legal False san ??? rook_move 0000 is_ep False is_castle False");
-        }
-        Ok(())
-    }
+    // // ['from', 'to', 'capture', 'ep', 'legal', 'pseudo_legal', 'san', 'rook_move', 'is_ep', 'is_castle']:
+    // fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<()> {
+    //     let mut b = Board::new_empty();
+    //     Self::parse_fen(arg, &mut b)?;
+    //     let var = Self::parse_moves(arg, &b);
+    //     if let Ok(var) = var {
+    //         if let Some(mv) = var.first() {
+    //             let from = mv.from().uci();
+    //             let to = mv.to().uci();
+    //             let capture = mv.capture_square(&b).uci();
+    //             let ep = mv.double_push_en_passant_square().uci();
+    //             let legal = mv.is_valid(&b);
+    //             let san = if legal {
+    //                 b.to_san(mv)
+    //             } else {
+    //                 "???".to_string()
+    //             };
+    //             let rook_move = mv.rook_move(&b).to_uci();
+    //             let is_ep = mv.is_ep_capture(&b);
+    //             let is_castle = mv.is_castle(&b);
+    //             Self::print(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}",
+    //                 from = from,
+    //                 to = to,
+    //                 capture = capture,
+    //                 ep = ep,
+    //                 // pseudo_legal,
+    //                 legal = legal,
+    //                 san = san,
+    //                 rook_move = rook_move,
+    //                 is_ep = is_ep,
+    //                 is_castle = is_castle));
+    //         } else {
+    //             bail!("Empty variation. Move not specificed");
+    //         }
+    //     } else {
+    //         Self::print_info_string("result:from 00 to 00 capture 00 ep - legal False san ??? rook_move 0000 is_ep False is_castle False");
+    //     }
+    //     Ok(())
+    // }
 
     fn ext_uci_version(&mut self, _arg: &Args) -> Result<()> {
         Self::print(&format!("result:{}", Version::VERSION_NUMBER));
@@ -452,9 +437,9 @@ impl UciServer {
         let mut origin = Board::default();
         Self::parse_fen(arg, &mut origin)?;
         let variation = Self::parse_moves(arg, &origin)?;
-        let pos = Epd::from_var(origin, variation);
-        self.board = pos.board();
-        self.engine.lock().unwrap().set_position(pos);
+        let epd = Epd::from_var(origin, variation);
+        self.board = epd.board();
+        self.engine.lock().unwrap().set_position(epd);
         Ok(())
     }
 
@@ -513,34 +498,18 @@ impl UciServer {
         let ponder = args.contain("ponder");
         info!("uci go args: {input}");
 
-        if self.debug {
-            // debug mode we clear hash / history etc every search
-            Self::print_info_string("Debug enabled, clearing history and transposition tables...");
-            self.uci_newgame()?;
-        }
-
         let tc = &input[0..input.find("searchmoves").unwrap_or(input.len())];
         let mut tc = TimeControl::parse_uci(tc)?;
         if let TimeControl::UciFischer(ref mut rt) = tc {
             rt.our_color = self.board.color_us();
         }
 
-        self.engine
-            .lock()
-            .unwrap()
-            .search
-            .set_timing_method(tc.clone());
-        self.engine
-            .lock()
-            .unwrap()
-            .search
-            .mte
-            .set_shared_ponder(ponder);
+        self.engine.lock().unwrap().search.set_timing_method(tc.clone());
+        self.engine.lock().unwrap().search.mte.set_shared_ponder(ponder);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
-        let search_moves =
-            Self::parse_movelist(&args, &self.board).context("parsing searchmoves")?;
+        let search_moves = Self::parse_movelist(&args, &self.board).context("parsing searchmoves")?;
         self.engine.lock().unwrap().search.restrictions.search_moves = search_moves;
         // self.log_debug_message("starting search with configuration ...");
         // self.log_debug_message(&format!("{}", self.engine.lock().unwrap().algo));
@@ -646,14 +615,8 @@ impl UciServer {
         Self::print(&format!("# benchmark:\n"));
         self.engine.lock().unwrap().search_stop();
         let engine = self.engine.lock().unwrap();
-        Self::print(&format!(
-            "NODES {}",
-            engine.search.clock.cumul_nodes_this_thread()
-        ));
-        Self::print(&format!(
-            "NPS {}",
-            engine.search.clock.cumul_knps_all_threads() * 1000
-        ));
+        Self::print(&format!("NODES {}", engine.search.clock.cumul_nodes_this_thread()));
+        Self::print(&format!("NPS {}", engine.search.clock.cumul_knps_all_threads() * 1000));
         info!("{}", engine);
         Ok(())
     }
@@ -663,7 +626,7 @@ impl UciServer {
         lock.search_stop();
         let res_quiet = &lock.search.qsearch(Epd::from_board(self.board.clone()))?;
         let quiet_pv = res_quiet.pv();
-        let eval = lock.search.eval.deref();
+        let eval = &lock.search.eval;
         let static_eval = eval.static_eval_explain(&lock.search.position);
         let mut dynamic_pos = lock.search.position.clone();
         dynamic_pos.push_moves(quiet_pv.clone());
@@ -673,14 +636,8 @@ impl UciServer {
             diag = self.board.to_diagram(),
             fen = self.board.to_fen()
         ));
-        Self::print(&format!(
-            "Quiet: {qspv}",
-            qspv = quiet_pv.to_san(&self.board),
-        ));
-        Self::print(&format!(
-            "Material advantage: {}",
-            &self.board.material().balance()
-        ));
+        Self::print(&format!("Quiet: {qspv}", qspv = quiet_pv.to_san(&self.board),));
+        Self::print(&format!("Material advantage: {}", &self.board.material().balance()));
         Self::print(&format!("Static eval:\n{:#}", static_eval));
 
         if !quiet_pv.is_empty() {
@@ -703,11 +660,9 @@ impl UciServer {
         Self::print(&format!("{:#}", eng.search));
         Self::print(&format!("{}", eng.display_metrics()));
         let mut bytes = Vec::new();
-        eng.search.results.write_explanation(
-            &mut bytes,
-            &eng.search.eval,
-            eng.search.position.clone(),
-        )?;
+        eng.search
+            .response
+            .write_explanation(&mut bytes, &eng.search.eval, eng.search.position.clone())?;
 
         let s = String::from_utf8(bytes)?;
         Self::print(&format!("{s}",));
@@ -755,11 +710,7 @@ impl UciServer {
         };
         let mut output = format!("bestmove {}", bm.to_uci());
         if var.is_some() && var.unwrap().len() > 1 {
-            output = format!(
-                "{} ponder {}",
-                output,
-                var.unwrap().second().unwrap().to_uci()
-            );
+            output = format!("{} ponder {}", output, var.unwrap().second().unwrap().to_uci());
         }
         Self::print(&output);
     }
@@ -788,8 +739,9 @@ impl Args {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_uci_basics() {
@@ -838,10 +790,7 @@ mod tests {
     #[test]
     fn test_uci_setoption() {
         let uci = UciServer::new().unwrap();
-        assert_eq!(
-            uci.engine.lock().unwrap().search.opening_book.own_book,
-            false
-        );
+        assert_eq!(uci.engine.lock().unwrap().search.opening_book.own_book, false);
         let mut uci = uci
             .add_prelude("setoption name OwnBook value true")
             .add_prelude("setoption name Init value tt.enabled=false")
@@ -850,22 +799,11 @@ mod tests {
             .add_prelude("setoption name Best Book Move value false")
             .add_prelude("quit");
         uci.run();
-        assert_eq!(
-            uci.engine.lock().unwrap().search.opening_book.own_book,
-            true
-        );
+        assert_eq!(uci.engine.lock().unwrap().search.opening_book.own_book, true);
         assert_eq!(uci.engine.lock().unwrap().search.controller.multi_pv, 6);
-        assert_eq!(uci.engine.lock().unwrap().search.tt.enabled, false, "tt");
+        assert_eq!(uci.engine.lock().unwrap().search.tt.enabled, false, "tt enabled");
         assert_eq!(uci.engine.lock().unwrap().search.tt.mb, 2);
-        assert_eq!(
-            uci.engine
-                .lock()
-                .unwrap()
-                .search
-                .opening_book
-                .best_book_line,
-            false
-        );
+        assert_eq!(uci.engine.lock().unwrap().search.opening_book.best_book_line, false);
     }
 
     #[test]
@@ -897,9 +835,10 @@ mod tests {
                 .to_fen()
         );
 
-        let mut uci = UciServer::new().unwrap().
-        add_prelude("position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6").
-        add_prelude("quit");
+        let mut uci = UciServer::new()
+            .unwrap()
+            .add_prelude("position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6")
+            .add_prelude("quit");
         uci.run();
         assert_eq!(
             uci.board.to_fen(),

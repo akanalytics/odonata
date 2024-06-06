@@ -1,5 +1,8 @@
-use odonata_base::{movelist::MoveList, mv::Move, piece::Ply};
 use std::fmt;
+
+use odonata_base::movelist::MoveList;
+use odonata_base::mv::Move;
+use odonata_base::piece::Ply;
 
 #[derive(Clone, Debug)]
 pub struct Restrictions {
@@ -40,11 +43,11 @@ impl fmt::Display for Restrictions {
 
 #[cfg(test)]
 mod tests {
+    use odonata_base::prelude::testing::Testing;
     use odonata_base::prelude::Board;
+    use test_log::test;
 
     use super::Restrictions;
-    use odonata_base::prelude::testing::Testing;
-    use test_log::test;
 
     #[test]
     fn test_restrictions() {

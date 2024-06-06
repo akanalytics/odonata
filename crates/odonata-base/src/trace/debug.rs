@@ -1,11 +1,10 @@
-use crate::{
-    prelude::Board,
-    domain::score::Score,
-    mv::Move,
-    piece::{Color, Ply},
-    domain::node::Node,
-};
 use std::fmt;
+
+use crate::domain::node::Node;
+use crate::domain::score::Score;
+use crate::mv::Move;
+use crate::piece::{Color, Ply};
+use crate::prelude::Board;
 
 #[derive(Clone, Debug)]
 pub struct Debug {

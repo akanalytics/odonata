@@ -1,11 +1,17 @@
-use odonata_base::{prelude::*, piece::MoveType, infra::{metric::{Metrics, Event}, component::Component}, domain::{node::{Node, SearchType}, BoundType, score::ToScore}, boards::Position};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use odonata_base::boards::Position;
+use odonata_base::domain::node::{Node, SearchType};
+use odonata_base::domain::score::ToScore;
+use odonata_base::domain::BoundType;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::piece::MoveType;
+use odonata_base::prelude::*;
+
+use super::algo::Search;
+use super::trail::Trail;
 use crate::cache::tt2::{TtNode, TtScore};
-
-use super::{trail::Trail, algo::Search};
-
 
 // CLOP - gamma
 // 10+.08
@@ -37,10 +43,9 @@ use super::{trail::Trail, algo::Search};
 //   }
 // }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Razor {
-    enabled:              bool,
+    pub enabled:          bool,
     beta_enabled:         bool,
     store_tt:             bool,
     pv_nodes:             bool,
@@ -48,9 +53,9 @@ pub struct Razor {
     min_pieces:           i32,
     min_pieces_depth:     Ply,
     max_depth:            Ply,
-    margin1:              i32,
-    margin2:              i32,
-    margin3:              i32,
+    pub margin1:          i32,
+    pub margin2:          i32,
+    pub margin3:          i32,
     move_types_forbidden: MoveType,
 }
 
@@ -71,7 +76,7 @@ impl Default for Razor {
             pv_nodes:             false,
             min_opponents:        4,
             min_pieces:           0,
-            min_pieces_depth:     0,
+            min_pieces_depth:     1,
             max_depth:            3, // 1 means we still prune at frontier (depth=1)
             margin1:              94,
             margin2:              381,
@@ -85,6 +90,30 @@ impl Default for Razor {
                 | MoveType::CounterMove
                 | MoveType::QueenPromo,
         }
+    }
+}
+
+impl Configurable for Razor {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.beta_enabled.set(p.get("beta_enabled"))?;
+        self.store_tt.set(p.get("store_tt"))?;
+        self.pv_nodes.set(p.get("pv_nodes"))?;
+        self.min_opponents.set(p.get("min_opponents"))?;
+        self.min_pieces.set(p.get("min_pieces"))?;
+        self.min_pieces_depth.set(p.get("min_pieces_depth"))?;
+        self.max_depth.set(p.get("max_depth"))?;
+        self.margin1.set(p.get("margin1"))?;
+        self.margin2.set(p.get("margin2"))?;
+        self.margin3.set(p.get("margin3"))?;
+        Configurable::set(&mut self.move_types_forbidden, p.get("move_types_forbidden"))?; // method name clash
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for Razor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
     }
 }
 
@@ -125,10 +154,7 @@ impl Razor {
             Metrics::incr_node(n, Event::RazorDeclineMinOpponents);
             return false;
         }
-        if self.min_pieces > 0
-            && n.depth >= self.min_pieces_depth
-            && bd.occupied().popcount() < self.min_pieces
-        {
+        if self.min_pieces > 0 && n.depth >= self.min_pieces_depth && bd.occupied().popcount() < self.min_pieces {
             Metrics::incr_node(n, Event::RazorDeclineMinPieces);
             return false;
         }
@@ -228,13 +254,6 @@ impl Search {
             Metrics::incr_node(n, Event::RazorDeclineMargin);
         }
         Ok(None)
-    }
-}
-
-impl fmt::Display for Razor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string(self).unwrap())?;
-        Ok(())
     }
 }
 

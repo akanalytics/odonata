@@ -1,17 +1,15 @@
-use crate::infra::{
-    component::{Component, State},
-    utils::DurationFormatter,
-};
+use std::fmt;
+use std::fmt::Debug;
+use std::ops::Sub;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    ops::Sub,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
-    time::{Duration, Instant},
-};
+
+use crate::infra::component::{Component, State};
+use crate::infra::utils::DurationFormatter;
+use crate::prelude::*;
 
 #[derive(Default, Debug)]
 #[repr(align(64))]
@@ -51,7 +49,7 @@ impl Sub for Measure {
     }
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Clock {
     include_q_nodes: bool,
@@ -63,13 +61,43 @@ pub struct Clock {
     pub thread_index: u32,
 }
 
-#[derive(Clone, Debug)]
+impl Default for Clock {
+    fn default() -> Self {
+        Self {
+            include_q_nodes: true,
+            state:           ClockState::default(),
+            thread_index:    0,
+        }
+    }
+}
+
+impl Configurable for Clock {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.include_q_nodes.set(p.get("include_q_nodes"))?;
+        Ok(p.is_modified())
+    }
+}
+
+#[derive(Clone)]
 pub struct ClockState {
     start_search: Measure,
     start_iter:   Measure,
     timer:        Instant,
     int_nodes:    Arc<Vec<Aligned>>,
     q_nodes:      Arc<Vec<Aligned>>,
+}
+
+impl Debug for ClockState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // dont let current time cause diffs
+        f.debug_struct("ClockState")
+            .field("start_search", &"<omitted>")
+            .field("start_iter", &"<omitted>")
+            .field("timer", &"<omitted>")
+            .field("int_nodes", &self.int_nodes.len())
+            .field("q_nodes", &self.q_nodes.len())
+            .finish()
+    }
 }
 
 impl Default for ClockState {
@@ -178,9 +206,7 @@ impl Clock {
             .0
             .load(Ordering::Relaxed)
             + if self.include_q_nodes {
-                self.state.q_nodes[self.thread_index as usize]
-                    .0
-                    .load(Ordering::Relaxed)
+                self.state.q_nodes[self.thread_index as usize].0.load(Ordering::Relaxed)
             } else {
                 0
             }
@@ -238,9 +264,7 @@ impl Clock {
 
     #[inline]
     pub fn q_nodes(&self) -> u64 {
-        self.state.q_nodes[self.thread_index as usize]
-            .0
-            .load(Ordering::Relaxed)
+        self.state.q_nodes[self.thread_index as usize].0.load(Ordering::Relaxed)
     }
 
     #[inline]

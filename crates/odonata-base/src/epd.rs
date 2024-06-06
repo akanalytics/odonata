@@ -1,20 +1,26 @@
-use crate::{
-    bits::{bitboard::Bitboard, castling::CastlingRights, Square},
-    boards::Position,
-    catalog::Catalog,
-    domain::node::Timing,
-    infra::{metric::Metrics, utils::StringUtils},
-    movelist::MoveList,
-    mv::Move,
-    other::tags::Tags,
-    piece::Color,
-    prelude::Board,
-    variation::Variation,
-};
+use std::fmt;
+use std::ops::Index;
+use std::path::Path;
+
 use anyhow::{bail, Context, Result};
 use itertools::Itertools;
-use serde::{Serialize, Deserialize};
-use std::fmt;
+use rand::seq::SliceRandom;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+
+use crate::bits::bitboard::Bitboard;
+use crate::bits::castling::CastlingRights;
+use crate::bits::Square;
+use crate::boards::board::BoardBuilder;
+use crate::boards::Position;
+use crate::catalog::Catalog;
+use crate::domain::node::Timing;
+use crate::infra::metric::Metrics;
+use crate::infra::utils::StringUtils;
+use crate::other::tags::{TagOps, Tags};
+use crate::piece::{Color, Ply};
+use crate::prelude::Board;
+use crate::variation::Variation;
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
 // BRATKO https://www.stmintz.com/ccc/index.php?id=20631
@@ -44,6 +50,24 @@ impl fmt::Display for Epd {
     }
 }
 
+impl TagOps for Epd {
+    fn tags_mut(&mut self) -> &mut Tags {
+        &mut self.tags
+    }
+
+    fn tags(&self) -> &Tags {
+        &self.tags
+    }
+}
+
+impl Index<&str> for Epd {
+    type Output = str;
+
+    fn index(&self, key: &str) -> &Self::Output {
+        self.get(key).unwrap_or_else(|| panic!("No key '{key}' in EPD {self}"))
+    }
+}
+
 impl Epd {
     pub fn to_epd(&self) -> String {
         format!(
@@ -53,8 +77,21 @@ impl Epd {
         )
     }
 
+    pub fn has_extension(file: impl AsRef<Path>) -> bool {
+        file.as_ref().extension().unwrap_or_default() == "epd" || file.as_ref().extension().unwrap_or_default() == "EPD"
+    }
+
+    /// current board position after any moves
     pub fn board(&self) -> Board {
         self.starting.make_moves(&self.played)
+    }
+
+    pub fn setup_board(&self) -> Board {
+        self.starting.clone()
+    }
+
+    pub fn played(&self) -> Variation {
+        self.played.clone()
     }
 
     pub fn into_pos(self) -> Position {
@@ -67,30 +104,6 @@ impl Epd {
         self.played.validate(&self.starting)?;
         self.tags.validate(&self.board())?;
         Ok(())
-    }
-
-    pub fn var(&self, tag: &str) -> Option<Variation> {
-        self.board()
-            .parse_san_variation(self.tags.get(tag)?)
-            .with_context(|| self.to_epd())
-            .unwrap()
-            .into()
-    }
-
-    pub fn mv(&self, tag: &str) -> Option<Move> {
-        self.board()
-            .parse_san_move(self.tags.get(tag)?)
-            .with_context(|| self.to_epd())
-            .unwrap()
-            .into()
-    }
-
-    pub fn moves(&self, tag: &str) -> Option<MoveList> {
-        self.board()
-            .parse_san_movelist(self.tags.get(tag)?)
-            .context(self.to_epd())
-            .unwrap()
-            .into()
     }
 
     pub fn int(&self, tag: &str) -> Option<i64> {
@@ -111,14 +124,6 @@ impl Epd {
 
     pub fn tag(&self, tag: &str) -> Option<&str> {
         self.tags.get(tag)
-    }
-
-    pub fn tags(&self) -> &Tags {
-        &self.tags
-    }
-
-    pub fn tags_mut(&mut self) -> &mut Tags {
-        &mut self.tags
     }
 
     pub fn set_tag(&mut self, k: &str, v: &str) {
@@ -176,24 +181,13 @@ impl Epd {
         };
         Ok(Epd::from_var(board, var))
     }
-}
 
-/// builder methods
-impl Epd {
     pub fn starting_pos() -> Epd {
         Self {
             starting: Board::starting_pos(),
             played:   Variation::new(),
             tags:     Tags::new(),
         }
-    }
-
-    pub fn setup_board(&self) -> Board {
-        self.starting.clone()
-    }
-
-    pub fn played(&self) -> Variation {
-        self.played.clone()
     }
 
     pub fn from_var(starting: Board, played: Variation) -> Self {
@@ -208,6 +202,21 @@ impl Epd {
             starting: board,
             ..Self::default()
         }
+    }
+
+    /// returns null if random sequence resulted in early mate/stalemate
+    pub fn play_random_moves<R: Rng + ?Sized>(&self, ply: Ply, r: &mut R) -> Option<Variation> {
+        let mut pos = Position::from_epd(self.clone());
+        for _p in 0..ply {
+            if pos.outcome().is_game_over() {
+                // println!("Restarted from {pos} {}", pos.board());
+                return None;
+            }
+            let moves = pos.board().legal_moves().iter().cloned().collect_vec();
+            let mv = moves.choose(r).expect("no valid moves");
+            pos.push_move(*mv);
+        }
+        Some(pos.search_variation())
     }
 
     /// 0. Piece placement
@@ -230,28 +239,28 @@ impl Epd {
             if words.len() < 4 {
                 bail!("must specify at least 4 parts in EPD '{}'", epd);
             }
-            let mut board = Board::parse_piece_placement(words[0])?;
-            board.set_turn(Color::parse(words[1])?);
-            board.set_castling(CastlingRights::parse(words[2])?);
+            let mut bb = BoardBuilder::parse_piece_placement(words[0])?;
+            bb.set_turn(Color::parse(words[1])?);
+            bb.set_castling(CastlingRights::parse(words[2])?);
             if words[3] == "-" {
-                board.set_en_passant(None);
+                bb.set_ep_square(None);
             } else {
-                board.set_en_passant(Some(Square::parse(words[3])?));
+                bb.set_ep_square(Some(Square::parse(words[3])?));
             };
 
             let mut remaining = StringUtils::trim_first_n_words(epd, 4);
             if words.len() >= 6 {
-                let hmvc = words[4].parse::<i32>();
-                let fmvn = words[5].parse::<i32>();
+                let hmvc = words[4].parse::<u16>();
+                let fmvn = words[5].parse::<u16>();
                 if let Ok(hmvc) = hmvc {
                     if let Ok(fmvn) = fmvn {
-                        board.set_halfmove_clock(hmvc);
-                        board.set_fullmove_number(fmvn);
+                        bb.set_halfmove_clock(hmvc);
+                        bb.set_fullmove_number(fmvn);
                         remaining = StringUtils::trim_first_n_words(epd, 6);
                     }
                 }
             }
-            (remaining, board)
+            (remaining, bb.try_build()?)
         };
         let (rest, played) = Self::parse_moves(&board, rest)?;
         // use root board
@@ -296,10 +305,7 @@ impl Epd {
                 continue;
             }
             if !s.trim().is_empty() {
-                vec.push(
-                    Self::parse_epd(s.replace('\n', " ").trim_start())
-                        .with_context(|| format!("in EPD '{s}'"))?,
-                );
+                vec.push(Self::parse_epd(s.replace('\n', " ").trim_start()).with_context(|| format!("in EPD '{s}'"))?);
             }
         }
         Ok(vec)
@@ -308,10 +314,14 @@ impl Epd {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{catalog::Catalog, globals::constants::*, infra::utils::read_file, prelude::*};
-    use anyhow::Result;
+    use rand::SeedableRng as _;
+    use rand_chacha::ChaChaRng;
     use test_log::test;
+
+    use super::*;
+    use crate::infra::utils::read_file;
+    use crate::other::tags::EpdOps as _;
+    use crate::prelude::*;
 
     #[test]
     fn test_epd_parse1() {
@@ -380,54 +390,20 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_serde()  -> Result<()> {
-    //     let mut pos = Position { board: Catalog::starting_position(), tags: Tags::default() };
-    //     pos.set_operation(Position::BM, "e4, c4, a4")?;
-    //     pos.set_operation(Position::PV, "e4, e5, d3")?;
-    //     assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
-    //     assert_eq!(pos.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
-    //     Ok(())
-    // }
-
     #[test]
     fn test_epd_custom() {
         let mut epd = Epd::starting_pos();
         epd.set_tag("Sq", "e4 e5 e6");
-        assert_eq!(epd.bitboard("Sq"), Some(e4 | e5 | e6));
+        assert_eq!(epd.bitboard("Sq"), Some(Square::E4 | Square::E5 | Square::E6));
 
         epd.set_tag("Sq", "");
         assert_eq!(epd.bitboard("Sq").unwrap(), Bitboard::empty());
     }
 
-    // #[test]
-    // fn test_epd_serde() -> Result<()> {
-    //     let mut pos = Epd::from_board(Catalog::starting_board());
-    //     pos.tags_mut().best_moves = Some(Box::new("e4".moves(&pos.board())));
-    //     assert_eq!(
-    //         serde_json::to_string(&pos).unwrap(),
-    //         r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#
-    //     );
-    //     assert_eq!(
-    //         serde_json::from_str::<Epd>(
-    //             r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#
-    //         )
-    //         .unwrap(),
-    //         pos
-    //     );
-    //     Ok(())
-    // }
-
     #[test]
     fn test_epd_parse() -> Result<()> {
-        assert_eq!(
-            Epd::parse_epd("startpos")?,
-            Epd::from_board(Board::starting_pos())
-        );
-        assert_eq!(
-            Epd::parse_epd("startpos;")?,
-            Epd::from_board(Board::starting_pos())
-        );
+        assert_eq!(Epd::parse_epd("startpos")?, Epd::from_board(Board::starting_pos()));
+        assert_eq!(Epd::parse_epd("startpos;")?, Epd::from_board(Board::starting_pos()));
         assert_eq!(
             Epd::parse_epd("startpos moves")?,
             Epd::from_board(Board::starting_pos())
@@ -468,11 +444,27 @@ mod tests {
     #[test]
     fn test_epd_file_parse() -> Result<()> {
         // let positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd")?;
-        let positions = Epd::parse_many_epd(read_file("../../epd/com15.epd")?)?;
+        let positions = Epd::parse_many_epd(read_file("../../ext/epd/com15.epd")?)?;
         for p in positions {
             println!(">> {}", p);
         }
         Ok(())
     }
-}
 
+    #[test]
+    fn test_random_epd() {
+        let mut rand = ChaChaRng::seed_from_u64(1);
+        let mut n_game_over = 0;
+        for _i in 0..1000 {
+            let var = Epd::starting_pos().play_random_moves(50, &mut rand);
+            match var {
+                Some(var) => println!("{var}"),
+                None => {
+                    println!("game over");
+                    n_game_over += 1;
+                }
+            }
+        }
+        println!("Game over count {n_game_over}");
+    }
+}

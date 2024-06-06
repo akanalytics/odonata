@@ -1,19 +1,20 @@
-use crate::{
-    bits::{bitboard::Bitboard, square::Square},
-    piece::Color,
-};
+use std::fmt;
+
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+
+use crate::bits::bitboard::Bitboard;
+use crate::bits::square::Square;
+use crate::piece::Color;
 
 bitflags! {
     #[derive(Clone,Copy, PartialEq, Debug, Eq, Serialize, Deserialize)]
     pub struct CastlingRights: u8 {
         const NONE = 0;
-        const WHITE_KING = 1 << 0;
-        const WHITE_QUEEN = 1 << 1;
-        const BLACK_KING = 1 << 2;
-        const BLACK_QUEEN = 1 << 3;
+        const WHITE_KING = 1 << 3;
+        const WHITE_QUEEN = 1 << 2;
+        const BLACK_KING = 1 << 1;
+        const BLACK_QUEEN = 1 << 0;
         const ALL = Self::WHITE_KING.bits() | Self::WHITE_QUEEN.bits() | Self::BLACK_KING.bits() | Self::BLACK_QUEEN.bits();
     }
 }
@@ -21,12 +22,7 @@ bitflags! {
 impl CastlingRights {
     #[inline]
     pub fn values_array() -> &'static [Self] {
-        &[
-            Self::WHITE_KING,
-            Self::WHITE_QUEEN,
-            Self::BLACK_KING,
-            Self::BLACK_QUEEN,
-        ]
+        &[Self::WHITE_KING, Self::WHITE_QUEEN, Self::BLACK_KING, Self::BLACK_QUEEN]
     }
 
     pub fn parse(s: &str) -> Result<CastlingRights> {
@@ -113,6 +109,7 @@ impl CastlingRights {
         }
 
         const RIGHTS_LOST: [CastlingRights; Square::len()] = pop_castling_rights();
+        // null move has from == to giving no loss
         RIGHTS_LOST[from] ^ RIGHTS_LOST[to]
     }
 

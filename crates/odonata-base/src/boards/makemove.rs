@@ -1,13 +1,10 @@
-use crate::{
-    boards::hasher::Hasher,
-    domain::node::{Counter, Timing},
-    infra::metric::Metrics,
-    mv::Move,
-    piece::{FlipSide, Piece},
-    prelude::Board,
-    variation::Variation,
-};
-use std::hint::black_box;
+use crate::boards::hasher::Hasher;
+use crate::domain::node::{Counter, Timing};
+use crate::infra::metric::Metrics;
+use crate::mv::Move;
+use crate::piece::{FlipSide, Piece};
+use crate::prelude::Board;
+use crate::variation::Variation;
 
 impl Board {
     pub fn make_moves_old(&self, var: &Variation) -> Board {
@@ -23,24 +20,30 @@ impl Board {
         for mv in var.moves() {
             debug_assert!(
                 b.validate().is_ok(),
-                "Invalid board before move {mv} from {var} on board {b} (base board {self:#})"
+                "invalid board before move {mv} from {var} on board {b} (base board {self:#})"
             );
             debug_assert!(
                 mv.is_valid(&b),
-                "Move {mv} from {var} on board {b} (base board {self:#}) is invalid"
+                "invalid make moves {mv} in var {var} on board {b} (base board {self:#})"
             );
             b = b.make_move(mv);
         }
         b
     }
 
+    pub fn make_move_str(&self, mv: &str) -> anyhow::Result<Board> {
+        Ok(self.make_move(self.parse_san_move(mv)?))
+    }
+
+    pub fn make_moves_str(&self, var: &str) -> anyhow::Result<Board> {
+        Ok(self.make_moves(&self.parse_san_variation(var)?))
+    }
+
     pub fn make_move(&self, m: Move) -> Board {
         Metrics::incr(Counter::MakeMove);
         // either we're moving to an empty square or its a capture
         debug_assert!(
-            m.is_null()
-                || ((self.white() | self.black()) & m.to().as_bb()).is_empty()
-                || m.is_capture(),
+            m.is_null() || ((self.white() | self.black()) & m.to().as_bb()).is_empty() || m.is_capture(),
             "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
             self,
@@ -52,7 +55,7 @@ impl Board {
             en_passant:      self.en_passant_square(),
             turn:            self.turn,
             fullmove_number: self.fullmove_number,
-            half_move_clock: self.half_move_clock,
+            halfmove_clock: self.halfmove_clock,
             threats_to:      Default::default(),
             checkers_of:     Default::default(),
             pinned:          Default::default(),
@@ -73,7 +76,7 @@ impl Board {
         self.en_passant = b.en_passant_square();
         self.turn = b.turn;
         self.fullmove_number = b.fullmove_number;
-        self.half_move_clock = b.half_move_clock;
+        self.halfmove_clock = b.halfmove_clock;
         self.threats_to = Default::default();
         self.checkers_of = Default::default();
         self.pinned = Default::default();
@@ -91,7 +94,7 @@ impl Board {
         bds[i].en_passant = bds[j].en_passant_square();
         bds[i].turn = bds[j].turn;
         bds[i].fullmove_number = bds[j].fullmove_number;
-        bds[i].half_move_clock = bds[j].half_move_clock;
+        bds[i].halfmove_clock = bds[j].halfmove_clock;
         bds[i].threats_to = Default::default();
         bds[i].checkers_of = Default::default();
         bds[i].pinned = Default::default();
@@ -149,7 +152,7 @@ impl Board {
     pub fn apply_move(&mut self, m: Move) {
         let b = self;
         b.fullmove_number += b.turn.chooser_wb(0, 1);
-        b.half_move_clock += 1;
+        b.halfmove_clock += 1;
         b.ply += 1;
         let move_hash = Hasher::instance().hash_move(m, b);
         b.hash ^= move_hash;
@@ -164,21 +167,27 @@ impl Board {
 
         let mut en_passant = None;
         if mover == Piece::Pawn {
-            b.half_move_clock = 0;
+            b.halfmove_clock = 0;
             if m.is_pawn_double_push(b) {
                 en_passant = Some(m.double_push_en_passant_square());
             }
         }
 
+        // if let Some(c) = m.capture() {
+        //     b.half_move_clock = 0;
+        //     debug_assert!(c != Piece::King, "king captured by move {m} on board \n{b}");
+        //     b.toggle_piece(m.capture_square(b), c, b.turn);
+        // }
+
         if let Some(c) = m.capture_piece(b) {
-            b.half_move_clock = 0;
+            b.halfmove_clock = 0;
             if m.is_ep_capture(b) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
+                b.toggle_piece(m.capture_square(b).as_bb(), c, b.turn);
             } else {
                 // regular capture
                 debug_assert!(c != Piece::King, "king captured by move {m} on board \n{b}");
-                b.remove_piece(m.to().as_bb(), c, b.turn);
+                b.toggle_piece(m.to().as_bb(), c, b.turn);
             }
         }
 
@@ -192,12 +201,7 @@ impl Board {
 
             let (rook_from, rook_to) = m.rook_move_from_to();
             // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.move_piece(
-                rook_from.as_bb(),
-                rook_to.as_bb(),
-                Piece::Rook,
-                b.turn.flip_side(),
-            )
+            b.move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, b.turn.flip_side())
         }
 
         // clear one bit and set another for the move using xor
@@ -217,80 +221,6 @@ impl Board {
         b.castling -= m.castling_rights_lost();
         // b.castling ^= m.castling_side();
     }
-
-    pub fn undo_move(&mut self, m: Move) {
-        if true {
-            let b = self;
-            let move_hash = Hasher::instance().hash_move(m, b);
-            b.hash ^= move_hash;
-
-            // now hash calculated - we can adjust these
-            b.turn = b.turn.flip_side();
-            b.en_passant = None;
-
-            if let Some(c) = m.capture_piece(b) {
-                b.half_move_clock = 0;
-                if m.is_ep_capture(b) {
-                    // ep capture is like capture but with capture piece on *ep* square not *dest*
-                    b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
-                } else {
-                    // regular capture
-                    debug_assert!(
-                        c != Piece::King,
-                        "king captured by move {} on board \n{}",
-                        m,
-                        b
-                    );
-                    b.remove_piece(m.to().as_bb(), c, b.turn);
-                }
-            }
-
-            // clear one bit and set another for the move using xor
-            if !m.is_null() {
-                // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-                b.move_piece(
-                    m.to().as_bb(),
-                    m.from().as_bb(),
-                    m.mover_piece(b),
-                    b.turn.flip_side(),
-                );
-            }
-
-            if m.mover_piece(b) == Piece::Pawn {
-                b.half_move_clock = 0;
-                if m.is_pawn_double_push(b) {
-                    b.en_passant = Some(m.double_push_en_passant_square());
-                }
-            }
-
-            if let Some(promo) = m.promo_piece() {
-                // fifty clock handled by pawn move above;
-                b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
-                // pawn has already moved
-            }
-
-            // castling *moves*
-            if m.is_castle(b) {
-                // rules say no reset of fifty clock
-                // king move already handled, castling rights handled below, just the rook move
-
-                let (rook_from, rook_to) = m.rook_move_from_to();
-                // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-                b.move_piece(
-                    rook_from.as_bb(),
-                    rook_to.as_bb(),
-                    Piece::Rook,
-                    b.turn.flip_side(),
-                )
-            }
-
-            // castling *rights*
-            //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
-            //  if a piece moves FROM the kings squares, both castling rights are lost
-            //  possible with a rook x rook capture that both sides lose castling rights
-            b.castling -= m.castling_rights_lost();
-        }
-    }
 }
 
 #[cfg(test)]
@@ -298,9 +228,12 @@ impl Board {
 mod tests {
     use std::cell::Cell;
 
-    use super::*;
-    use crate::{catalog::*, globals::constants::*, infra::profiler::PerfProfiler, Bitboard};
     use anyhow::Result;
+
+    use super::*;
+    use crate::catalog::*;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::Bitboard;
 
     #[test]
     fn test_make_move() -> Result<()> {
@@ -309,7 +242,7 @@ mod tests {
         let mov = board.parse_uci_move("e2e4")?;
         assert_eq!(board.total_halfmove_ply(), 0);
 
-        let board = board.make_move(mov);   
+        let board = board.make_move(mov);
         assert_eq!(
             board.to_fen(),
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
@@ -344,8 +277,8 @@ mod tests {
     fn test_try_move_promotion() {
         let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap();
         board = board.make_move(board.parse_uci_move("a7a8q").unwrap());
-        assert_eq!(board.get(a8), "Q");
-        assert_eq!(board.get(a7), ".");
+        assert_eq!(board.get(Bitboard::A8), "Q");
+        assert_eq!(board.get(Bitboard::A7), ".");
     }
 
     #[test]
@@ -376,29 +309,20 @@ mod tests {
         assert_eq!(board.total_halfmove_ply(), 1);
 
         let board = board.make_move(board.parse_uci_move("e8g8").unwrap());
-        assert_eq!(
-            board.to_fen(),
-            "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2"
-        );
+        assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
         assert_eq!(board.total_halfmove_ply(), 2);
 
         // castle queens side
         let board = Board::parse_fen(epd).unwrap();
         let board = board.make_move(board.parse_uci_move("e1c1").unwrap());
         let board = board.make_move(board.parse_uci_move("e8c8").unwrap());
-        assert_eq!(
-            board.to_fen(),
-            "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2"
-        );
+        assert_eq!(board.to_fen(), "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2");
 
         // rook moves queens side for w and then b, losing q-side castling rights
         let board = Board::parse_fen(epd).unwrap();
         let board = board.make_move(board.parse_uci_move("a1b1").unwrap());
         let board = board.make_move(board.parse_uci_move("a8b8").unwrap());
-        assert_eq!(
-            board.to_fen(),
-            "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2"
-        );
+        assert_eq!(board.to_fen(), "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2");
     }
 
     #[test]
@@ -463,16 +387,4 @@ mod tests {
             cells.len()
         });
     }
-}
-
-pub fn func() {
-    // let mut cells: [Cell<Bitboard>; 32] = <_>::default();
-    // let cells: Vec<Cell<Bitboard>> =  vec![Default::default();32];
-    // black_box(cells);
-    // u32 = 4 byte
-    // u64 = 64 bit = 8 bytes
-    // u128 = 128 bit = 16 byte = X reg
-    // u256 = 32 bytes = Y reg
-    let _: [u32; 32] = black_box(Default::default());
-    // black_box(black_box(Bitboard::RANKS_18).first_square());
 }

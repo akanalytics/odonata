@@ -1,13 +1,15 @@
-use crate::{bits::square::Square, piece::Color, FlipVertical};
+use std::fmt::{self, Write};
+use std::ops::{self, Index};
+use std::str::FromStr;
+
 use anyhow::{anyhow, bail, Context, Result};
 use crossbeam_utils::atomic::AtomicCell;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{self, Write},
-    ops,
-    str::FromStr,
-};
+
+use crate::bits::square::Square;
+use crate::piece::Color;
+use crate::FlipVertical;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 
@@ -157,7 +159,7 @@ impl Dir {
     }
 }
 
-impl<T> std::ops::Index<Dir> for [T] {
+impl<T> std::ops::Index<Dir> for [T; Dir::ALL.len()] {
     type Output = T;
     #[inline]
     fn index(&self, i: Dir) -> &Self::Output {
@@ -171,7 +173,7 @@ impl<T> std::ops::Index<Dir> for [T] {
     }
 }
 
-impl<T> std::ops::IndexMut<Dir> for [T] {
+impl<T> std::ops::IndexMut<Dir> for [T; Dir::ALL.len()] {
     #[inline]
     fn index_mut(&mut self, d: Dir) -> &mut Self::Output {
         &mut self[d.index()]
@@ -180,6 +182,12 @@ impl<T> std::ops::IndexMut<Dir> for [T] {
 
 #[derive(Copy, Clone, Default, PartialOrd, PartialEq, Ord, Eq, Hash, Serialize, Deserialize)]
 pub struct Bitboard(u64);
+
+// impl std::iter::Sum for Bitboard {
+//     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+//         iter.fold(Bitboard::EMPTY, |a, b| a | b)
+//     }
+// }
 
 // #[derive(Clone, Copy, PartialEq, Eq)]
 // pub struct NonZeroBitboard(pub NonZeroU64);
@@ -387,6 +395,11 @@ impl Bitboard {
 
     pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
 
+    pub const FILES_CDEF: Bitboard = Bitboard::FILE_C
+        .or(Bitboard::FILE_D)
+        .or(Bitboard::FILE_E)
+        .or(Bitboard::FILE_F);
+
     pub const QUEENS_SIDE: Bitboard = Bitboard::FILE_A
         .or(Bitboard::FILE_B)
         .or(Bitboard::FILE_C)
@@ -406,28 +419,19 @@ impl Bitboard {
     pub const RANKS_27: Bitboard = Bitboard::RANK_2.or(Bitboard::RANK_7);
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
     pub const RANKS_45: Bitboard = Bitboard::RANK_4.or(Bitboard::RANK_5);
+    pub const RANKS_3456: Bitboard = Bitboard::RANKS_45.or(Bitboard::RANKS_36);
 
     pub const CENTER_4_SQ: Bitboard = Bitboard::RANKS_45.and(Bitboard::FILE_D.or(Bitboard::FILE_E));
-    pub const CENTER_16_SQ: Bitboard = (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(
-        Bitboard::FILE_C
-            .or(Bitboard::FILE_D)
-            .or(Bitboard::FILE_E)
-            .or(Bitboard::FILE_F),
-    );
-    pub const RANKS_234567: Self = Self::RANK_2
-        .or(Self::RANK_3)
-        .or(Self::RANK_4)
-        .or(Self::RANK_5)
-        .or(Self::RANK_6)
-        .or(Self::RANK_7);
-    pub const RANKS_1_3456_8: Self = Self::RANK_1
-        .or(Self::RANK_3)
-        .or(Self::RANK_4)
-        .or(Self::RANK_5)
-        .or(Self::RANK_6)
-        .or(Self::RANK_8);
+    pub const CENTER_16_SQ: Bitboard = (Bitboard::RANKS_3456).and(Self::FILES_CDEF);
+    pub const RANKS_234567: Self = Self::RANK_2.or(Self::RANKS_3456).or(Self::RANK_7);
+    pub const RANKS_1_3456_8: Self = Self::RANKS_18.or(Self::RANKS_3456);
 
-    pub const EDGE: Self = Self::RANK_1.or(Self::RANK_8.or(Self::FILE_A.or(Self::FILE_H)));
+    pub const EDGE: Self = Self::RANKS_18.or(Self::RIM);
+    pub const CORNERS: Bitboard = Self::RANKS_18.and(Self::RIM);
+    // king from/to squares
+    pub const CASTLING_WHITE: Bitboard = Self::E1.or(Self::C1).or(Self::G1);
+    pub const CASTLING_BLACK: Bitboard = Self::E8.or(Self::C8).or(Self::G8);
+    pub const CASTLING: Bitboard = Self::CASTLING_WHITE.or(Self::CASTLING_BLACK);
 }
 
 impl fmt::Binary for Bitboard {
@@ -492,6 +496,15 @@ impl ops::BitOr for Bitboard {
     #[inline]
     fn bitor(self, o: Bitboard) -> Bitboard {
         Bitboard(self.0 | o.0)
+    }
+}
+
+impl ops::BitOr<Square> for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn bitor(self, o: Square) -> Bitboard {
+        self | o.as_bb()
     }
 }
 
@@ -703,10 +716,6 @@ impl Bitboard {
         bb = bb.or(Bitboard(bb.0 << 16));
         bb = bb.or(Bitboard(bb.0 << 8));
         bb
-        // let bb32 = self.0 | self.0 << 32;
-        // let bb16 = bb32 | bb32 << 16;
-        // let bb8 = bb16 | bb16 << 8;
-        // Bitboard(bb8)
     }
 
     /// fills are inclusive of source square, f/aster than ray - works on empty set
@@ -730,10 +739,17 @@ impl Bitboard {
     }
 
     #[inline]
-    // if bitboard comtains both black and white whole board is returned
-    pub fn squares_of_matching_color(self) -> Bitboard {
+    /// all squares of the same colour as any sq in the bitboard
+    /// if bitboard comtains both black and white whole board is returned
+    pub fn color_flood(self) -> Bitboard {
         Bitboard::WHITE_SQUARES.iff(self.intersects(Bitboard::WHITE_SQUARES))
             | Bitboard::BLACK_SQUARES.iff(self.intersects(Bitboard::BLACK_SQUARES))
+    }
+
+    #[inline]
+    /// if all squares within same color
+    pub fn same_color(self) -> bool {
+        self.disjoint(Self::WHITE_SQUARES) || self.disjoint(Self::BLACK_SQUARES)
     }
 
     // the set of files containing the bitboard
@@ -853,65 +869,61 @@ impl Bitboard {
         self.or(sq.as_bb())
     }
 
+    // #[inline]
+    // pub const fn square(self) -> Square {
+    //     debug_assert!(
+    //         self.popcount() == 1,
+    //         "attempt to convert bb to square where popcount != 1"
+    //     );
+    //     let sq = self.0.trailing_zeros();
+    //     // debug_assert!(sq < 64);
+    //     unsafe { Square::from_u8_unchecked(sq as u8) }
+    // }
+
+    // #[inline]
+    // pub const fn first_square(self) -> Square {
+    //     debug_assert!(!self.is_empty(), "bb.first_square on empty");
+    //     // LSB
+    //     let sq = self.0.trailing_zeros();
+    //     debug_assert!(sq < 64);
+    //     Square::from_u32(sq)
+    // }
+
+    // // last square in the block of bits containing square s. If s is not in a block then just s.
+    // // so for (RANK_1 | RANK_8).last_square_from(A2) = A8.
+    // #[inline]
+    // pub fn last_square_from(self, s: Square) -> Square {
+    //     let bb = self.include(s) >> s.index() as u8;
+    //     let first_empty = (!bb).first_square();
+    //     let i = first_empty.index() - 1 + s.index();
+    //     debug_assert!(i < 64);
+    //     Square::from_u32(i as u32)
+    // }
+
     #[inline]
-    pub const fn square(self) -> Square {
-        debug_assert!(
-            self.popcount() == 1,
-            "attempt to convert bb to square where popcount != 1"
-        );
-        let sq = self.0.trailing_zeros();
-        // debug_assert!(sq < 64);
-        Square::from_u32(sq)
+    pub const fn find_first_square(self) -> Option<Square> {
+        match self.0.trailing_zeros() {
+            64.. => None,
+            i => Some(unsafe { Square::from_u8_unchecked(i as u8) }),
+        }
     }
 
     #[inline]
-    pub const fn last_square(self) -> Square {
-        debug_assert!(!self.is_empty(), "bb.last_square on empty");
-        let msb = self.0.leading_zeros();
-        debug_assert!(msb < 64);
-        Square::from_u32(63 - msb)
+    pub const fn find_last_square(self) -> Option<Square> {
+        match self.0.leading_zeros() {
+            64.. => None,
+            i => Some(unsafe { Square::from_u8_unchecked(63 - i as u8) }),
+        }
     }
 
     #[inline]
-    pub const fn first_square(self) -> Square {
-        debug_assert!(!self.is_empty(), "bb.first_square on empty");
-        // LSB
-        let sq = self.0.trailing_zeros();
-        debug_assert!(sq < 64);
-        Square::from_u32(sq)
-    }
-
-    // last square in the block of bits containing square s. If s is not in a block then just s.
-    // so for (RANK_1 | RANK_8).last_square_from(A2) = A8.
-    #[inline]
-    pub fn last_square_from(self, s: Square) -> Square {
-        let bb = self.include(s) >> s.index() as u8;
-        let first_empty = (!bb).first_square();
-        let i = first_empty.index() - 1 + s.index();
-        debug_assert!(i < 64);
-        Square::from_u32(i as u32)
-    }
-
-    #[inline]
-    pub const fn last(self) -> Self {
-        debug_assert!(!self.is_empty(), "bb.last on empty");
-        Bitboard(1 << self.last_square().index()) // MSb
-    }
-
-    #[inline]
-    pub const fn first(self) -> Self {
-        debug_assert!(!self.is_empty(), "bb.first on empty");
-        Bitboard(1 << self.first_square().index()) // LSb
-    }
-
-    #[inline]
-    pub const fn iter(self) -> BitIterator {
+    pub const fn bits_iter(self) -> BitIterator {
         BitIterator { bb: self }
     }
 
     #[inline]
-    pub const fn squares(self) -> Squares {
-        Squares { bb: self }
+    pub const fn squares(self) -> SquaresIterator {
+        SquaresIterator { bb: self }
     }
 
     // carry rippler from https://www.chessprogramming.org/Traversing_Subsets_of_a_Set
@@ -920,47 +932,31 @@ impl Bitboard {
         PowerSetIterator::new(self)
     }
 
+    /// FILES_ABC => "abc"
     pub fn files_string(self) -> String {
-        let mut files: Vec<char> = self
-            .iter()
-            .map(|bb| bb.first_square().file_char())
-            .collect();
-        files.sort_unstable();
-        files.dedup();
-        files.iter().collect()
+        self.squares().map(Square::file_char).sorted().dedup().collect()
     }
 
+    /// RANKS_2345 => "2345"
     pub fn ranks_string(self) -> String {
-        let mut ranks: Vec<char> = self
-            .iter()
-            .map(|bb| bb.first_square().rank_char())
-            .collect();
-        ranks.sort_unstable();
-        ranks.dedup();
-        ranks.iter().collect()
-    }
-
-    pub fn sq_as_uci(self) -> String {
-        let s = self.first_square();
-        format!("{}{}", s.file_char(), s.rank_char())
+        self.squares().map(Square::rank_char).sorted().dedup().collect()
     }
 
     pub fn uci(self) -> String {
-        let strings: Vec<String> = self.iter().map(Self::sq_as_uci).collect();
-        strings.join("+")
+        self.squares().map(Square::uci).join("+")
     }
 
     pub fn parse_rank(s: &str) -> Result<Bitboard> {
         match s.chars().next() {
-            Some(ch) if ('1'..='8').contains(&ch) => Ok(Self::RANKS[ch as usize - b'1' as usize]),
-            _ => Err(anyhow!("invalid rank '{}' parsing square", s)),
+            Some(ch @ '1'..='8') => Ok(Self::RANKS[ch as usize - b'1' as usize]),
+            _ => Err(anyhow!("invalid rank '{s}' parsing square")),
         }
     }
 
     pub fn parse_file(s: &str) -> Result<Bitboard> {
         match s.chars().next() {
-            Some(ch) if ('a'..='h').contains(&ch) => Ok(Self::FILES[ch as usize - b'a' as usize]),
-            _ => Err(anyhow!("invalid file '{}' parsing square", s)),
+            Some(ch @ 'a'..='h') => Ok(Self::FILES[ch as usize - b'a' as usize]),
+            _ => Err(anyhow!("invalid file '{s}' parsing square")),
         }
     }
 
@@ -999,13 +995,8 @@ impl FromStr for Bitboard {
         if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
             bail!("Expected 8 ranks of 8 bits in bitboard string {}", s);
         }
-        let bin = r
-            .iter_mut()
-            .map(|s| s.chars().rev().collect::<String>())
-            .rev()
-            .join("");
-        let bits =
-            u64::from_str_radix(&bin, 2).with_context(|| format!("with contents {}", bin))?;
+        let bin = r.iter_mut().map(|s| s.chars().rev().collect::<String>()).rev().join("");
+        let bits = u64::from_str_radix(&bin, 2).with_context(|| format!("with contents {}", bin))?;
         Ok(Bitboard::from_u64(bits))
     }
 }
@@ -1063,7 +1054,7 @@ impl Iterator for BitIterator {
         if self.bb.is_empty() {
             None
         } else {
-            let sq = self.bb.first();
+            let sq = self.bb.find_first_square().expect("bit iter").as_bb();
             self.bb ^= sq;
             Some(sq)
         }
@@ -1088,16 +1079,24 @@ impl ExactSizeIterator for BitIterator {
     // }
 }
 
+impl Index<Square> for Bitboard {
+    type Output = bool;
+
+    fn index(&self, index: Square) -> &Self::Output {
+        if index.is_in(*self) {
+            &true
+        } else {
+            &false
+        }
+    }
+}
+
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_str(if self.contains(Bitboard(bit)) {
-                    "1 "
-                } else {
-                    ". "
-                })?;
+                fmt.write_str(if self.contains(Bitboard(bit)) { "1 " } else { ". " })?;
             }
             if r > 0 {
                 // no trailing newline after bitboard
@@ -1109,11 +1108,11 @@ impl fmt::Display for Bitboard {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Squares {
+pub struct SquaresIterator {
     bb: Bitboard,
 }
 
-impl Iterator for Squares {
+impl Iterator for SquaresIterator {
     type Item = Square;
 
     #[inline]
@@ -1121,9 +1120,10 @@ impl Iterator for Squares {
         if self.bb.is_empty() {
             None
         } else {
-            let sq = self.bb.0.trailing_zeros();
-            self.bb.0 ^= 1 << sq;
-            Some(Square::from_u32(sq))
+            let i = self.bb.0.trailing_zeros();
+            self.bb.0 ^= 1 << i;
+            // this is safe as trailing_zeros < 64
+            Some(unsafe { Square::from_u8_unchecked(i as u8) })
         }
     }
 
@@ -1134,7 +1134,7 @@ impl Iterator for Squares {
     }
 }
 
-impl ExactSizeIterator for Squares {
+impl ExactSizeIterator for SquaresIterator {
     #[inline]
     fn len(&self) -> usize {
         self.bb.popcount() as usize
@@ -1144,21 +1144,22 @@ impl ExactSizeIterator for Squares {
 #[cfg(test)]
 mod tests {
 
-    #[allow(non_upper_case_globals)]
-    const a1b2: Bitboard = Bitboard::A1.or(Bitboard::B2);
+    const A1B2: Bitboard = Bitboard::A1.or(Bitboard::B2);
+
+    use std::hint::black_box;
 
     use super::*;
-    use crate::globals::constants::*;
+    use crate::infra::profiler::PerfProfiler;
 
     #[test]
     fn test_bitwise() {
-        assert!(a1b2.contains(a1));
-        assert!(a1b2 & c1 == a1 - a1);
-        assert!(a1b2 - a1 == b2);
-        assert!(!a1b2.is_empty());
-        assert!(a1b2.intersects(b2));
+        assert!(A1B2.contains(Bitboard::A1));
+        assert!(A1B2 & Bitboard::C1 == Bitboard::A1 - Bitboard::A1);
+        assert!(A1B2 - Bitboard::A1 == Bitboard::B2);
+        assert!(!A1B2.is_empty());
+        assert!(A1B2.intersects(Bitboard::B2));
         assert_eq!(Bitboard::all(), !Bitboard::empty());
-        assert!(Bitboard::FILE_A.contains(a4));
+        assert!(Bitboard::FILE_A.contains(Bitboard::A4));
         assert_eq!(Bitboard::FILE_A.popcount(), 8);
         assert_eq!(Bitboard::all().popcount(), 64);
         assert_eq!(
@@ -1169,71 +1170,58 @@ mod tests {
         assert_eq!((Bitboard::B6).flip_horizontal(), Bitboard::G6);
         assert_eq!((Bitboard::RANK_1).flip_horizontal(), Bitboard::RANK_1);
         assert_eq!((1u64 << 63) >> 63, 1);
-        assert_eq!(
-            Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES,
-            Bitboard::all()
-        );
-        assert!(Bitboard::BLACK_SQUARES.contains(a1));
-        assert_eq!(
-            Bitboard::A1.squares_of_matching_color(),
-            Bitboard::BLACK_SQUARES
-        );
-        assert_eq!(
-            Bitboard::B1.squares_of_matching_color(),
-            Bitboard::WHITE_SQUARES
-        );
-        assert_eq!((a1 | b1).squares_of_matching_color(), Bitboard::all());
+        assert_eq!(Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES, Bitboard::all());
+        assert_eq!(Bitboard::BLACK_SQUARES.popcount(), Bitboard::WHITE_SQUARES.popcount(),);
+        assert_eq!(Bitboard::CORNERS.popcount(), 4,);
+        assert!(Bitboard::BLACK_SQUARES.contains(Square::A1.as_bb()));
+        assert_eq!(Bitboard::A1.color_flood(), Bitboard::BLACK_SQUARES);
+        assert_eq!(Bitboard::B1.color_flood(), Bitboard::WHITE_SQUARES);
+        assert_eq!((Bitboard::A1 | Bitboard::B1).color_flood(), Bitboard::all());
         assert_eq!(1_u64.wrapping_shl(64), 1_u64);
         assert_eq!(Bitboard::A1.flood_kq_sides().popcount(), 32);
         assert!(Bitboard::A1.flood_kq_sides().contains(Bitboard::D8));
-        assert_eq!(
-            (Bitboard::A1 | Bitboard::H1).flood_kq_sides().popcount(),
-            64
-        );
+        assert_eq!((Bitboard::A1 | Bitboard::H1).flood_kq_sides().popcount(), 64);
         // from iterator
         assert_eq!(
-            [a1.square(), b1.square()].into_iter().collect::<Bitboard>(),
+            [Square::A1, Square::B1].into_iter().collect::<Bitboard>(),
             Bitboard::A1 | Bitboard::B1
         );
-        assert_eq!(
-            Some(a1.square()).into_iter().collect::<Bitboard>(),
-            Bitboard::A1
-        );
-        assert_eq!(
-            None::<Square>.into_iter().collect::<Bitboard>(),
-            Bitboard::empty()
-        );
+        assert_eq!(Some(Square::A1).into_iter().collect::<Bitboard>(), Bitboard::A1);
+        assert_eq!(None::<Square>.into_iter().collect::<Bitboard>(), Bitboard::empty());
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }
 
     #[test]
     fn test_rays() {
+        let c3 = Square::C3.as_bb();
         let north = c3.rays(Dir::N);
-        assert_eq!(north, c4 | c5 | c6 | c7 | c8);
+        use Square::*;
+        assert_eq!(north, C4 | C5 | C6 | C7 | C8);
         assert_eq!(north.popcount(), 5);
 
-        assert_eq!(c3.rays(Dir::NE), d4 | e5 | f6 | g7 | h8);
-        assert_eq!(c3.rays(Dir::SW), a1 | b2);
-        assert_eq!(c3.rays(Dir::S), c1 | c2);
-        assert_eq!(c3.rays(Dir::NW), a5 | b4);
+        assert_eq!(c3.rays(Dir::NE), D4 | E5 | F6 | G7 | H8);
+        assert_eq!(c3.rays(Dir::SW), A1 | B2);
+        assert_eq!(c3.rays(Dir::S), C1 | C2);
+        assert_eq!(c3.rays(Dir::NW), A5 | B4);
     }
 
     #[test]
     fn test_floods_and_fills() {
-        assert_eq!(a1b2.fill_north(), (FILE_A | FILE_B) - b1);
-        assert_eq!(a1b2.fill_south(), a1b2 | b1);
-        assert_eq!(a1b2.file_flood(), FILE_A | FILE_B);
-        let main_diag = a1 | b2 | c3 | d4 | e5 | f6 | g7 | h8;
-        assert_eq!(a1b2.diag_flood(), main_diag);
+        use Square::*;
+        assert_eq!(A1B2.fill_north(), (Bitboard::FILE_A | Bitboard::FILE_B) - Bitboard::B1);
+        assert_eq!(A1B2.fill_south(), A1B2 | Square::B1);
+        assert_eq!(A1B2.file_flood(), Bitboard::FILE_A | Bitboard::FILE_B);
+        let main_diag = A1 | B2 | C3 | D4 | E5 | F6 | G7 | H8;
+        assert_eq!(A1B2.diag_flood(), main_diag);
         assert_eq!(main_diag.file_flood(), Bitboard::all());
-        assert_eq!(a1b2.anti_diag_flood(), a1 | b2 | a3 | c1);
+        assert_eq!(A1B2.anti_diag_flood(), A1 | B2 | A3 | C1);
     }
 
     #[test]
     fn test_froms() {
-        assert_eq!(Bitboard::from_xy(4, 7), e8);
-        assert_eq!(Bitboard::from_sq(63), h8);
-        assert_eq!(Bitboard::from_sq(8), a2);
+        assert_eq!(Bitboard::from_xy(4, 7), Bitboard::E8);
+        assert_eq!(Bitboard::from_sq(63), Bitboard::H8);
+        assert_eq!(Bitboard::from_sq(8), Bitboard::A2);
     }
 
     #[test]
@@ -1242,20 +1230,15 @@ mod tests {
         assert_eq!(Bitboard::parse_file("h").unwrap(), Bitboard::FILE_H);
         assert_eq!(Bitboard::parse_rank("1").unwrap(), Bitboard::RANK_1);
         assert_eq!(Bitboard::parse_rank("8").unwrap(), Bitboard::RANK_8);
-        assert_eq!(Square::parse("a1").unwrap(), a1.square());
-        assert_eq!(Square::parse("a8").unwrap(), a8.square());
-        assert_eq!(Square::parse("h8").unwrap(), h8.square());
+        assert_eq!(Square::parse("a1").unwrap(), Square::A1);
+        assert_eq!(Square::parse("a8").unwrap(), Square::A8);
+        assert_eq!(Square::parse("h8").unwrap(), Square::H8);
 
-        assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), h8 | h1);
-        assert_eq!(
-            Bitboard::parse_squares("a1, a2,a3  ").unwrap(),
-            a1 | a2 | a3
-        );
+        use Square::*;
+        assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), H8 | H1);
+        assert_eq!(Bitboard::parse_squares("a1, a2,a3  ").unwrap(), A1 | A2 | A3);
         assert_eq!(Bitboard::parse_squares("").unwrap(), Bitboard::empty());
-        assert_eq!(
-            Bitboard::from_str("8/8/8/8/8/8/8/8").unwrap(),
-            Bitboard::EMPTY
-        );
+        assert_eq!(Bitboard::from_str("8/8/8/8/8/8/8/8").unwrap(), Bitboard::EMPTY);
         assert_eq!(
             Bitboard::from_str("X7/8/8/8/8/8/8/7X").unwrap(),
             Bitboard::H1 | Bitboard::A8
@@ -1296,26 +1279,27 @@ mod tests {
 
     #[test]
     fn test_firsts_and_lasts() {
+        use Square as Sq;
         assert_eq!(Bitboard::RANK_2.popcount(), 8);
-        assert_eq!(a1b2.popcount(), 2);
-        assert_eq!(a1b2.first_square().index(), 0);
-        assert_eq!(a1b2.last_square().index(), 9);
-        assert_eq!((Bitboard::A1 | Bitboard::A2).last_square().index(), 8);
+        assert_eq!(A1B2.popcount(), 2);
+        assert_eq!(A1B2.find_first_square(), Some(Sq::A1));
+        assert_eq!(A1B2.find_last_square(), Some(Sq::B2));
+        assert_eq!((Bitboard::A1 | Bitboard::A2).find_last_square(), Some(Sq::A2));
 
-        let bb = Bitboard::C1 | Bitboard::D1 | Bitboard::E1;
-        assert_eq!(bb.last_square_from(Square::A1), Square::A1);
-        assert_eq!(bb.last_square_from(Square::C1), Square::E1);
-        assert_eq!(bb.last_square_from(Square::D1), Square::E1);
-        assert_eq!(bb.last_square_from(Square::E1), Square::E1);
-        assert_eq!(bb.last_square_from(Square::F1), Square::F1);
-        assert_eq!(bb.last_square_from(Square::H8), Square::H8);
+        // let bb = Bitboard::C1 | Bitboard::D1 | Bitboard::E1;
+        // assert_eq!(bb.last_square_from(Sq::A1), Sq::A1);
+        // assert_eq!(bb.last_square_from(Sq::C1), Sq::E1);
+        // assert_eq!(bb.last_square_from(Sq::D1), Sq::E1);
+        // assert_eq!(bb.last_square_from(Sq::E1), Sq::E1);
+        // assert_eq!(bb.last_square_from(Sq::F1), Sq::F1);
+        // assert_eq!(bb.last_square_from(Sq::H8), Sq::H8);
 
-        let bb = Bitboard::RANK_1 | Bitboard::RANK_8;
-        assert_eq!(bb.last_square_from(Square::A1), Square::H1);
-        assert_eq!(bb.last_square_from(Square::H1), Square::H1);
-        assert_eq!(bb.last_square_from(Square::A2), Square::A2);
-        assert_eq!(bb.last_square_from(Square::A8), Square::H8);
-        assert_eq!(bb.last_square_from(Square::H8), Square::H8);
+        // let bb = Bitboard::RANK_1 | Bitboard::RANK_8;
+        // assert_eq!(bb.last_square_from(Sq::A1), Sq::H1);
+        // assert_eq!(bb.last_square_from(Sq::H1), Sq::H1);
+        // assert_eq!(bb.last_square_from(Sq::A2), Sq::A2);
+        // assert_eq!(bb.last_square_from(Sq::A8), Sq::H8);
+        // assert_eq!(bb.last_square_from(Sq::H8), Sq::H8);
 
         // FIXME : calling first_square on empty board (show panic)!
         // assert_eq!(Bitboard::EMPTY.first_square(), 64);
@@ -1325,7 +1309,7 @@ mod tests {
     // assert!(result.is_err());
     #[test]
     fn test_shifts() {
-        let a2b3 = a1b2.shift(Dir::N);
+        let a2b3 = A1B2.shift(Dir::N);
         assert_eq!(Bitboard::H8.bits().wrapping_shl(1), Bitboard::EMPTY.bits());
         assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3);
         assert!(Bitboard::D8.shift(Dir::N).is_empty());
@@ -1338,26 +1322,27 @@ mod tests {
 
     #[test]
     fn test_formats() {
-        assert_eq!(a1.files_string(), "a");
-        assert_eq!((a1 | b1 | c1).files_string(), "abc");
+        use Square::*;
+        assert_eq!(Bitboard::A1.files_string(), "a");
+        assert_eq!((A1 | B1 | C1).files_string(), "abc");
         assert_eq!(Bitboard::all().files_string(), "abcdefgh");
 
-        assert_eq!(a1.ranks_string(), "1");
-        assert_eq!((a1 | b5 | e5).ranks_string(), "15");
+        assert_eq!(Bitboard::A1.ranks_string(), "1");
+        assert_eq!((A1 | B5 | E5).ranks_string(), "15");
         assert_eq!(Bitboard::all().ranks_string(), "12345678");
 
-        assert_eq!(a1.sq_as_uci(), "a1");
-        assert_eq!(h1.sq_as_uci(), "h1");
-        assert_eq!(a8.sq_as_uci(), "a8");
-        assert_eq!(a1b2.uci(), "a1+b2");
-        assert_eq!(format!("{a1b2}"), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . ");
-        assert_eq!(format!("{a1b2:?}"), "A1 | B2");
+        assert_eq!(Square::A1.uci(), "a1");
+        assert_eq!(Square::H1.uci(), "h1");
+        assert_eq!(Square::A8.uci(), "a8");
+        assert_eq!(A1B2.uci(), "a1+b2");
+        assert_eq!(format!("{A1B2}"), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . ");
+        assert_eq!(format!("{A1B2:?}"), "A1 | B2");
         assert_eq!(
             format!("{:?}", Bitboard::FILE_A),
             "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
         );
         // assert_eq!(format!("{:?}", Bitboard::EDGES), "");
-        assert_eq!(format!("{a1b2:b}"), "1000000001");
+        assert_eq!(format!("{A1B2:b}"), "1000000001");
     }
 
     #[test]
@@ -1369,18 +1354,18 @@ mod tests {
 
     #[test]
     fn test_iterators() {
-        let a1b1g5 = a1 | c1 | g5;
-        let mut i = a1b1g5.iter();
-        assert_eq!(i.next(), Some(a1));
-        assert_eq!(i.next(), Some(c1));
-        assert_eq!(i.next(), Some(g5));
+        let a1b1g5 = Bitboard::A1 | Bitboard::C1 | Bitboard::G5;
+        let mut i = a1b1g5.bits_iter();
+        assert_eq!(i.next(), Some(Bitboard::A1));
+        assert_eq!(i.next(), Some(Bitboard::C1));
+        assert_eq!(i.next(), Some(Bitboard::G5));
         assert_eq!(i.next(), None);
-        assert_eq!(a1b1g5.iter().count(), 3);
+        assert_eq!(a1b1g5.bits_iter().count(), 3);
 
         let mut sqs = a1b1g5.squares();
-        assert_eq!(sqs.next(), Some(a1.square()));
-        assert_eq!(sqs.next(), Some(c1.square()));
-        assert_eq!(sqs.next(), Some(g5.square()));
+        assert_eq!(sqs.next(), Some(Square::A1));
+        assert_eq!(sqs.next(), Some(Square::C1));
+        assert_eq!(sqs.next(), Some(Square::G5));
         assert_eq!(sqs.next(), None);
         assert_eq!(a1b1g5.squares().count(), 3);
 
@@ -1392,14 +1377,74 @@ mod tests {
 
         let power_sets = Bitboard::FILE_A.power_set_iter();
         assert_eq!(power_sets.count(), 1 << 8);
-        assert_eq!(
-            power_sets.fold(Bitboard::EMPTY, |acc, bb| acc | bb),
-            Bitboard::FILE_A
-        );
-        assert_eq!(
-            power_sets.filter(|bb| bb.popcount() == 2).count(),
-            7 * 8 / 2
-        );
+        assert_eq!(power_sets.fold(Bitboard::EMPTY, |acc, bb| acc | bb), Bitboard::FILE_A);
+        assert_eq!(power_sets.filter(|bb| bb.popcount() == 2).count(), 7 * 8 / 2);
         assert_eq!(power_sets.filter(|bb| bb.popcount() == 7).count(), 8);
+    }
+
+    #[test]
+    fn bench_bitboard() {
+        use crate::bits::Bitboard;
+        let mut pr = PerfProfiler::new("bb.popcount");
+        let _count = pr.bench(|| {
+            let bb = Bitboard::RANK_1;
+            let count1 = (bb & Bitboard::FILE_A).popcount();
+            let count2 = (black_box(Bitboard::RANK_3) & Bitboard::FILE_A).popcount();
+            count1 + count2
+        });
+
+        let mut pr = PerfProfiler::new("bb.iter-avg4");
+        let mut pr8 = PerfProfiler::new("bb.iter8");
+        let mut pr4 = PerfProfiler::new("bb.iter4");
+        let mut n = black_box(0);
+        for b in Bitboard::RANK_1.power_set_iter() {
+            pr.bench(|| {
+                black_box(b).squares().for_each(|sq| {
+                    let _ = black_box(sq);
+                })
+            });
+            pr8.bench(|| {
+                black_box(Bitboard::RANK_1)
+                    .squares()
+                    .for_each(|sq| n += sq.file_index())
+            });
+            pr4.bench(|| {
+                black_box(Bitboard::CORNERS)
+                    .squares()
+                    .for_each(|sq| n += sq.file_index())
+            });
+        }
+
+        assert_eq!(n, 10752);
+        let mut p_or = PerfProfiler::new("bb.or");
+        let mut p_and = PerfProfiler::new("bb.and");
+        let mut p_in = PerfProfiler::new("bb.sq_in");
+        let mut p_index = PerfProfiler::new("bb.sq_index");
+        let mut p_assign_or = PerfProfiler::new("bb.assign_or");
+        let mut p_flip = PerfProfiler::new("bb.flip");
+        let mut p_next = PerfProfiler::new("bb.next");
+        let mut p_file_flood = PerfProfiler::new("bb.file_flood");
+        let mut p_fill_fwd = PerfProfiler::new("bb.fill_fwd");
+        let sq = Square::A1;
+        let mut n = 0;
+        let mut m = 0;
+        let mut t = 0;
+        let mut bb1 = Bitboard::empty();
+        for bb in Bitboard::diag_flood(Bitboard::A1).power_set_iter() {
+            n += p_in.bench(|| black_box(sq).is_in(black_box(bb))) as i32;
+            n += p_index.bench(|| black_box(bb)[black_box(sq)]) as i32;
+            m += p_and.bench(|| black_box(bb) & Bitboard::FILE_A).popcount();
+            m += p_or.bench(|| black_box(bb) | Bitboard::FILE_A).popcount();
+            p_assign_or.bench(|| bb1 |= black_box(bb));
+            t += p_flip.bench(|| black_box(bb).flip_vertical()).popcount();
+            let iter = bb.squares();
+            t += p_next.bench(|| black_box(iter).next()).is_some() as i32;
+            t += p_file_flood.bench(|| black_box(bb).file_flood()).popcount();
+            t += p_fill_fwd.bench(|| black_box(bb).fill_forward(Color::White)).popcount();
+            t += p_fill_fwd.bench(|| black_box(bb).fill_forward(Color::Black)).popcount();
+        }
+        assert_eq!(n, 256);
+        assert_eq!(m, 3072);
+        assert_eq!(t, 18687);
     }
 }

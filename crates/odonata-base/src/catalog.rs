@@ -1,12 +1,12 @@
-use crate::{
-    bits::{bitboard::Bitboard, castling::CastlingRights},
-    epd::Epd,
-    globals::constants::*,
-    infra::resources::read_resource_file,
-    prelude::Board,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
+
+use crate::bits::bitboard::Bitboard;
+use crate::bits::castling::CastlingRights;
+use crate::epd::Epd;
+use crate::infra::resources::read_resource_file;
+use crate::prelude::Board;
 
 pub struct Catalog;
 
@@ -72,8 +72,7 @@ impl Catalog {
         }
     }
 
-    pub const STARTING_POSITION_FEN: &'static str =
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    pub const STARTING_POSITION_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     pub fn starting_board() -> Board {
         Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap()
@@ -92,10 +91,10 @@ impl Catalog {
 
     pub fn example_game() -> Vec<Epd> {
         let str = r#"
-rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1 acd 9;
-rnbqkbnr/ppppp1pp/8/5p2/8/5N2/PPPPPPPP/RNBQKB1R w KQkq f6 0 2 acd 8;
-rnbqkbnr/ppppp1pp/8/5p2/8/4PN2/PPPP1PPP/RNBQKB1R b KQkq - 0 2 acd 8;
-rnbqkbnr/ppppp2p/6p1/5p2/8/4PN2/PPPP1PPP/RNBQKB1R w KQkq - 0 3 acd 8;
+rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1 acd 9; eco;
+rnbqkbnr/ppppp1pp/8/5p2/8/5N2/PPPPPPPP/RNBQKB1R w KQkq f6 0 2 acd 8; eco;
+rnbqkbnr/ppppp1pp/8/5p2/8/4PN2/PPPP1PPP/RNBQKB1R b KQkq - 0 2 acd 8; ce 123; 
+rnbqkbnr/ppppp2p/6p1/5p2/8/4PN2/PPPP1PPP/RNBQKB1R w KQkq - 0 3 acd 8; 
 rnbqkbnr/ppppp2p/6p1/1B3p2/8/4PN2/PPPP1PPP/RNBQK2R b KQkq - 1 3 acd 8;
 rnbqkbnr/pp1pp2p/6p1/1Bp2p2/8/4PN2/PPPP1PPP/RNBQK2R w KQkq c6 0 4 acd 9;
 rnbqkbnr/pp1pp2p/6p1/1Bp2p2/8/4PN2/PPPP1PPP/RNBQ1RK1 b kq - 1 4 acd 8;
@@ -223,20 +222,16 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
 
     pub fn white_starting_position() -> Board {
         // FIXME: set calls
-        Board::parse_fen(Self::STARTING_POSITION_FEN)
-            .unwrap()
-            .set(Bitboard::RANK_7 | Bitboard::RANK_8, "................")
-            .unwrap()
-            .clone()
+        let mut bb = Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().into_builder();
+        bb.set(Bitboard::RANK_7 | Bitboard::RANK_8, "................").unwrap();
+        bb.build()
     }
 
     pub fn black_starting_position() -> Board {
         // FIXME: set calls
-        Board::parse_fen(Self::STARTING_POSITION_FEN)
-            .unwrap()
-            .set(Bitboard::RANK_1 | Bitboard::RANK_2, "................")
-            .unwrap()
-            .clone()
+        let mut bb = Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().into_builder();
+        bb.set(Bitboard::RANK_1 | Bitboard::RANK_2, "................").unwrap();
+        bb.build()
     }
 
     pub fn zugzwangs() -> Vec<Epd> {
@@ -304,8 +299,7 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
         k7/3p4/PPp3P1/1p3P2/4P3/8/6pp/K7 w - - 0 1 id 'PAWN.08'; c0 'backward_half_open';  c1 '0'; c2 '0';
         k7/8/8/5p2/6p1/6Pp/7P/K7 w - - 0 1 id 'PAWN.09'; c0 'backward_half_open';  c1 '0'; c2 '1';
 "#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     pub fn checkmates() -> Vec<Epd> {
@@ -355,32 +349,29 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
 
     pub fn pins() -> Vec<Epd> {
         let str = r#"
-k6b/8/n4N2/8/Rr1K1P1b/2R5/8/q7 w - - 0 1 id "PIN.01"; c0 "Pins"; Sq c3 f6;
-k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
-"#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+            k6b/8/n4N2/8/Rr1K1P1b/2R5/8/q7 w - - 0 1 id "PIN.01"; c0 "Pins"; Sq c3 f6;
+            k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
+            "#;
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     pub fn discovered_check() -> Vec<Epd> {
         let str = r#"
         k2N1R1b/8/n4N2/8/Rr1K1P1b/2R5/5n2/q5b1 w - - 0 1 id "DC.01"; c0 "Discovered checks"; Sq f2;
         k2N1R1b/8/n4N2/8/Rr1K1P1b/2R5/5n2/q5b1 b - - 0 1 id "DC.01"; c0 "Discovered checks"; Sq d8;
-"#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+        "#;
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     pub fn recogs() -> Vec<Epd> {
         let str = r#"
-8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; am exf3; c0 'white shouldnt take knight as recapture of pawn makes it KNN v k';
-k7/1p6/3N4/8/8/8/6NB/K7 w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave winning KBN v k';
-k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn with knight as it triggers stalemate';
-k1K5/8/8/2p5/8/6B1/5B2/8 w - - 0 1;  id 'RECOG.04'; bm Bxc5; c0 'white should force stalemate by capturing pawn on c5 as black could win';
-6k1/7n/8/8/8/8/1N6/B5KR w - - 26 1; id 'RECOG.05'; bm Rxh7; acd 7; c0 'winning position despite king recapture';
-"#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+            8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; am exf3; c0 'white shouldnt take knight as recapture of pawn makes it KNN v k';
+            k7/1p6/3N4/8/8/8/6NB/K7 w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave winning KBN v k';
+            k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn with knight as it triggers stalemate';
+            k1K5/8/8/2p5/8/6B1/5B2/8 w - - 0 1;  id 'RECOG.04'; bm Bxc5; c0 'white should force stalemate by capturing pawn on c5 as black could win';
+            6k1/7n/8/8/8/8/1N6/B5KR w - - 26 1; id 'RECOG.05'; bm Rxh7; acd 7; c0 'winning position despite king recapture';
+            "#;
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     // given in UCI format so that we dont need a working "legal moves" to parse
@@ -429,34 +420,32 @@ h4f2 h4f4 h4f6 h4g3 h4g4 h4g5 h4h1 h4h2 h4h3 h4h5 h4h6 h4h7 h8b8 h8c8 h8d8 h8e8 
 
     pub fn move_ordering() -> Vec<Epd> {
         let str = r#"
-r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
-"#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+            r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
+        "#;
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     // FIXME! QS.10 - recaptures
     pub fn quiesce() -> Vec<Epd> {
         let str = r#"
-k7/p7/8/8/8/8/P7/K7 w - - 0 1 acd 0; pv; id QS.01; c0 'no captures';
-k7/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.02; c0 'only bad captures';
-2k5/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qa7; id QS.03; c0 '1 good capture';
-1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qe6; id QS.04; c0 '1 good capture 1 bad';
-1k6/q7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.05; c0 'even exchange not made';
-1kr1r3/8/8/8/8/8/r2K3P/3P4 w - - 0 1 acd 0; pv Kd3 Rxh2; id QS.06; c0 'in check then capture';
-1kr1r3/8/8/8/8/5N2/r2K3P/8 w - - 0 1 acd 0; pv Kd3; id QS.07; c0 'in check then bad capture'; c1 'check evasion only (any sq good)';
-k7/8/8/8/2p5/1b6/P7/K7 w - - 0 1 acd 0; pv axb3 cxb3; id QS.08; c0 'capture and recapture';
-k7/8/8/8/p7/1p6/P1P5/K7 w - - 0 1 acd 0; pv cxb3; id QS.09; c0 'capture then bad 2 x recapture';
-k7/p7/1p6/P1B5/8/8/8/K6R w - - 0 1 acd 0; pv axb6; id QS.10; c0 'capture then good 2 x recapture'; c1 'R means game not drawn pv axb6 axb6 Bxb6; ';
-r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv Kxf7 Rxd1 Nxc2+ Ke2; id QS.90; c0 'from mate in 2 - mate found in qsearch somehow?';
-2b1k3/3r4/3b4/3p4/8/8/3Q4/R3K3 w - - 0 1 acd 0; id QS.91; pv Qxd5; c0 'qsearch fail!'; c1 'chess.stackexchange.com/questions/29602';
-r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16 acd 0; am Nxd5; bm Qd8; pv; ce 0; id 'QS.00'; c0 'pawn fork'; c1 'https://lichess.org/q5XvkApk/black#31';
-"#;
+            k7/p7/8/8/8/8/P7/K7 w - - 0 1 acd 0; pv; id QS.01; c0 'no captures';
+            k7/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.02; c0 'only bad captures';
+            2k5/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qa7; id QS.03; c0 '1 good capture';
+            1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qe6; id QS.04; c0 '1 good capture 1 bad';
+            1k6/q7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.05; c0 'even exchange not made';
+            1kr1r3/8/8/8/8/8/r2K3P/3P4 w - - 0 1 acd 0; pv Kd3 Rxh2; id QS.06; c0 'in check then capture';
+            1kr1r3/8/8/8/8/5N2/r2K3P/8 w - - 0 1 acd 0; pv Kd3; id QS.07; c0 'in check then bad capture'; c1 'check evasion only (any sq good)';
+            k7/8/8/8/2p5/1b6/P7/K7 w - - 0 1 acd 0; pv axb3 cxb3; id QS.08; c0 'capture and recapture';
+            k7/8/8/8/p7/1p6/P1P5/K7 w - - 0 1 acd 0; pv cxb3; id QS.09; c0 'capture then bad 2 x recapture';
+            k7/p7/1p6/P1B5/8/8/8/K6R w - - 0 1 acd 0; pv axb6; id QS.10; c0 'capture then good 2 x recapture'; c1 'R means game not drawn pv axb6 axb6 Bxb6; ';
+            r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv Kxf7 Rxd1 Nxc2+ Ke2; id QS.90; c0 'from mate in 2 - mate found in qsearch somehow?';
+            2b1k3/3r4/3b4/3p4/8/8/3Q4/R3K3 w - - 0 1 acd 0; id QS.91; pv Qxd5; c0 'qsearch fail!'; c1 'chess.stackexchange.com/questions/29602';
+            r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16 acd 0; am Nxd5; bm Qd8; pv; ce 0; id 'QS.00'; c0 'pawn fork'; c1 'https://lichess.org/q5XvkApk/black#31';
+            "#;
         // k7/p7/1p6/P1B5/8/8/8/K7 w - - 0 1 acd 0; pv; id QS.11; c0 'capture then bad recapture due to draw'; c1 'game a draw if white exchanges';
         // rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
         // rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11 "QS.02"; c0 "bug?";
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     pub fn see() -> Vec<Epd> {
@@ -489,20 +478,17 @@ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 id DR.04; sv 1. d4 Nf6 
 
     pub fn bratko_kopec() -> Vec<Epd> {
         let contents = read_resource_file("bk.epd");
-        let positions = Epd::parse_many_epd(contents.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(contents.lines()).unwrap()
     }
 
     pub fn iq() -> Vec<Epd> {
         let contents = read_resource_file("iq.epd");
-        let positions = Epd::parse_many_epd(contents.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(contents.lines()).unwrap()
     }
 
     pub fn win_at_chess() -> Vec<Epd> {
         let contents = read_resource_file("wac.epd");
-        let positions = Epd::parse_many_epd(contents.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(contents.lines()).unwrap()
     }
 
     pub fn mate_in_2() -> Vec<Epd> {
@@ -562,23 +548,18 @@ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 id DR.04; sv 1. d4 Nf6 
         let str = r#"
 r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 dm 3; pv 1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7#; c0 "William Evans vs Alexander MacDonnell, London, 1826"
 "#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     pub fn mate_in_4() -> Vec<Epd> {
         let str = r#"2k5/7Q/8/8/8/3K4/8/8 w - - 3 1 id 'KQ vs k'; dm 4;"#;
-        let positions = Epd::parse_many_epd(str.lines()).unwrap();
-        positions
+        Epd::parse_many_epd(str.lines()).unwrap()
     }
 
     pub fn perft_kiwipete() -> (Board, Vec<u64>) {
-        // https://www.chessprogramming.org/Perft_Results
+        // https://www.chessprogramming.org/Perft_ults
         (
-            Board::parse_fen(
-                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-            )
-            .unwrap(),
+            Board::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap(),
             vec![1, 48, 2039, 97_862, 4_085_603, 193_690_690, 8_031_647_685],
         )
     }
@@ -632,13 +613,11 @@ r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 dm 3; pv 1. Bb5+ c6 2
         ));
         vec.push(Self::perft_cpw_number3());
         vec.push((
-            Board::parse_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1")
-                .unwrap(),
+            Board::parse_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1").unwrap(),
             vec![1, 6, 264, 9467, 422_333, 15_833_292, 706_045_033],
         ));
         vec.push((
-            Board::parse_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1")
-                .unwrap(),
+            Board::parse_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1").unwrap(),
             vec![1, 6, 264, 9467, 422_333, 15_833_292, 706_045_033],
         ));
         vec.push((
@@ -646,15 +625,11 @@ r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 dm 3; pv 1. Bb5+ c6 2
             vec![1, 44, 1486, 62379, 2_103_487, 89_941_194],
         ));
         vec.push((
-            Board::parse_fen(
-                "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-            )
-            .unwrap(),
+            Board::parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10").unwrap(),
             vec![1, 46, 2079, 89_890, 3_894_594, 164_075_551, 6_923_051_137],
         ));
         vec.push((
-            Board::parse_fen("r1b2rk1/2p2ppp/p7/1p6/3P3q/1BP3bP/PP3QP1/RNB1R1K1 w - - 1 0")
-                .unwrap(),
+            Board::parse_fen("r1b2rk1/2p2ppp/p7/1p6/3P3q/1BP3bP/PP3QP1/RNB1R1K1 w - - 1 0").unwrap(),
             vec![1, 40, 1334, 50_182, 1_807_137],
         ));
         vec
@@ -717,14 +692,14 @@ r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 dm 3; pv 1. Bb5+ c6 2
         chars[r2] = 'R';
         let k = (0..8).position(|x| chars[x] == '.').unwrap();
         chars[k] = 'K';
-        let mut b = Board::new_empty();
-        b.set(RANK_1, &chars.iter().collect::<String>()).unwrap();
-        b.set(RANK_2, "PPPPPPPP").unwrap();
-        b.set(RANK_7, "pppppppp").unwrap();
-        b.set(RANK_8, &chars.iter().collect::<String>().to_lowercase())
+        let mut bb = Board::builder();
+        bb.set(Bitboard::RANK_1, &chars.iter().collect::<String>()).unwrap();
+        bb.set(Bitboard::RANK_2, "PPPPPPPP").unwrap();
+        bb.set(Bitboard::RANK_7, "pppppppp").unwrap();
+        bb.set(Bitboard::RANK_8, &chars.iter().collect::<String>().to_lowercase())
             .unwrap();
-        b.set_castling(CastlingRights::ALL);
-        let mut pos = Epd::from_board(b);
+        bb.set_castling(CastlingRights::ALL);
+        let mut pos = Epd::from_board(bb.build());
         pos.set_tag("id", &format!("Chess960(SP{id})"));
         pos
     }
@@ -732,8 +707,9 @@ r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 dm 3; pv 1. Bb5+ c6 2
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashSet;
+
+    use super::*;
 
     #[test]
     fn test_serde() {
@@ -762,10 +738,10 @@ mod tests {
         //  testing data https://www.mark-weeks.com/cfaa/chess960/c960strt.htm
         let p = Catalog::chess960(518);
         assert_eq!(p.board(), Catalog::starting_board());
-        assert_eq!(Catalog::chess960(0).board().get(RANK_1), "BBQNNRKR");
-        assert_eq!(Catalog::chess960(1).board().get(RANK_1), "BQNBNRKR");
-        assert_eq!(Catalog::chess960(15).board().get(RANK_1), "QNNRKRBB");
-        assert_eq!(Catalog::chess960(959).board().get(RANK_1), "RKRNNQBB");
+        assert_eq!(Catalog::chess960(0).board().get(Bitboard::RANK_1), "BBQNNRKR");
+        assert_eq!(Catalog::chess960(1).board().get(Bitboard::RANK_1), "BQNBNRKR");
+        assert_eq!(Catalog::chess960(15).board().get(Bitboard::RANK_1), "QNNRKRBB");
+        assert_eq!(Catalog::chess960(959).board().get(Bitboard::RANK_1), "RKRNNQBB");
         // check unique
         let mut set = HashSet::new();
         for id in 0..960 {

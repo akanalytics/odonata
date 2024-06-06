@@ -1,208 +1,252 @@
-// use env_logger::{Builder, Env};
-// use once_cell::sync::Lazy;
-// use log::Log;
-// use tracing::Dispatch;
-// use tracing::metadata::LevelFilter;
-// use tracing_subscriber::{Registry, fmt};
-// use tracing_subscriber::fmt::{format, layer};
-// use std::io;
-// use tracing_subscriber::{EnvFilter, FmtSubscriber}; // , reload::Handle};
-// use tracing::subscriber::Subscriber;
-// use tracing_subscriber::layer::Layer;
-// use tracing_subscriber::layer::Layered;
-// use tracing_subscriber::fmt::Formatter;
+use std::fmt::Debug;
+use std::io;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
-// the logging macros are a bit crufty. to use them in unit tests we check initialization on every use.
-// this means redefining the debug!/info!/warn! etc macros.
-// ideally i'd like to use crate::logger::LogInit in the macro to avoid and includes of "impl" details but
-// this doesnt seem to work for benchmark executable.
-// Logging is also slow(ish), so not in any really tight loops
-// Benchmarking logging: Warming up for 3.0000 sInitilaized logging
-// logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
+use anyhow::Result;
+use once_cell::sync::Lazy;
+use tracing::span::{Attributes, Id, Record};
+use tracing::{callsite, subscriber, Metadata, Subscriber};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{filter, fmt, Registry};
 
-use std::{
-    io::{stderr, Write},
-    sync::{Arc, Mutex},
-};
+use crate::infra::resources;
 
-use flexi_logger::{
-    colored_default_format,
-    writers::{FileLogWriter, LogWriter},
-    AdaptiveFormat, DeferredNow, FileSpec, LevelFilter, LogSpecBuilder, LogSpecification, Logger,
-    LoggerHandle, Record, WriteMode,
-};
+static CURRENT_LOGGING_SYSTEM: Mutex<LoggingSystem> = Mutex::new(LoggingSystem::empty());
+static LOGGING_SUBSCRIBER: Lazy<Arc<MutSubscriber>> = Lazy::new(|| Arc::new(MutSubscriber::default()));
 
-// inspired by https://github.com/emabee/flexi_logger/issues/124
-struct OptLogWriterDecorator {
-    log_file: Arc<Mutex<Option<Box<dyn LogWriter>>>>,
+struct MutSubscriber {
+    inner: Mutex<Box<dyn Subscriber + Send + Sync>>,
 }
 
-impl LogWriter for OptLogWriterDecorator {
-    fn write(&self, now: &mut DeferredNow, record: &Record) -> std::io::Result<()> {
-        let mut lf = self.log_file.lock().unwrap();
-        if let Some(log_file) = &mut *lf {
-            log_file.write(now, record)?;
-        } else {
-            colored_default_format(&mut stderr(), now, record)?;
-            writeln!(stderr())?;
-            stderr().flush()?;
-            // println!(
-            //     "{}:{} -- {}",
-            //     record.level(),
-            //     record.target(),
-            //     record.args()
-            // );
-        }
-        Ok(())
-    }
-
-    fn flush(&self) -> std::io::Result<()> {
-        let mut lf = self.log_file.lock().unwrap();
-        if let Some(ref log_file) = &mut *lf {
-            log_file.flush()?;
-        }
-        Ok(())
-    }
-}
-
-use once_cell::sync::OnceCell;
-
-static LOGGING_SYSTEM: OnceCell<LoggingSystem> = OnceCell::new();
-
+#[derive(Debug, Clone)]
+#[must_use = "struct unused - invoke apply()"]
 pub struct LoggingSystem {
-    handle:   LoggerHandle,
-    log_spec: LogSpecification,
-    log_file: Arc<Mutex<Option<Box<dyn LogWriter>>>>,
-}
-
-pub fn plain(w: &mut dyn Write, _: &mut DeferredNow, r: &Record) -> Result<(), std::io::Error> {
-    write!(w, "{}", r.args())
+    logfile: Option<PathBuf>, // None or empty disables the file logging
+    levels:  String,
 }
 
 impl LoggingSystem {
-    pub fn instance() -> anyhow::Result<&'static Self> {
-        LOGGING_SYSTEM
-            .get_or_try_init(|| -> anyhow::Result<LoggingSystem> { LoggingSystem::new() })
+    const fn empty() -> Self {
+        Self {
+            logfile: None,
+            levels:  String::new(),
+        }
     }
 
-    fn new() -> anyhow::Result<Self> {
-        let log_file = Arc::new(Mutex::new(None));
-        let writer = Box::new(OptLogWriterDecorator {
-            log_file: Arc::clone(&log_file),
-        });
-        // let file_spec = FileSpec::default();
-        // let l = Logger::try_with_env_or_str("info")?
-        //     .log_to_file(file_spec)
-        //     .build()?;
+    pub fn from_env() -> Result<Self> {
+        let env = std::env::var("RUST_LOG").unwrap_or("error".to_string());
+        Self::parse(&env)
+    }
 
-        // uses RUST_LOG env var
-        let log_spec = LogSpecification::env_or_parse("warn")?;
-        let handle = Logger::with(log_spec.clone())
-            .log_to_writer(writer)
-            .adaptive_format_for_stderr(AdaptiveFormat::Default)
-            // .write_mode(WriteMode::SupportCapture)
-            // .write_mode(WriteMode::Direct)
-            .write_mode(WriteMode::BufferAndFlush)
-            // .duplicate_to_stderr(Duplicate::All)
-            .start()?;
-        info!("Logging enabled");
-        debug!("inititial {log_spec:?}");
+    pub fn init() -> Result<()> {
+        subscriber::set_global_default(Arc::clone(&LOGGING_SUBSCRIBER))?;
+        Self::from_env()?.apply()
+    }
+
+    /// examples:
+    ///   ""  (turn off file logging, and stederr = error)
+    ///   warn
+    ///   uci=warn
+    ///   logile.txt:warn
+    ///   :warn  (turn off file logging)
+    ///   /tmp/logfile.txt|uci=info,warn
+    ///   /tmp/logfile.txt
+    /// returns (log file, levels) from "odonata.log:uci=info,warn" for example
+    pub fn parse(s: &str) -> Result<Self> {
+        let Self { logfile, levels } = CURRENT_LOGGING_SYSTEM.lock().unwrap().clone();
+        if s.is_empty() {
+            return Ok(LoggingSystem {
+                logfile: None,
+                levels:  "error".to_string(),
+            });
+        }
+        if !s.contains(['/', '.', ':']) {
+            if let Ok(_parse_whole) = s.parse::<filter::Targets>() {
+                return Ok(LoggingSystem {
+                    logfile,
+                    levels: s.to_string(),
+                });
+            }
+        }
+        if let Some((lf, lvls)) = s.split_once(':') {
+            return Ok(LoggingSystem {
+                logfile: Some(PathBuf::from(lf)),
+                levels:  lvls.to_string(),
+            });
+        }
+        if s.contains(|ch: char| ch == '=' || ch == ':' || ch == ' ' || !ch.is_ascii()) {
+            anyhow::bail!("bad logging directives '{s}'");
+        }
+
         Ok(LoggingSystem {
-            handle,
-            log_file,
-            log_spec,
+            logfile: Some(PathBuf::from(s)),
+            levels,
         })
     }
 
-    pub fn init() -> anyhow::Result<()> {
-        let _ = LoggingSystem::instance()?;
+    pub fn apply(self) -> Result<()> {
+        let stderr_env_filter = self.levels.parse::<filter::Targets>()?;
+        let file_layer = match &self.logfile {
+            Some(lf) if !lf.as_os_str().is_empty() => {
+                let file = RollingFileAppender::new(Rotation::NEVER, resources::workspace_dir(), lf.as_os_str());
+                let layer = fmt::layer()
+                    .with_ansi(false)
+                    .with_target(false)
+                    .with_writer(file)
+                    .with_thread_names(true);
+                Some(layer)
+            }
+            _ => None,
+        };
+        let stderr_layer = fmt::layer().with_writer(io::stderr).without_time().with_target(false);
+        let new_subscriber = Registry::default()
+            .with(file_layer)
+            .with(stderr_layer)
+            .with(stderr_env_filter);
+        *LOGGING_SUBSCRIBER.inner.lock().unwrap() = Box::new(new_subscriber);
+        callsite::rebuild_interest_cache();
+        trace!("Logging change applied... {self:?}");
+        *CURRENT_LOGGING_SYSTEM.lock().unwrap() = self;
         Ok(())
     }
+}
 
-    /// s containing {pid} or {PID} is replaced with process id
-    /// if s is empty, then a fallback path/filename is used
-    /// if s ends with "." or "/" then directory assumed, fallback is appended as filename
-    pub fn set_log_filename(&self, s: &str, fallback: &str) -> anyhow::Result<()> {
-        if s.is_empty() {
-            info!("turning file logging off");
-            let builder = LogSpecBuilder::from_module_filters(self.log_spec.module_filters());
-            let spec = builder.build_with_textfilter(self.log_spec.text_filter().cloned());
-            debug!("file using new log spec: {spec:?}");
-            self.handle.set_new_spec(spec);
-            *self.log_file.lock().unwrap() = None;
-            return Ok(());
+impl Debug for MutSubscriber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MutSubscriber").finish()
+    }
+}
+
+impl Default for MutSubscriber {
+    fn default() -> Self {
+        Self {
+            inner: Mutex::new(Box::new(fmt::Subscriber::new())),
         }
+    }
+}
 
-        let file_spec = if s.ends_with(['/', '.']) {
-            info!("turning file logging on with directory '{s}' and basename '{fallback}'");
-            FileSpec::default()
-                .directory(s)
-                .basename("odonata")
-                .suppress_timestamp()
-        }
-        // we split on the last "." delimiter, allowing . embedded in the filename
-        else if let Some((name, suffix)) = s.rsplit_once('.') {
-            let pid = format!("{}", std::process::id());
-            let name = name.replace("{pid}", &pid);
-            let name = name.replace("{PID}", &pid);
-            info!("turning file logging on with basename '{name}' and suffix '{suffix}'");
-            FileSpec::default()
-                .basename(name)
-                .suffix(suffix)
-                .suppress_timestamp()
-        } else {
-            info!("turning file logging on with basename '{s}'");
-            FileSpec::default().basename(s).suppress_timestamp()
-        };
-        info!(
-            "using '{name}' for file logging",
-            name = file_spec.as_pathbuf(None).display()
-        );
-        let writer = Box::new(
-            FileLogWriter::builder(file_spec)
-                .format(plain)
-                .try_build()?,
-        );
-        *self.log_file.lock().unwrap() = Some(writer);
+impl Subscriber for MutSubscriber {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.inner.lock().unwrap().enabled(metadata)
+    }
 
-        // turn on uci logging
-        let mut builder = LogSpecBuilder::from_module_filters(self.log_spec.module_filters());
-        builder.module("uci", LevelFilter::Debug);
-        builder.module("eng", LevelFilter::Debug);
-        let spec = builder.build_with_textfilter(self.log_spec.text_filter().cloned());
-        debug!("file using new log spec: {spec:?}");
-        self.handle.set_new_spec(spec);
+    fn new_span(&self, span: &Attributes<'_>) -> Id {
+        self.inner.lock().unwrap().new_span(span)
+    }
 
-        Ok(())
+    fn record(&self, span: &Id, values: &Record<'_>) {
+        self.inner.lock().unwrap().record(span, values)
+    }
+
+    fn record_follows_from(&self, span: &Id, follows: &Id) {
+        self.inner.lock().unwrap().record_follows_from(span, follows)
+    }
+
+    fn event(&self, event: &tracing::Event<'_>) {
+        self.inner.lock().unwrap().event(event)
+    }
+
+    fn enter(&self, span: &Id) {
+        self.inner.lock().unwrap().enter(span)
+    }
+
+    fn exit(&self, span: &Id) {
+        self.inner.lock().unwrap().exit(span)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+    use std::{fs, thread};
+
     use crate::trace::logger::LoggingSystem;
 
     #[test]
     #[ignore = "sets global logger so needs to run on its own"]
     fn test_logger() -> anyhow::Result<()> {
-        // log::set_max_level(log::LevelFilter::Info);
-        error!("error: Not logged");
+        // test invalid things
+        assert_eq!(LoggingSystem::parse("uci = debug").is_err(), true);
+        // assert_eq!(LoggingSystem::parse(":uci=invalid").is_err(), true);
+        // assert_eq!(LoggingSystem::parse(":uci=").is_err(), true);
+
+        // test levels parsed
+        assert_eq!(LoggingSystem::parse("logfile.txt").unwrap().levels, "");
+        assert_eq!(LoggingSystem::parse("").unwrap().levels, "error");
+        assert_eq!(LoggingSystem::parse("off").unwrap().levels, "off");
+        assert_eq!(LoggingSystem::parse("warn").unwrap().levels, "warn");
+        assert_eq!(LoggingSystem::parse("uci=debug").unwrap().levels, "uci=debug");
+        assert_eq!(LoggingSystem::parse(":uci=debug").unwrap().levels, "uci=debug");
+
+        // test logfile
+        assert_eq!(
+            LoggingSystem::parse("logfile.txt")?.logfile,
+            Some(PathBuf::from("logfile.txt"))
+        );
+        assert_eq!(LoggingSystem::parse("").unwrap().logfile, None);
+        assert_eq!(LoggingSystem::parse(":").unwrap().logfile, Some(PathBuf::new()));
+        assert_eq!(LoggingSystem::parse("warn").unwrap().logfile, None);
+        assert_eq!(LoggingSystem::parse("uci=debug").unwrap().logfile, None);
+        assert_eq!(
+            LoggingSystem::parse(":uci=debug").unwrap().logfile,
+            Some(PathBuf::new())
+        );
+
+        let mut tmp = std::env::temp_dir();
+        tmp.push("odonata.log");
+        let _ignore_file_missing = fs::remove_file(&tmp);
+
+        error!("HIDDEN*** 01. error - pre-init");
         LoggingSystem::init()?;
-        trace!("trace: Hello world! NOT logged");
-        debug!("debug: Hello world! NOT logged");
-        info!("info: Hello world! NOT logged");
-        warn!("warn: Hello world!");
-        error!("error: Hello world!");
-        debug!(target: "uci", "debug: on uci should NOT get logged");
-        // log::set_max_level(log::LevelFilter::Trace);
-        debug!("debug: Debug enabled!");
-        LoggingSystem::instance()?.set_log_filename("/tmp/", "test_logging3")?;
-        warn!("warn: Hello world logged to file3!");
-        warn!(target: "ucimsg", "warn: ucimsg target!");
-        trace!(target: "ucimsg", "trace: ucimsg target!");
-        warn!(target: "", "warn: empty target!");
-        LoggingSystem::instance()?.set_log_filename("/tmp/", "odonata2")?;
-        warn!(target: "uci", "warn: on uci should get logged");
-        debug!(target: "uci", "debug: on uci should get logged");
+        trace!("HIDDEN*** 02. trace");
+        debug!("HIDDEN*** 03. debug");
+        info!("HIDDEN*** 04. info");
+        warn!("HIDDEN*** 05. warn");
+        error!("SEEN 06. error");
+        debug!(target: "uci", "HIDDEN 07. uci/debug");
+        error!(target: "uci", "SEEN 08. uci/error");
+        println!("06, 08");
+        assert_eq!(tmp.exists(), false);
+
+        LoggingSystem::parse("warn,uci=debug")?.apply()?;
+        trace!("HIDDEN*** 10. trace");
+        debug!("HIDDEN*** 11. debug");
+        info!("HIDDEN*** 12. info");
+        warn!("SEEN 13. warn");
+        error!("SEEN 14. error");
+        trace!(target: "uci", "HIDDEN 15. uci/trace");
+        debug!(target: "uci", "SEEN 16. uci/debug");
+        println!("13, 14, 16");
+        assert_eq!(tmp.exists(), false);
+
+        let spec = format!("{}:uci=trace,debug", tmp.display());
+        LoggingSystem::parse(&spec)?.apply()?;
+        debug!("SEEN 20. debug");
+        warn!("SEEN 21. warn");
+        warn!("SEEN 22. uci/debug");
+        trace!(target: "uci", "SEEN 23. uci/trace");
+        warn!("SEEN 24. warn");
+        trace!("HIDDEN** 25. uci/trace");
+        println!("SEEN 20, 21, 22, 23, 24");
+        assert_eq!(tmp.exists(), true);
+
+        let jh = thread::spawn(|| {
+            info!("SEEN 26. info within thread");
+            error!("SEEN 27. error within thread")
+        });
+        jh.join().expect("thread panic");
+
+        LoggingSystem::from_env()?.apply()?;
+        error!("SEEN 30. error");
+        info!("HIDDEN*** 31. info");
+        println!("LOG 26, 27, 30");
+
+        println!("FILE\n{}", fs::read_to_string(&tmp)?);
+        println!("LOG 20, 21 22, 23, 24, 26, 27, 30");
+
+        fs::remove_file(&tmp)?;
         Ok(())
     }
 }
@@ -384,3 +428,63 @@ mod tests {
 //         };
 //     )
 // }
+
+// fn stderr_enabled<S>(meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
+//     let ls = LoggingSystem::instance().unwrap();
+//     let env = ls.stderr_env_log.lock().unwrap();
+//     let enabled = Filter::<S>::enabled(&EnvFilter::try_new(env.as_str()).unwrap(), meta, ctx);
+//     println!("stderr_enabled ...{env}={enabled}");
+//     enabled
+// }
+
+// fn std_callsite_enabled<S>(_meta: &'static Metadata<'static>) -> Interest {
+//     let Ok(_ls) = LoggingSystem::instance() else {
+//         return Interest::never();
+//     };
+//     Interest::sometimes()
+//     // Filter::<S>::callsite_enabled(&EnvFilter::new(ls.stderr_env_log.as_str()), meta)
+// }
+
+// fn make_file_writer() -> File {
+//     let logfile = if let Ok(ls) = LoggingSystem::instance() {
+//         PathBuf::from(&ls.logfile)
+//     } else {
+//         LoggingSystem::default().logfile
+//     };
+//     let logfile = resources::workspace_dir().join(logfile);
+//     OpenOptions::new()
+//         .create(true)
+//         .append(true)
+//         .open(&logfile)
+//         .unwrap_or_else(|_| panic!("unable to create/append logfile {logfile:?}"))
+// }
+// *sub.subscriber.lock().unwrap() = subscriber;
+
+// layer 1 is the file writer
+// let layer1 = fmt::Layer::default()
+//     .compact()
+//     .with_ansi(true)
+//     .without_time()
+//     .with_line_number(false)
+//     .with_writer(make_file_writer)
+//     .with_filter(DynFilterFn::new(stderr_enabled));
+// .with_filter(DynFilterFn::new(|metadata, cx| {
+//     if metadata.target().contains("uci") {
+//         return true;
+//     }
+//     false
+// }));
+
+// let layer2 = fmt::Layer::default()
+//     .compact()
+//     .with_ansi(true)
+//     .with_writer(io::stderr)
+//     .with_line_number(false)
+//     .with_filter(DynFilterFn::new(stderr_enabled));
+
+// Registry::default().with(layer1).with(layer2).init();
+// println!("{:?}", sub.subscriber.lock().unwrap());
+
+// let env_filter: EnvFilter = EnvFilter::from_default_env();
+// let subscriber = Registry::default().with(env_filter);
+// sub.set_subscriber(MutSubscriber { subscriber });

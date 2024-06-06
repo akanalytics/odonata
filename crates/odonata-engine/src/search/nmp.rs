@@ -1,23 +1,20 @@
-use odonata_base::{
-    domain::{
-        node::{Node, SearchType},
-        BoundType, score::ToScore,
-    },
-    eg::Zugzwang,
-    infra::{
-        component::Component,
-        metric::{Event, Metrics},
-    },
-    prelude::*,
-    Epd, boards::Position,
-};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use odonata_base::boards::Position;
+use odonata_base::domain::node::{Node, SearchType};
+use odonata_base::domain::score::ToScore;
+use odonata_base::domain::BoundType;
+use odonata_base::eg::Zugzwang;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::prelude::*;
+use odonata_base::Epd;
+use strum_macros::EnumString;
 use tracing::instrument;
 
+use super::algo::Search;
+use super::trail::Trail;
 use crate::cache::tt2::{EvalFromTt, TtNode, TtScore};
-
-use super::{algo::Search, trail::Trail};
 
 // CLOP
 // 75+0.6  a=2.7  b=0.198 c=0.000167
@@ -25,7 +22,7 @@ use super::{algo::Search, trail::Trail};
 // 1+0.01  a=3.04 b=0.272 c=0.000185
 //
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, EnumString)]
 pub enum NmpDepthReductionStrategy {
     Always1,
     Always2,
@@ -37,30 +34,18 @@ pub enum NmpDepthReductionStrategy {
 }
 
 impl NmpDepthReductionStrategy {
-    pub fn depth_reduction(
-        &self,
-        eval: Score,
-        bd: &Board,
-        n: &Node,
-        a: f32,
-        b: f32,
-        c: f32,
-    ) -> Ply {
+    pub fn depth_reduction(&self, eval: Score, bd: &Board, n: &Node, a: f32, b: f32, c: f32) -> Ply {
         // let eval = if eval.is_numeric() { eval } else { n.beta };
         match self {
             Self::Always1 => 1,
             Self::Always2 => 2,
             Self::Always3 => 3,
-            Self::DepthEvalWeightedPlus2 => {
-                2 + n.depth / 4 + ((eval - n.beta).as_i16() as i32 / 128).clamp(0, 3)
-            }
+            Self::DepthEvalWeightedPlus2 => 2 + n.depth / 4 + ((eval - n.beta).as_i16() as i32 / 128).clamp(0, 3),
 
-            Self::DepthEvalWeightedPlus3 => {
-                3 + n.depth / 4 + ((eval - n.beta).as_i16() as i32 / 128).clamp(0, 3)
+            Self::DepthEvalWeightedPlus3 => 3 + n.depth / 4 + ((eval - n.beta).as_i16() as i32 / 128).clamp(0, 3),
+            Self::DepthEvalWeighted => {
+                f32::round(a + n.depth as f32 * b + f32::min((eval - n.beta).as_i16() as f32 * c, 3.0)) as i32
             }
-            Self::DepthEvalWeighted => f32::round(
-                a + n.depth as f32 * b + f32::min((eval - n.beta).as_i16() as f32 * c, 3.0),
-            ) as i32,
 
             Self::ClassicalAdaptive => match n.depth {
                 9.. => 3,
@@ -72,8 +57,7 @@ impl NmpDepthReductionStrategy {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct NullMovePruning {
     pub enabled:           bool,
     logging:               bool,
@@ -81,7 +65,7 @@ pub struct NullMovePruning {
     pv_nodes:              bool,
     recursive:             bool,
     successive:            bool,
-    eval_margin:           Score,
+    pub eval_margin:       Score,
     min_depth:             Ply,
     min_ply:               Ply,
     store_tt:              bool,
@@ -92,6 +76,35 @@ pub struct NullMovePruning {
     b:                     f32,
     c:                     f32,
     zugzwang:              Zugzwang,
+}
+
+impl Configurable for NullMovePruning {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.logging.set(p.get("logging"))?;
+        self.zugzwang_check.set(p.get("zugzwang_check"))?;
+        self.pv_nodes.set(p.get("pv_nodes"))?;
+        self.recursive.set(p.get("recursive"))?;
+        self.successive.set(p.get("successive"))?;
+        self.eval_margin.set(p.get("eval_margin"))?;
+        self.min_depth.set(p.get("min_depth"))?;
+        self.min_ply.set(p.get("min_ply"))?;
+        self.store_tt.set(p.get("store_tt"))?;
+        self.depth_reduction_strat.set(p.get("depth_reduction_strat"))?;
+        self.prune_alpha_mate.set(p.get("prune_alpha_mate"))?;
+        self.prune_alpha_mate.set(p.get("prune_alpha_mate"))?;
+        self.prune_beta_mate.set(p.get("prune_beta_mate"))?;
+        self.a.set(p.get("a"))?;
+        self.b.set(p.get("b"))?;
+        self.c.set(p.get("c"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for NullMovePruning {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
+    }
 }
 
 impl Component for NullMovePruning {
@@ -111,8 +124,8 @@ impl Default for NullMovePruning {
             recursive:             true,
             successive:            true,
             pv_nodes:              true,
-            eval_margin:           Score::from_cp(-10000),
-            min_depth:             2, // 1 means we still prune at frontier (depth=1)
+            eval_margin:           0.cp(), // eval needs to be >= beta + eval_margin
+            min_depth:             2,      // 1 means we still prune at frontier (depth=1)
             min_ply:               1,
             store_tt:              true,
             depth_reduction_strat: NmpDepthReductionStrategy::DepthEvalWeighted,
@@ -121,7 +134,7 @@ impl Default for NullMovePruning {
             a:                     2.7,
             b:                     0.198,
             c:                     0.00017,
-            zugzwang:              Zugzwang::default(),
+            zugzwang:              Zugzwang::NonPawnNonPinned,
         }
     }
 }
@@ -151,9 +164,7 @@ impl NullMovePruning {
             return (false, "pv node");
         }
 
-        if (!self.prune_alpha_mate && n.alpha.is_mate())
-            || (!self.prune_beta_mate && n.beta.is_mate())
-        {
+        if (!self.prune_alpha_mate && n.alpha.is_mate()) || (!self.prune_beta_mate && n.beta.is_mate()) {
             Metrics::incr_node(n, Event::NmpDeclineMateBound);
             return (false, "mate bound");
         }
@@ -266,10 +277,14 @@ impl Search {
 
             Metrics::incr_node(n, event);
 
-            let r = self
-                .nmp
-                .depth_reduction_strat
-                .depth_reduction(eval, pos.board(), n, self.nmp.a, self.nmp.b, self.nmp.c);
+            let r = self.nmp.depth_reduction_strat.depth_reduction(
+                eval,
+                pos.board(),
+                n,
+                self.nmp.a,
+                self.nmp.b,
+                self.nmp.c,
+            );
             let mut pos = Epd::from_board(pos.board().clone());
             pos.set_tag("c0", event.as_ref());
             pos.set_tag("c1", &reason);
@@ -293,10 +308,10 @@ impl Search {
         // };
         // let lifetime = span.enter();
 
-        let r = self
-            .nmp
-            .depth_reduction_strat
-            .depth_reduction(eval, pos.board(), n, self.nmp.a, self.nmp.b, self.nmp.c);
+        let r =
+            self.nmp
+                .depth_reduction_strat
+                .depth_reduction(eval, pos.board(), n, self.nmp.a, self.nmp.b, self.nmp.c);
         let mv = Move::new_null();
         pos.push_move(mv);
         self.current_variation.push(mv);
@@ -307,21 +322,19 @@ impl Search {
 
         // we increment ply so that history tables etc work correctly
 
-        
-        let ab = self
-            .alphabeta(
-                "nmp",
-                trail,
-                pos,
-                Node {
-                    zw:    SearchType::ZeroWindow | SearchType::NullMove,
-                    ply:   n.ply + 1,
-                    depth: reduced_depth,
-                    alpha: -n.beta,
-                    beta:  -n.beta + 1.cp(),
-                },
-                mv,
-            );
+        let ab = self.alphabeta(
+            "nmp",
+            trail,
+            pos,
+            Node {
+                zw:    SearchType::ZeroWindow | SearchType::NullMove,
+                ply:   n.ply + 1,
+                depth: reduced_depth,
+                alpha: -n.beta,
+                beta:  -n.beta + 1.cp(),
+            },
+            mv,
+        );
         pos.pop_move();
         let child_score = -ab?.0;
         // b.undo_move(&mv);
@@ -333,7 +346,7 @@ impl Search {
             // self.counts.inc(n, Event::PruneNullMovePrune);
             Metrics::incr_node(n, Event::NmpSuccess);
             self.report_refutation(n.ply);
-            self.explain_nmp(pos.board(), child_score, n);
+            // self.explain_nmp(pos.board(), child_score, n);
 
             // dont allow a mate score on a null move
             // let tt_score = child_score.clamp_score();
@@ -361,20 +374,13 @@ impl Search {
     }
 }
 
-impl fmt::Display for NullMovePruning {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{engine::Engine, search::engine::ThreadedSearch};
+    use odonata_base::infra::profiler::PerfProfiler;
+    use test_log::test;
 
     use super::*;
-    use odonata_base::{domain::timecontrol::TimeControl, infra::profiler::PerfProfiler, Epd};
-    use test_log::test;
+    use crate::search::engine::ThreadedSearch;
 
     fn fixture() -> Board {
         Board::parse_diagram(
@@ -408,7 +414,7 @@ mod tests {
         let mut eng = ThreadedSearch::new();
         eng.search.nmp.logging = true;
         let pos = Epd::from_board(board);
-        let _sr = eng.search(pos, TimeControl::Depth(12)).unwrap();
+        let _sr = eng.search(pos, TimeControl::Depth(10)).unwrap();
         // warn!(target: "metrics",
         //     "\n{metrics}",
         //     metrics = sr.metrics.to_string_or("-")

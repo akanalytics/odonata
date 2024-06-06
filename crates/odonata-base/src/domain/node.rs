@@ -1,15 +1,13 @@
-use crate::{domain::BoundType, domain::score::Score};
-// use crate::prelude::Board;
+use std::fmt;
 
-use crate::piece::Ply;
-
-use std::{convert::AsRef, fmt};
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{AsRefStr, Display, EnumCount, EnumIter, EnumMessage};
 
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
-)]
+use crate::domain::score::Score;
+use crate::domain::BoundType;
+use crate::piece::Ply;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr)]
 #[strum(serialize_all = "title_case")]
 pub enum Histograms {
     EvalCacheNodeCount,
@@ -22,9 +20,7 @@ impl Histograms {
     }
 }
 
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr)]
 #[strum(serialize_all = "title_case")]
 pub enum Timing {
     TimingSearchRoot,
@@ -55,9 +51,7 @@ impl Timing {
     }
 }
 
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr)]
 #[strum(serialize_all = "title_case")]
 pub enum Counter {
     SearchTimeUp,
@@ -98,9 +92,7 @@ impl Counter {
     }
 }
 
-#[derive(
-    Copy, Clone, Default, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
-)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr)]
 #[strum(serialize_all = "title_case")]
 pub enum Event {
     #[default]
@@ -157,7 +149,6 @@ pub enum Event {
     MovePieceRook,
     MovePieceQueen,
     MovePieceKing,
-
 
     // MoveStart,
     #[strum(message = "Move type")]
@@ -407,7 +398,6 @@ impl Default for SearchType {
     }
 }
 
-
 impl fmt::Display for SearchType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use bitflags::parser::to_writer;
@@ -500,9 +490,7 @@ impl Node {
 
     // cases when zw and fw are actually the same
     pub fn is_fw_equal_zw(&self) -> bool {
-        self.alpha.is_numeric()
-            && self.beta.is_numeric()
-            && self.alpha.as_i16() + 1 == self.beta.as_i16()
+        self.alpha.is_numeric() && self.beta.is_numeric() && self.alpha.as_i16() + 1 == self.beta.as_i16()
     }
 
     #[inline]

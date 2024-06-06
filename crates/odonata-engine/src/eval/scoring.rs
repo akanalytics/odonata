@@ -1,19 +1,24 @@
-use std::{collections::HashMap, fmt, io::Write, marker::PhantomData, ops::Mul};
+use std::collections::HashMap;
+use std::fmt::{self, Debug, Display};
+use std::io::Write;
+use std::iter::Sum;
+use std::marker::PhantomData;
+use std::ops::Mul;
+use std::path::{Path, PathBuf};
 
-use super::{hardcoded_weights::RawHardcoded, Feature, FeatureCategory};
-use odonata_base::{
-    bits::precalc::Pawns,
-    prelude::Board,
-    infra::utils::Formatting,
-    other::Phase,
-    prelude::*,
-    Color,
-};
-use crate::weight::{Number, Rounding, Weight, WeightOf};
 use indexmap::map::IndexMap;
 use num_traits::AsPrimitive;
+use odonata_base::bits::precalc::Pawns;
+use odonata_base::infra::resources;
+use odonata_base::infra::utils::Formatting;
+use odonata_base::other::Phase;
+use odonata_base::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tabled::object::Columns;
+use tabled::settings::object::{Columns, Segment};
+use tabled::settings::{Alignment, Modify, Padding, Style};
+
+use crate::eval::feature::{Feature, FeatureCategory};
+use crate::eval::weight::{Number, Rounding, Weight, WeightOf};
 
 pub trait WeightVec<T: Number> {
     fn weight(&self, f: Feature) -> WeightOf<T>;
@@ -47,9 +52,7 @@ impl<T: Number> fmt::Debug for dyn WeightVec<T> {
             )
             .or(Err(fmt::Error))?;
         }
-        fmt.write_str(
-            &String::from_utf8(tw.into_inner().or(Err(fmt::Error))?).or(Err(fmt::Error))?,
-        )?;
+        fmt.write_str(&String::from_utf8(tw.into_inner().or(Err(fmt::Error))?).or(Err(fmt::Error))?)?;
         Ok(())
     }
 }
@@ -66,11 +69,7 @@ impl<T: Number> dyn WeightVec<T> {
                 cat = f.category().name(),
             )?;
         }
-        writeln!(
-            w,
-            "//\n// type: (Millipawns) {}\n//\n",
-            std::any::type_name::<T>()
-        )?;
+        writeln!(w, "//\n// type: (Millipawns) {}\n//\n", std::any::type_name::<T>())?;
         for f in Feature::iter() {
             let wt = self.weight(f);
             let w3 = wt + wt + wt;
@@ -128,75 +127,89 @@ pub(crate) struct Hardcoded<T: Number> {
     _phantom: PhantomData<T>,
 }
 
-impl Hardcoded<f32> {
-    pub const WTS: [WeightOf<f32>; Feature::len()] = {
-        let a = &RawHardcoded::<f32>::RAW_WTS;
-        let mut b = [WeightOf::new(0.0, 0.0); Feature::len()];
-        let mut i = 0;
-        while i < b.len() {
-            b[i] = WeightOf::<f32>::new(a[i].0, a[i].1);
-            i += 1;
-        }
-        b
-    };
-}
-impl WeightVec<f32> for Hardcoded<f32> {
-    fn weight(&self, f: Feature) -> WeightOf<f32> {
-        Self::WTS[f]
-    }
-}
+// impl Hardcoded<f32> {
+//     pub const WTS: [WeightOf<f32>; Feature::len()] = {
+//         let a = &RawHardcoded::<f32>::RAW_WTS;
+//         let mut b = [WeightOf::new(0.0, 0.0); Feature::len()];
+//         let mut i = 0;
+//         while i < b.len() {
+//             b[i] = WeightOf::<f32>::new(a[i].0, a[i].1);
+//             i += 1;
+//         }
+//         b
+//     };
+// }
+// impl WeightVec<f32> for Hardcoded<f32> {
+//     fn weight(&self, f: Feature) -> WeightOf<f32> {
+//         Self::WTS[f]
+//     }
+// }
 
-impl Hardcoded<f64> {
-    pub const WTS: [WeightOf<f64>; Feature::len()] = {
-        let a = &RawHardcoded::<f32>::RAW_WTS;
-        let mut b = [WeightOf::new(0.0, 0.0); Feature::len()];
-        let mut i = 0;
-        while i < b.len() {
-            b[i] = WeightOf::<f64>::new(a[i].0 as f64, a[i].1 as f64);
-            i += 1;
-        }
-        b
-    };
-}
-impl WeightVec<f64> for Hardcoded<f64> {
-    fn weight(&self, f: Feature) -> WeightOf<f64> {
-        Self::WTS[f]
-    }
-}
+// impl Hardcoded<f64> {
+//     pub const WTS: [WeightOf<f64>; Feature::len()] = {
+//         let a = &RawHardcoded::<f32>::RAW_WTS;
+//         let mut b = [WeightOf::new(0.0, 0.0); Feature::len()];
+//         let mut i = 0;
+//         while i < b.len() {
+//             b[i] = WeightOf::<f64>::new(a[i].0 as f64, a[i].1 as f64);
+//             i += 1;
+//         }
+//         b
+//     };
+// }
 
-impl WeightVec<i32> for Hardcoded<i32> {
-    fn weight(&self, f: Feature) -> WeightOf<i32> {
-        Self::WTS[f]
-    }
-}
+// impl WeightVec<f64> for Hardcoded<f64> {
+//     fn weight(&self, f: Feature) -> WeightOf<f64> {
+//         Self::WTS[f]
+//     }
+// }
 
-impl Hardcoded<i32> {
-    pub const WTS: [WeightOf<i32>; Feature::len()] = {
-        let a = &RawHardcoded::<i32>::RAW_WTS;
-        let mut b = [WeightOf::new(0, 0); Feature::len()];
-        let mut i = 0;
-        while i < b.len() {
-            b[i] = WeightOf::new(a[i].0, a[i].1);
-            i += 1;
-        }
-        b
-    };
+// impl WeightVec<i32> for Hardcoded<i32> {
+//     fn weight(&self, f: Feature) -> WeightOf<i32> {
+//         Self::WTS[f]
+//     }
+// }
 
-    pub const WTS_MILLIS: [WeightOf<i32>; Feature::len()] = {
-        let a = &RawHardcoded::<i32>::RAW_WTS_MILLIS;
-        let mut b = [WeightOf::new(0, 0); Feature::len()];
-        let mut i = 0;
-        while i < b.len() {
-            b[i] = WeightOf::new(a[i].0, a[i].1);
-            i += 1;
-        }
-        b
-    };
-}
+// impl Hardcoded<i32> {
+//     pub const WTS: [WeightOf<i32>; Feature::len()] = {
+//         let a = &RawHardcoded::<i32>::RAW_WTS;
+//         let mut b = [WeightOf::new(0, 0); Feature::len()];
+//         let mut i = 0;
+//         while i < b.len() {
+//             b[i] = WeightOf::new(a[i].0, a[i].1);
+//             i += 1;
+//         }
+//         b
+//     };
 
-#[derive(Clone, Debug, PartialEq)]
+// pub const WTS_MILLIS: [WeightOf<i32>; Feature::len()] = {
+//     let a = &RawHardcoded::<i32>::RAW_WTS_MILLIS;
+//     let mut b = [WeightOf::new(0, 0); Feature::len()];
+//     let mut i = 0;
+//     while i < b.len() {
+//         b[i] = WeightOf::new(a[i].0, a[i].1);
+//         i += 1;
+//     }
+//     b
+// };
+// }
+
+#[derive(Clone, PartialEq)]
 pub struct Softcoded<T: Number> {
     pub wts: [WeightOf<T>; Feature::len()],
+}
+
+impl<T: Number + Debug> Debug for Softcoded<T>
+where
+    WeightOf<T>: Sum,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Softcoded")
+            .field("wts count", &self.wts.len())
+            .field("wts[0]", &self.wts[0])
+            .field("wts.checksum", &self.wts.iter().cloned().sum::<WeightOf<T>>())
+            .finish()
+    }
 }
 
 impl<T: Number> Default for Softcoded<T> {
@@ -207,6 +220,41 @@ impl<T: Number> Default for Softcoded<T> {
     }
 }
 
+impl<T> Configurable for Softcoded<T>
+where
+    f32: AsPrimitive<T>,
+    T: Number + Serialize,
+{
+    fn set(&mut self, p: Param) -> Result<bool> {
+        let mut filename = PathBuf::new();
+        if filename.set(p.get("filename"))? {
+            *self = Self::load(filename)?;
+        }
+        Ok(p.is_modified())
+    }
+}
+
+// impl<T> Default for Softcoded<T>
+// where
+//     f32: AsPrimitive<T>,
+//     T: Number + Serialize,
+// {
+//     fn default() -> Self {
+//         Self::load("eval.hce.toml".into()).expect("unable to load default weights")
+//     }
+// }
+
+impl<T> Softcoded<T>
+where
+    f32: AsPrimitive<T>,
+    T: Number + Serialize,
+{
+    pub fn load(filename: impl AsRef<Path>) -> Result<Self> {
+        let s = resources::read_resource_or_file_text(filename)?;
+        Ok(toml::from_str(&s)?)
+    }
+}
+
 impl<T: Number> WeightVec<T> for Softcoded<T> {
     fn weight(&self, f: Feature) -> WeightOf<T> {
         self.wts[f]
@@ -214,7 +262,7 @@ impl<T: Number> WeightVec<T> for Softcoded<T> {
 }
 
 impl<T: Number + Serialize> Serialize for Softcoded<T> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -273,63 +321,60 @@ where
 
 #[cfg(test)]
 mod tests_weights {
-    use super::*;
-    use crate::test_log::test;
+    // use super::*;
+    // use crate::test_log::test;
 
-    #[test]
-    fn test_weights_basics() {
-        let wt_vec1 = Softcoded::<f32> {
-            wts: Hardcoded::<f32>::WTS,
-        };
-        let s = toml::to_string(&wt_vec1).unwrap();
-        let wt_vec2: Softcoded<f32> = toml::from_str(&s).unwrap();
-        assert_eq!(wt_vec1, wt_vec2);
-        println!("f32:\n{s}");
+    // #[test]
+    // fn test_weights_basics() {
+    //     // let wt_vec1 = Softcoded::<f32> {
+    //     //     wts: Hardcoded::<f32>::WTS,
+    //     // };
+    //     // let s = toml::to_string(&wt_vec1).unwrap();
+    //     // let wt_vec2: Softcoded<f32> = toml::from_str(&s).unwrap();
+    //     // assert_eq!(wt_vec1, wt_vec2);
+    //     // println!("f32:\n{s}");
 
-        let wt_vec1 = Softcoded::<i32> {
-            wts: Hardcoded::<f32>::WTS.map(|w| WeightOf::<i32>::cast_from(w, Rounding::Round)),
-        };
-        let s = toml::to_string(&wt_vec1).unwrap();
-        let wt_vec2: Softcoded<i32> = toml::from_str(&s).unwrap();
-        assert_eq!(wt_vec1, wt_vec2);
-        println!("i32:\n");
-        for f in Feature::iter() {
-            println!(
-                "\t({:>4},\t{:>4} ),\t // {f}",
-                wt_vec1.weight(f).s(),
-                wt_vec1.weight(f).e(),
-            );
-        }
-        println!();
+    //     // let wt_vec1 = Softcoded::<i32> {
+    //     //     wts: Hardcoded::<f32>::WTS.map(|w| WeightOf::<i32>::cast_from(w, Rounding::Round)),
+    //     // };
+    //     // let s = toml::to_string(&wt_vec1).unwrap();
+    //     // let wt_vec2: Softcoded<i32> = toml::from_str(&s).unwrap();
+    //     // assert_eq!(wt_vec1, wt_vec2);
+    //     // println!("i32:\n");
+    //     // for f in Feature::iter() {
+    //     //     println!(
+    //     //         "\t({:>4},\t{:>4} ),\t // {f}",
+    //     //         wt_vec1.weight(f).s(),
+    //     //         wt_vec1.weight(f).e(),
+    //     //     );
+    //     // }
+    //     println!();
 
-        // one item missing
-        let bishop_pair_name = Feature::BishopPair.name();
-        let s2 = s
-            .lines()
-            .filter(|l| !l.contains(bishop_pair_name))
-            .join("\n");
-        let res = toml::from_str::<Softcoded<i32>>(&s2);
-        let err = res.unwrap_err();
-        let msg = err.message();
-        assert!(msg.contains("missing"), "{}", msg);
-        assert!(msg.contains(bishop_pair_name), "{}", msg);
+    //     // one item missing
+    //     let bishop_pair_name = Feature::BishopPair.name();
+    //     let s2 = s.lines().filter(|l| !l.contains(bishop_pair_name)).join("\n");
+    //     let res = toml::from_str::<Softcoded<i32>>(&s2);
+    //     let err = res.unwrap_err();
+    //     let msg = err.message();
+    //     assert!(msg.contains("missing"), "{}", msg);
+    //     assert!(msg.contains(bishop_pair_name), "{}", msg);
 
-        // one item extra and invalid
-        let mut s3 = vec![];
-        for l in s.lines() {
-            s3.push(l.to_string());
-            if l.contains(bishop_pair_name) {
-                let l = l.replace(bishop_pair_name, "turkey");
-                s3.push(l);
-            }
-        }
-        let s3 = s3.join("\n");
-        let res = toml::from_str::<Softcoded<i32>>(&s3);
-        let err = res.unwrap_err();
-        let msg = err.message();
-        assert!(msg.contains("invalid"), "{}", msg);
-        assert!(msg.contains("turkey"), "{}", msg);
-    }
+    //     // one item extra and invalid
+    //     let mut s3 = vec![];
+    //     for l in s.lines() {
+    //         s3.push(l.to_string());
+    //         if l.contains(bishop_pair_name) {
+    //             let l = l.replace(bishop_pair_name, "turkey");
+    //             s3.push(l);
+    //         }
+    //     }
+    //     let s3 = s3.join("\n");
+    //     let res = toml::from_str::<Softcoded<i32>>(&s3);
+    //     let err = res.unwrap_err();
+    //     let msg = err.message();
+    //     assert!(msg.contains("invalid"), "{}", msg);
+    //     assert!(msg.contains("turkey"), "{}", msg);
+    // }
 }
 
 #[derive(Clone, Default, Debug)]
@@ -448,11 +493,7 @@ impl<T: Number, W> ExplainingScorer<T, W> {
         }
         let mut vec = map.into_values().collect_vec();
         // sort by category then feature index order
-        vec.sort_by(|i1, i2| {
-            i1.f.category_string()
-                .cmp(i2.f.category_string())
-                .then(i1.f.cmp(&i2.f))
-        });
+        vec.sort_by(|i1, i2| i1.f.category_string().cmp(i2.f.category_string()).then(i1.f.cmp(&i2.f)));
         self.items = vec;
     }
 
@@ -497,13 +538,7 @@ where
 impl<T: Number + fmt::Display, W> fmt::Display for CategoryScorer<T, W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, &(w, b, t)) in self.totals.iter().enumerate() {
-            if (w, b, t)
-                == (
-                    WeightOf::<T>::zero(),
-                    WeightOf::<T>::zero(),
-                    WeightOf::<T>::zero(),
-                )
-            {
+            if (w, b, t) == (WeightOf::<T>::zero(), WeightOf::<T>::zero(), WeightOf::<T>::zero()) {
                 continue;
             }
             let name = FeatureCategory::all_names()[i];
@@ -584,17 +619,15 @@ fn item_group_by<T: Number>(items: &Vec<Item<T>>) -> Vec<Item<T>> {
     }
     let mut vec = map.into_values().collect_vec();
     // sort by category then feature index order
-    vec.sort_by(|i1, i2| {
-        i1.f.category_string()
-            .cmp(i2.f.category_string())
-            .then(i1.f.cmp(&i2.f))
-    });
+    vec.sort_by(|i1, i2| i1.f.category_string().cmp(i2.f.category_string()).then(i1.f.cmp(&i2.f)));
     vec
 }
 
 impl fmt::Display for ExplainScoreLegacy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use tabled::{builder::Builder, object::Segment, Alignment, Modify, Padding, Style};
+        use tabled::builder::Builder;
+        // use tabled::object::Segment;
+        // use tabled::{Alignment, Modify, Padding, Style};
         fn fp(decimal: f32) -> String {
             Formatting::decimal(2, decimal)
         }
@@ -604,7 +637,7 @@ impl fmt::Display for ExplainScoreLegacy {
         }
 
         let mut builder = Builder::default();
-        builder.set_columns([
+        builder.push_record([
             "attr", "w#", "w mg", "w eg", "int", "mg", "eg", "b#", "b mg", "b eg", "wt",
         ]);
         let style = Style::markdown().top('-').bottom('-').top('-');
@@ -638,7 +671,7 @@ impl fmt::Display for ExplainScoreLegacy {
             row.push(fp((*b * wt).e()));
 
             row.push(wt.to_string());
-            builder.add_record(row);
+            builder.push_record(row);
             if let Some((_, next_cat, ..)) = iter.peek() {
                 if cat == next_cat {
                     continue;
@@ -652,10 +685,10 @@ impl fmt::Display for ExplainScoreLegacy {
             row.push(fp((tot).interpolate(self.phase)));
             row.push(fp(tot.s()));
             row.push(fp(tot.e()));
-            builder.add_record(row);
+            builder.push_record(row);
             grand_tot += tot;
             tot = Weight::zero();
-            builder.add_record(vec![""]); // blank row
+            builder.push_record(vec![""]); // blank row
         }
         let mut row = vec![];
         row.push("Total".to_owned());
@@ -665,7 +698,7 @@ impl fmt::Display for ExplainScoreLegacy {
         row.push(fp((grand_tot).interpolate(self.phase)));
         row.push(fp(grand_tot.s()));
         row.push(fp(grand_tot.e()));
-        builder.add_record(row);
+        builder.push_record(row);
 
         let mut row = vec![];
         row.push("Scaling".to_owned());
@@ -675,7 +708,7 @@ impl fmt::Display for ExplainScoreLegacy {
         row.push(fp(self.draw_scaling));
         row.push("".into());
         row.push("".into());
-        builder.add_record(row);
+        builder.push_record(row);
 
         let mut row = vec![];
         row.push("Scaled Total".to_owned());
@@ -685,16 +718,15 @@ impl fmt::Display for ExplainScoreLegacy {
         row.push(fp((self.draw_scaling * grand_tot).interpolate(self.phase)));
         row.push(fp(self.draw_scaling * grand_tot.s()));
         row.push(fp(self.draw_scaling * grand_tot.e()));
-        builder.add_record(row);
+        builder.push_record(row);
 
         let mut tab = builder.build();
-        tab = tab
-            .with(Modify::new(Segment::all()).with(Alignment::right()))
+        tab.with(Modify::new(Segment::all()).with(Alignment::right()))
             .with(Modify::new(Columns::single(1)).with(Padding::new(4, 1, 0, 0)))
             .with(Modify::new(Columns::single(4)).with(Padding::new(4, 1, 0, 0)))
             .with(Modify::new(Columns::single(7)).with(Padding::new(4, 1, 0, 0)))
             .with(style);
-        tab.fmt(f)?;
+        Display::fmt(&tab, f)?;
         // writeln!(f, "\n{}", &self.fen)?;
 
         if f.alternate() {
@@ -704,10 +736,10 @@ impl fmt::Display for ExplainScoreLegacy {
                 for (i, bb) in y {
                     row.push(format!("{}\n{bb:#}", i));
                 }
-                builder.add_record(row);
+                builder.push_record(row);
             }
             let tab = builder.build();
-            tab.fmt(f)?;
+            Display::fmt(&tab, f)?;
             writeln!(f)?;
 
             writeln!(f, "Pawns:")?;

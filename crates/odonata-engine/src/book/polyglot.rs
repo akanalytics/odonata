@@ -1,19 +1,17 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
+use std::fmt::Debug;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 use itertools::Itertools;
-use odonata_base::{
-    bits::{CastlingRights, Square},
-    infra::utils::file_open,
-    mv::{BareMove, Move},
-    piece::{Hash, Ply},
-    prelude::Board,
-    variation::Variation,
-    Color, Piece,
-};
-use std::fmt::Debug;
+use odonata_base::bits::{CastlingRights, Square};
+use odonata_base::infra::utils::file_open;
+use odonata_base::mv::{BareMove, Move};
+use odonata_base::piece::{Hash, Ply};
+use odonata_base::prelude::Board;
+use odonata_base::variation::Variation;
+use odonata_base::{Color, Piece};
+use serde::Deserializer;
 
 use crate::search::restrictions::Restrictions;
 
@@ -38,6 +36,36 @@ pub struct PolyglotEntry {
 #[derive(Clone, Default)]
 pub struct Polyglot {
     entries: Vec<PolyglotEntry>,
+}
+
+impl<'de> serde::Deserialize<'de> for Polyglot {
+    fn deserialize<D>(deserializer: D) -> Result<Polyglot, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ItemsVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ItemsVisitor {
+            type Value = Polyglot;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a sequence of items")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<Polyglot, V::Error>
+            where
+                V: serde::de::SeqAccess<'de>,
+            {
+                let mut poly = Polyglot::new();
+                while let Some(item) = seq.next_element::<String>()? {
+                    poly.load(item).map_err(serde::de::Error::custom)?;
+                }
+                Ok(poly)
+            }
+        }
+
+        deserializer.deserialize_seq(ItemsVisitor)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -161,7 +189,7 @@ impl<B: BufRead> PolyglotParser<B> {
 }
 
 impl PolyglotParser<BufReader<File>> {
-    pub fn new(filename: &str) -> anyhow::Result<Self> {
+    pub fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
         let f = file_open(filename)?;
         let reader = BufReader::new(f);
         Ok(PolyglotParser { buf: reader })
@@ -173,8 +201,8 @@ impl Polyglot {
         Self::default()
     }
 
-    pub fn load(&mut self, filename: &str) -> anyhow::Result<()> {
-        let vec = PolyglotParser::new(filename)?.try_collect()?;
+    pub fn load(&mut self, filename: impl AsRef<Path>) -> anyhow::Result<()> {
+        let vec = PolyglotParser::new(&filename)?.try_collect()?;
         self.entries.extend(vec);
         self.entries.sort_by_key(|entry| entry.hash);
         Ok(())
@@ -206,9 +234,7 @@ impl Polyglot {
         b: &'a Board,
         res: &'a Restrictions,
     ) -> impl Iterator<Item = &PolyglotEntry> + '_ {
-        self.find_matching(b, res)
-            .max_set_by_key(|ent| ent.weight)
-            .into_iter()
+        self.find_matching(b, res).max_set_by_key(|ent| ent.weight).into_iter()
     }
 
     pub fn perft(&self, init: &Board, res: &Restrictions, d: Ply, f: &mut impl FnMut(&Variation)) {
@@ -269,7 +295,8 @@ impl Polyglot {
     }
 
     fn offset_piece(c: Color, p: Piece, sq: Square) -> usize {
-        use odonata_base::{Color::*, Piece::*};
+        use odonata_base::Color::*;
+        use odonata_base::Piece::*;
 
         let kind_of_piece = match (c, p) {
             (Black, Pawn) => 0,
@@ -315,9 +342,7 @@ impl Polyglot {
         // Also note that it is irrelevant if the potential en passant capturing move is legal or not
         //  (examples where it would not be legal are when the capturing pawn is pinned or when
         //  the double pawn push was a discovered check).
-        let Some(sq) = bd.en_passant_square() else {
-            return None;
-        };
+        let sq = bd.en_passant_square()?;
         let them = bd.color_them();
         if (sq.as_bb().shift(them.pawn_capture_east()) | sq.as_bb().shift(them.pawn_capture_west()))
             .disjoint(bd.pawns() & bd.us())
@@ -542,14 +567,15 @@ static RANDOM64 : [u64;781] = [
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use itertools::Itertools;
     use std::io::Cursor;
+
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_polyglot_file() {
-        let polyglot_file = [env!("CARGO_MANIFEST_DIR"), "/../../books/gm2001.bin"].concat();
+        let polyglot_file = [env!("CARGO_MANIFEST_DIR"), "/../../ext/books/gm2001.bin"].concat();
         let parser = PolyglotParser::new(&polyglot_file).unwrap();
         let entries = parser.try_collect().unwrap();
         assert_eq!(entries.len(), 30416);
@@ -585,7 +611,7 @@ mod tests {
         let entries = polyglot.find_best_matching(&b, &res).collect_vec();
         assert_eq!(entries.len(), 1);
 
-        let polyglot_file = [env!("CARGO_MANIFEST_DIR"), "/../../books/komodo.bin"].concat();
+        let polyglot_file = [env!("CARGO_MANIFEST_DIR"), "/../../ext/books/komodo.bin"].concat();
         let parser = PolyglotParser::new(&polyglot_file).unwrap();
         let entries = parser.try_collect().unwrap();
         assert_eq!(entries.len(), 578126);
@@ -608,12 +634,10 @@ mod tests {
     #[test]
     fn test_polyglot_read() {
         let bytes1 = [
-            0x00, 0x00, 0x01, 0xbd, 0x9b, 0x3f, 0x9e, 0x07, 0x03, 0x55, 0x00, 0x01, 0x00, 0x00,
-            0x00, 0x00,
+            0x00, 0x00, 0x01, 0xbd, 0x9b, 0x3f, 0x9e, 0x07, 0x03, 0x55, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
         ];
         let bytes2 = [
-            0x00, 0x00, 0x06, 0xe8, 0x5f, 0x63, 0xef, 0x3f, 0x00, 0x94, 0x00, 0x02, 0x00, 0x00,
-            0x00, 0x00,
+            0x00, 0x00, 0x06, 0xe8, 0x5f, 0x63, 0xef, 0x3f, 0x00, 0x94, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
         ];
         let pge: PolyglotEntry = bytes1.into();
         assert_eq!(pge.hash, 0x000001bd9b3f9e07); // 1913865084423
@@ -641,8 +665,18 @@ mod tests {
     }
 
     #[test]
+    fn test_polyglot_serde() {
+        let file1 = [env!("CARGO_MANIFEST_DIR"), "/../../ext/books/gm2001.bin"].concat();
+        let file2 = [env!("CARGO_MANIFEST_DIR"), "/../../ext/books/komodo.bin"].concat();
+        let s = format!("[ \"{file1}\", \"{file2}\" ]");
+        // let s = format!("[  \"{file1}\" ]");
+        let poly: Polyglot = serde_json::from_str(&s).unwrap();
+        assert_eq!(poly.entries.len(), 30416 + 578126);
+    }
+
+    #[test]
     fn test_polyglot_perft() {
-        let polyglot_file = [env!("CARGO_MANIFEST_DIR"), "/../../books/gm2001.bin"].concat();
+        let polyglot_file = [env!("CARGO_MANIFEST_DIR"), "/../../ext/books/gm2001.bin"].concat();
         let mut polyglot = Polyglot::new();
         polyglot.load(&polyglot_file).unwrap();
         let b = Board::starting_pos();
@@ -661,6 +695,25 @@ mod tests {
         });
         println!("count: {count}  max_ply: {max_ply} ");
         assert_eq!(count, 36184);
+
+        let mut vars = Vec::new();
+        polyglot.perft(&b, &res, 10, &mut |var| vars.push(var.clone()));
+        vars.retain(|var| var.len() >= 5);
+        assert_eq!(vars.len(), 35659);
+    }
+
+    #[test]
+    fn test_polyglot_perft2() {
+        let res = Restrictions::none();
+        let b = Board::starting_pos();
+        let mut polyglot2 = Polyglot::new();
+        let mut vars2 = Vec::new();
+        let file2 = [env!("CARGO_MANIFEST_DIR"), "/../../ext/books/baron30.bin"].concat();
+        polyglot2.load(&file2).unwrap();
+        assert_eq!(polyglot2.entries.len(), 163141);
+        polyglot2.perft(&b, &res, 14, &mut |var| vars2.push(var.clone()));
+        vars2.retain(|var| var.len() >= 2);
+        assert_eq!(vars2.len(), 433);
     }
 
     #[test]

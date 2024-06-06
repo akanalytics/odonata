@@ -1,18 +1,16 @@
-use crate::{
-    domain::score::{Score, ToScore},
-    mv::Move,
-    other::Parse,
-    piece::{Color, Piece, MAX_LEGAL_MOVES},
-    prelude::{Board, *},
-    variation::{MultiVariation, Variation},
-};
-use anyhow::{anyhow, Result};
+use std::fmt;
+
+use anyhow::anyhow;
 use arrayvec::ArrayVec;
-use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+
+use crate::domain::score::ToScore;
+use crate::other::Parse;
+use crate::piece::MAX_LEGAL_MOVES;
+use crate::prelude::*;
+use crate::variation::MultiVariation;
 
 // // moves: ArrayVec<Move,128>,
 // // moves: ArrayVec::new(),
@@ -182,9 +180,6 @@ pub struct ScoredMoveList {
     pub moves: Vec<(Move, Score)>,
 }
 
-
-
-
 // using first moves
 impl From<MultiVariation> for ScoredMoveList {
     fn from(value: MultiVariation) -> Self {
@@ -267,7 +262,7 @@ impl ScoredMoveList {
         for smv in s.split_ascii_whitespace() {
             if let Some((before, after)) = smv.split_once(':') {
                 let mv = b.parse_san_move(before)?;
-                let score = Score::parse_pgn(after)?;
+                let score = Score::parse_pgn_pawn_value(after)?;
                 moves.push(mv, score);
             } else {
                 anyhow::bail!("Unable to parse scored move '{smv}' in '{s}'");
@@ -300,9 +295,10 @@ impl ScoredMoveList {
 
 #[cfg(test)]
 mod tests_smv {
+    use test_log::test;
+
     use super::*;
     use crate::catalog::Catalog;
-    use test_log::test;
 
     #[test]
     fn test_scoredmovelist() {
@@ -482,10 +478,7 @@ impl MoveList {
     }
 
     pub fn to_uci(&self) -> String {
-        self.iter()
-            .map(|mv| mv.to_uci())
-            .collect::<Vec<String>>()
-            .join(" ")
+        self.iter().map(|mv| mv.to_uci()).collect::<Vec<String>>().join(" ")
     }
 
     pub fn to_san(&self, b: &Board) -> String {
@@ -667,10 +660,7 @@ impl Board {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in var.moves().enumerate() {
-            debug_assert!(
-                mv.is_valid(&board),
-                "mv {mv} of var {var} is illegal for board {board}",
-            );
+            debug_assert!(mv.is_valid(&board), "mv {mv} of var {var} is illegal for board {board}",);
             if false {
                 if i % 2 == 0 {
                     if i != 0 {
@@ -711,43 +701,46 @@ pub fn strip_move_numbers(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{catalog::Catalog, globals::constants::*};
     use test_log::test;
+
+    use super::*;
+    use crate::catalog::Catalog;
 
     #[test]
     fn test_movelist() -> Result<()> {
-        let move_a1b2 = Move::new_quiet(Piece::Bishop, a1.square(), b2.square());
-        let promo_a7a8 = Move::new_promo(a7.square(), a8.square(), Piece::Queen);
+        let board = Catalog::starting_board();
+
+        let move_c1d3 = Move::new_quiet(Piece::Bishop, Square::C1, Square::D3, &board);
+        let promo_a7a8 = Move::new_promo(Square::A7, Square::A8, Piece::Queen, &board);
 
         let mut moves = MoveList::new();
         assert_eq!(moves.iter().count(), 0);
-        moves.push(move_a1b2);
+        moves.push(move_c1d3);
         assert_eq!(moves.contains(&promo_a7a8), false);
         moves.reverse();
         assert_eq!(moves.iter().count(), 1);
 
         moves.push(promo_a7a8);
-        assert_eq!(moves.contains(&move_a1b2), true);
+        assert_eq!(moves.contains(&move_c1d3), true);
 
-        assert_eq!(moves.to_string(), "a1b2, a7a8q");
+        assert_eq!(moves.to_string(), "c1d3, a7a8q");
 
         let mut moves = Variation::new();
-        moves.set_last_move(1, move_a1b2);
-        assert_eq!(moves.to_string(), "a1b2");
+        moves.set_last_move(1, move_c1d3);
+        assert_eq!(moves.to_string(), "c1d3");
         moves.set_last_move(1, promo_a7a8);
         assert_eq!(moves.to_string(), "a7a8q");
 
         moves.set_last_move(0, promo_a7a8);
         assert_eq!(moves.to_string(), "");
 
-        moves.set_last_move(1, move_a1b2);
+        moves.set_last_move(1, move_c1d3);
         moves.set_last_move(2, promo_a7a8);
-        assert_eq!(moves.to_string(), "a1b2.a7a8q");
+        assert_eq!(moves.to_string(), "c1d3.a7a8q");
 
         moves.set_last_move(0, promo_a7a8);
-        moves.set_last_move(2, move_a1b2);
-        assert_eq!(moves.to_string(), "a1b2.a1b2");
+        moves.set_last_move(2, move_c1d3);
+        assert_eq!(moves.to_string(), "c1d3.c1d3");
 
         let s = strip_move_numbers("1. .. c4c5 2. c6c7 3.");
         assert_eq!(s, "c4c5 c6c7 ");
@@ -757,8 +750,6 @@ mod tests {
 
         let s = strip_move_numbers("1. c1c2 c4c5 2. c6c7 3.");
         assert_eq!(s, "c1c2 c4c5 c6c7 ");
-
-        let board = Catalog::starting_board();
 
         let list = MoveList::parse_uci("a2a3, b2b3  c2c4  ", &board)?;
         assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
@@ -809,9 +800,7 @@ mod tests {
         let s2: String = strip_move_numbers(san).split_whitespace().collect();
         assert_eq!(s1, s2);
 
-        let board =
-            Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4")
-                .unwrap();
+        let board = Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
         println!("{}", board.legal_moves());
         let mv = board.parse_uci_move("g1f3")?;
         assert_eq!(board.to_san(mv), "Ngf3");

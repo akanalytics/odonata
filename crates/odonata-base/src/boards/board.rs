@@ -1,29 +1,20 @@
-use crate::{
-    bits::{
-        bitboard::{Bitboard, LazyBitboard},
-        castling::CastlingRights,
-        square::Square,
-    },
-    catalog::Catalog,
-    domain::Material,
-    infra::utils::ToStringOr,
-    mv::Move,
-    piece::{Color, Hash, Piece, Ply},
-};
-use anyhow::{bail, Context, Result};
+use std::fmt::{self, Write};
+use std::iter::*;
+use std::str::FromStr;
+
+use anyhow::bail;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{self, Write},
-    iter::*,
-    str::FromStr,
-};
 
 use super::hasher::Hasher;
-use crate::prelude::*;
-
 use super::BoardCalcs;
+use crate::bits::bitboard::LazyBitboard;
+use crate::bits::castling::CastlingRights;
+use crate::catalog::Catalog;
+use crate::domain::Material;
+use crate::infra::utils::ToStringOr;
+use crate::prelude::*;
 
 pub struct Var {
     moves:  Vec<Move>,
@@ -92,12 +83,17 @@ pub struct Board {
     pub(super) ply:             Ply,
     pub(super) castling:        CastlingRights,
     pub(super) en_passant:      Option<Square>,
-    pub(super) half_move_clock: u16,
+    pub(super) halfmove_clock:  u16,
     pub(super) threats_to:      [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) checkers_of:     [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) pinned:          [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
     pub(super) discoverer:      [LazyBitboard<{ Bitboard::ALL.bits() }>; Color::len()],
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct BoardBuilder(Board);
+
+// const ASSERT2: () = assert!(std::mem::size_of::<Board>() == 152);
 
 impl PartialEq for Board {
     fn eq(&self, other: &Self) -> bool {
@@ -109,7 +105,7 @@ impl PartialEq for Board {
             && self.ply == other.ply
             && self.castling == other.castling
             && self.en_passant == other.en_passant
-            && self.half_move_clock == other.half_move_clock
+            && self.halfmove_clock == other.halfmove_clock
         // && self.threats_to == other.threats_to
         // && self.checkers_of == other.checkers_of
         // && self.pinned == other.pinned
@@ -135,7 +131,7 @@ impl Default for Board {
             en_passant:      None,
             turn:            Default::default(),
             ply:             0,
-            half_move_clock: 0,
+            halfmove_clock:  0,
             fullmove_number: 1,
             threats_to:      Default::default(),
             checkers_of:     Default::default(),
@@ -150,9 +146,7 @@ impl Default for Board {
 
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Board")
-            .field("fen", &self.to_fen())
-            .finish()
+        f.debug_struct("Board").field("fen", &self.to_fen()).finish()
     }
 }
 
@@ -161,6 +155,107 @@ impl FromStr for Board {
 
     fn from_str(s: &str) -> Result<Self> {
         Board::parse_fen(s)
+    }
+}
+
+impl BoardBuilder {
+    pub fn try_build(mut self) -> Result<Board> {
+        self.0.calculate_internals();
+        self.0.validate()?;
+        Ok(self.0)
+    }
+
+    /// may panic or crate an invalid board - use try_build if unsure
+    #[inline]
+    pub fn build(mut self) -> Board {
+        self.0.calculate_internals();
+        self.0
+    }
+
+    pub fn set_castling(&mut self, castling: CastlingRights) {
+        self.0.castling = castling;
+    }
+
+    pub fn set_ep_square(&mut self, ep: Option<Square>) {
+        self.0.en_passant = ep;
+    }
+
+    pub fn set_turn(&mut self, turn: Color) {
+        self.0.turn = turn;
+    }
+
+    pub fn set_fullmove_number(&mut self, fmvn: u16) {
+        self.0.fullmove_number = fmvn;
+    }
+
+    pub fn set_halfmove_clock(&mut self, hmvc: u16) {
+        self.0.halfmove_clock = hmvc;
+    }
+
+    /// clears and adds a a piece
+    pub fn set_piece(&mut self, sq: Square, pc: Option<(Piece, Color)>) {
+        let bb = sq.as_bb();
+        self.0.colors[Color::White].remove(bb);
+        self.0.colors[Color::Black].remove(bb);
+        self.0.pieces[Piece::Pawn].remove(bb);
+        self.0.pieces[Piece::Knight].remove(bb);
+        self.0.pieces[Piece::Bishop].remove(bb);
+        self.0.pieces[Piece::Rook].remove(bb);
+        self.0.pieces[Piece::Queen].remove(bb);
+        self.0.pieces[Piece::King].remove(bb);
+        if let Some((p, c)) = pc {
+            self.add_piece(sq, p, c);
+        }
+    }
+
+    /// will not clear other pieces on this square. explicitly remove them first if required
+    #[inline]
+    pub fn add_piece(&mut self, sq: Square, p: Piece, c: Color) {
+        let bb = sq.as_bb();
+        self.0.colors[c].insert(bb);
+        self.0.pieces[p].insert(bb);
+    }
+
+    /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
+    /// terminology of "piece placement data" from http://kirill-kryukov.com/chess/doc/fen.html
+    pub fn parse_piece_placement(fen: &str) -> Result<Self> {
+        let mut pos = String::from(fen);
+        for i in 1..=8 {
+            pos = pos.replace(i.to_string().as_str(), " ".repeat(i).as_str());
+        }
+        // pos.retain(|ch| "pPRrNnBbQqKk ".contains(ch));
+        let r: Vec<&str> = pos.rsplit('/').collect();
+        if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
+            bail!("expected 8 ranks of 8 pieces in fen {}", fen);
+        }
+        let mut bb = Board::builder();
+        bb.set(Bitboard::all(), &r.concat())?;
+        Ok(bb)
+    }
+
+    pub fn clear(&mut self, bb: Bitboard) {
+        for sq in (self.0.occupied() & bb).squares() {
+            self.set_piece(sq, None);
+        }
+    }
+
+    pub fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<()> {
+        if bb.popcount() != pieces.chars().count() as i32 {
+            bail!("Bitboard {} and pieces {} have different counts", bb, pieces);
+        }
+        for (sq, ch) in bb.squares().zip(pieces.chars()) {
+            match ch {
+                '.' | ' ' => {
+                    self.set_piece(sq, None);
+                }
+                _ => {
+                    let p = Piece::from_char(ch)?;
+                    let c = Color::from_piece_char(ch)?;
+                    self.set_piece(sq, Some((p, c)));
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -180,6 +275,14 @@ impl Board {
     /// white to move, no castling rights or en passant
     pub fn new_empty() -> Board {
         Default::default()
+    }
+
+    pub fn builder() -> BoardBuilder {
+        BoardBuilder(Self::default())
+    }
+
+    pub fn into_builder(self) -> BoardBuilder {
+        BoardBuilder(self)
     }
 
     pub fn starting_pos() -> Self {
@@ -243,6 +346,20 @@ impl Board {
     }
 
     #[inline]
+    pub fn king(&self, king_color: Color) -> Square {
+        (self.pieces(Piece::King) & self.color(king_color))
+            .find_first_square()
+            .expect("no king found")
+    }
+
+    #[inline]
+    pub fn our_king(&self) -> Square {
+        (self.pieces(Piece::King) & self.us())
+            .find_first_square()
+            .expect("no king found")
+    }
+
+    #[inline]
     pub fn kings(&self) -> Bitboard {
         self.pieces(Piece::King)
     }
@@ -287,13 +404,20 @@ impl Board {
 
     #[inline]
     pub fn piece_unchecked(&self, sq: Square) -> Piece {
-        self.piece(sq)
-            .unwrap_or_else(|| panic!("No piece found on {} of {} ", sq, self.to_fen()))
+        match sq {
+            _ if sq.is_in(self.pawns()) => Piece::Pawn,
+            _ if sq.is_in(self.knights()) => Piece::Knight,
+            _ if sq.is_in(self.bishops()) => Piece::Bishop,
+            _ if sq.is_in(self.rooks()) => Piece::Rook,
+            _ if sq.is_in(self.queens()) => Piece::Queen,
+            _ if sq.is_in(self.kings()) => Piece::King,
+            _ => panic!("No piece found for sq {sq} on {self}"),
+        }
     }
 
-    pub fn remove_piece(&mut self, sq: Bitboard, p: Piece, c: Color) {
-        self.pieces[p].remove(sq);
-        self.colors[c].remove(sq);
+    pub fn toggle_piece(&mut self, sq: Bitboard, p: Piece, c: Color) {
+        self.pieces[p] ^= sq;
+        self.colors[c] ^= sq;
     }
 
     pub fn move_piece(&mut self, from_sq: Bitboard, to_sq: Bitboard, p: Piece, c: Color) {
@@ -302,9 +426,27 @@ impl Board {
     }
 
     pub fn change_piece(&mut self, sq: Bitboard, from: Piece, to: Piece) {
-        self.pieces[from].remove(sq);
-        self.pieces[to].insert(sq);
+        self.pieces[from] ^= sq;
+        self.pieces[to] ^= sq;
     }
+
+    // pub fn toggle_piece(&mut self, sq: Square, p: Piece, c: Color) {
+    //     let bb = sq.as_bb();
+    //     self.pieces[p] ^= bb;
+    //     self.colors[c] ^= bb;
+    // }
+
+    // pub fn move_piece(&mut self, from_sq: Square, to_sq: Square, p: Piece, c: Color) {
+    //     let bb = from_sq.as_bb()| to_sq.as_bb();
+    //     self.pieces[p] ^= bb;
+    //     self.colors[c] ^= bb;
+    // }
+
+    // pub fn change_piece(&mut self, sq: Square, from: Piece, to: Piece) {
+    //     let bb = sq.as_bb();
+    //     self.pieces[from] ^= bb;
+    //     self.pieces[to] ^= bb;
+    // }
 
     pub fn set_piece_at(&mut self, sq: Square, p: Option<Piece>) {
         for bb in self.pieces.iter_mut() {
@@ -317,13 +459,14 @@ impl Board {
         self.calculate_internals();
     }
 
-    pub fn set_color_at(&mut self, sq: Bitboard, c: Option<Color>) {
+    pub fn set_color_at(&mut self, sq: Square, c: Option<Color>) {
+        let bb = sq.as_bb();
         if let Some(c) = c {
-            self.colors[c.flip_side()].remove(sq);
-            self.colors[c].insert(sq);
+            self.colors[c.flip_side()].remove(bb);
+            self.colors[c].insert(bb);
         } else {
-            self.colors[Color::White].remove(sq);
-            self.colors[Color::Black].remove(sq);
+            self.colors[Color::White].remove(bb);
+            self.colors[Color::Black].remove(bb);
         }
         self.calculate_internals();
     }
@@ -395,7 +538,7 @@ impl Board {
 
     #[inline]
     pub fn halfmove_clock(&self) -> i32 {
-        self.half_move_clock.into()
+        self.halfmove_clock.into()
     }
 
     #[inline]
@@ -420,49 +563,48 @@ impl Board {
     }
 
     #[inline]
-    pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
+    pub fn least_valuable_piece(&self, region: Bitboard) -> Option<Square> {
         // cannot use b.turn as this flips during see!
         // the king is an attacker too!
-        let non_promo_pawns =
-            (self.pawns() & self.white() & region & (Bitboard::all().xor(Bitboard::RANK_7)))
-                | (self.pawns() & self.black() & region & (Bitboard::all().xor(Bitboard::RANK_2)));
+        let non_promo_pawns = (self.pawns() & self.white() & region & (Bitboard::all().xor(Bitboard::RANK_7)))
+            | (self.pawns() & self.black() & region & (Bitboard::all().xor(Bitboard::RANK_2)));
         if non_promo_pawns.any() {
-            return non_promo_pawns.first();
+            return non_promo_pawns.find_first_square();
         }
         let p = self.knights() & region;
         if p.any() {
-            return p.first();
+            return p.find_first_square();
         }
         let p = self.bishops() & region;
         if p.any() {
-            return p.first();
+            return p.find_first_square();
         }
         let p = self.rooks() & region;
         if p.any() {
-            return p.first();
+            return p.find_first_square();
         }
         let promo_pawns = (self.pawns() & region) - non_promo_pawns;
         if promo_pawns.any() {
-            return promo_pawns.first();
+            return promo_pawns.find_first_square();
         }
         let p = self.queens() & region;
         if p.any() {
-            return p.first();
+            return p.find_first_square();
         }
         let p = self.kings() & region;
         if p.any() {
-            return p.first();
+            return p.find_first_square();
         }
 
-        Bitboard::EMPTY
+        None
     }
 
     #[inline]
     pub fn most_valuable_piece_except_king(&self, region: Bitboard) -> Option<(Piece, Square)> {
         // we dont count the king here
         for &p in Piece::ALL_BAR_KING.iter().rev() {
-            if self.pieces(p).intersects(region) {
-                return Some((p, (self.pieces(p) & region).first_square()));
+            if let Some(square) = (self.pieces(p) & region).find_first_square() {
+                return Some((p, square));
             }
         }
         None
@@ -472,10 +614,7 @@ impl Board {
     /// flips vertical and changes color
     pub fn color_flip(&self) -> Board {
         let mut b = self.clone();
-        b.colors = [
-            self.colors[1].flip_vertical(),
-            self.colors[0].flip_vertical(),
-        ];
+        b.colors = [self.colors[1].flip_vertical(), self.colors[0].flip_vertical()];
         b.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical());
         b.turn = self.turn.flip_side();
         if let Some(sq) = b.en_passant {
@@ -568,15 +707,21 @@ impl Board {
 
     #[inline]
     pub fn all_attacks_on(&self, defender: Color) -> Bitboard {
-        self.threats_to[defender]
-            .get_or_init(|| BoardCalcs::all_attacks_on(self, defender, self.occupied()))
+        self.threats_to[defender].get_or_init(|| BoardCalcs::all_attacks_on(self, defender, self.occupied()))
     }
-
     pub fn has_legal_moves(&self) -> bool {
         let mut has_moves = false;
         self.legal_moves_with(|_mv| has_moves = true);
         has_moves
     }
+
+    // pub fn count_legal_moves(&self) -> usize {
+    //     let mut count_moves = 0;
+    //     self.legal_moves_general(Bitboard::all(), |_mk, _p, _sq, bb| {
+    //         count_moves += bb.popcount()
+    //     });
+    //     count_moves as usize
+    // }
 
     /// called with is_in_check( board.turn() ) to see if currently in check
     pub fn is_in_check(&self, king_color: Color) -> bool {
@@ -621,36 +766,12 @@ impl fmt::Display for Board {
                 )?;
             }
             writeln!(f, "En passant: {}\n", self.en_passant.to_string_or("-"))?;
-            writeln!(
-                f,
-                "Pinned on white king:\n{}\n",
-                self.pinned[Color::White].get()
-            )?;
-            writeln!(
-                f,
-                "Pinned on black king:\n{}\n",
-                self.pinned[Color::Black].get()
-            )?;
-            writeln!(
-                f,
-                "Checkers of white:\n{}\n",
-                self.checkers_of[Color::White].get()
-            )?;
-            writeln!(
-                f,
-                "Checkers of black:\n{}\n",
-                self.checkers_of[Color::Black].get()
-            )?;
-            writeln!(
-                f,
-                "Threats to white:\n{}\n",
-                self.threats_to[Color::White].get()
-            )?;
-            writeln!(
-                f,
-                "Threats to black:\n{}\n",
-                self.threats_to[Color::Black].get()
-            )?;
+            writeln!(f, "Pinned on white king:\n{}\n", self.pinned[Color::White].get())?;
+            writeln!(f, "Pinned on black king:\n{}\n", self.pinned[Color::Black].get())?;
+            writeln!(f, "Checkers of white:\n{}\n", self.checkers_of[Color::White].get())?;
+            writeln!(f, "Checkers of black:\n{}\n", self.checkers_of[Color::Black].get())?;
+            writeln!(f, "Threats to white:\n{}\n", self.threats_to[Color::White].get())?;
+            writeln!(f, "Threats to black:\n{}\n", self.threats_to[Color::Black].get())?;
         }
 
         Ok(())
@@ -679,7 +800,7 @@ impl Board {
     }
 
     pub fn set_halfmove_clock(&mut self, hmvc: i32) {
-        self.half_move_clock = hmvc as u16;
+        self.halfmove_clock = hmvc as u16;
         self.calculate_internals();
     }
 
@@ -694,7 +815,7 @@ impl Board {
     }
 
     #[inline]
-    fn color_of(&self, sq: Square) -> Option<Color> {
+    pub fn color_of(&self, sq: Square) -> Option<Color> {
         if sq.is_in(self.color(Color::White)) {
             return Some(Color::White);
         } else if sq.is_in(self.color(Color::Black)) {
@@ -721,32 +842,6 @@ impl Board {
             res.push(ch);
         }
         res
-    }
-
-    pub fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self> {
-        if bb.popcount() != pieces.chars().count() as i32 {
-            bail!(
-                "Bitboard {} and pieces {} have different counts",
-                bb,
-                pieces
-            );
-        }
-        for (sq, ch) in bb.squares().zip(pieces.chars()) {
-            match ch {
-                '.' | ' ' => {
-                    self.set_piece_at(sq, None);
-                    self.set_color_at(sq.as_bb(), None);
-                }
-                _ => {
-                    let p = Piece::from_char(ch)?;
-                    self.set_piece_at(sq, Some(p));
-                    let c = Color::from_piece_char(ch)?;
-                    self.set_color_at(sq.as_bb(), Some(c));
-                }
-            }
-        }
-        self.calculate_internals();
-        Ok(self)
     }
 
     // pub fn as_board(&self) -> Board {
@@ -794,24 +889,6 @@ impl Board {
         Ok(())
     }
 
-    /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
-    /// terminology of "piece placement data" from http://kirill-kryukov.com/chess/doc/fen.html
-    pub fn parse_piece_placement(fen: &str) -> Result<Self> {
-        let mut bb = Board::new_empty();
-        let mut pos = String::from(fen);
-        for i in 1..=8 {
-            pos = pos.replace(i.to_string().as_str(), " ".repeat(i).as_str());
-        }
-        // pos.retain(|ch| "pPRrNnBbQqKk ".contains(ch));
-        let r: Vec<&str> = pos.rsplit('/').collect();
-        if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
-            bail!("expected 8 ranks of 8 pieces in fen {}", fen);
-        }
-        bb.set(Bitboard::all(), &r.concat())?;
-        bb.calculate_internals();
-        Ok(bb)
-    }
-
     /// 0. Piece placement
     /// 1. Active color
     /// 2. Castling rights
@@ -823,23 +900,25 @@ impl Board {
         if words.len() < 6 {
             bail!("must specify at least 6 parts in epd/fen '{}'", fen);
         }
-        let mut bb = Self::parse_piece_placement(words[0])?;
-        bb.turn = Color::parse(words[1])?;
-        bb.castling = CastlingRights::parse(words[2])?;
-        bb.en_passant = if words[3] == "-" {
+        let mut bb = BoardBuilder::parse_piece_placement(words[0])?;
+        bb.set_turn(Color::parse(words[1])?);
+        bb.set_castling(CastlingRights::parse(words[2])?);
+        bb.set_ep_square(if words[3] == "-" {
             None
         } else {
             Some(Square::parse(words[3])?)
-        };
-        bb.half_move_clock = words[4]
-            .parse()
-            .with_context(|| format!("invalid halfmove clock '{}'", words[4]))?;
-        bb.fullmove_number = words[5]
-            .parse()
-            .with_context(|| format!("invalid fullmove count '{}'", words[5]))?;
-        bb.calculate_internals();
-        bb.validate()?;
-        Ok(bb)
+        });
+        bb.set_halfmove_clock(
+            words[4]
+                .parse()
+                .with_context(|| format!("invalid halfmove clock '{}'", words[4]))?,
+        );
+        bb.set_fullmove_number(
+            words[5]
+                .parse()
+                .with_context(|| format!("invalid fullmove count '{}'", words[5]))?,
+        );
+        bb.try_build()
     }
 
     pub fn parse_diagram(s: &str) -> Result<Self> {
@@ -852,15 +931,17 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{globals::constants::*, infra::profiler::PerfProfiler, other::Perft};
     use std::hint::black_box;
+
     use test_log::test;
+
+    use super::*;
+    use crate::infra::profiler::PerfProfiler;
+    use crate::other::Perft;
 
     #[test]
     fn test_serde() {
-        let board1 =
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         let s = serde_json::to_string(&board1).unwrap();
         let board2 = serde_json::from_str::<Board>(&s).unwrap();
         assert_eq!(board1, board2);
@@ -868,10 +949,8 @@ mod tests {
 
     #[test]
     fn test_color_flip() {
-        let board1 =
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        let board2 =
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
+        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let board2 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap();
         assert_eq!(
             board1.color_flip().to_fen(),
             board2.to_fen(),
@@ -881,12 +960,8 @@ mod tests {
         );
         assert_eq!(board2.color_flip().to_fen(), board1.to_fen());
 
-        let board1 =
-            Board::parse_fen("rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11")
-                .unwrap();
-        let board2 =
-            Board::parse_fen("2kr1b1r/Q1p1qppp/2p1pn2/2PpN3/3Pb3/4P3/PP3PPP/RNB1K2R w KQ - 1 11")
-                .unwrap();
+        let board1 = Board::parse_fen("rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11").unwrap();
+        let board2 = Board::parse_fen("2kr1b1r/Q1p1qppp/2p1pn2/2PpN3/3Pb3/4P3/PP3PPP/RNB1K2R w KQ - 1 11").unwrap();
         assert_eq!(
             board1.color_flip().to_fen(),
             board2.to_fen(),
@@ -913,16 +988,16 @@ mod tests {
     }
 
     #[test]
-    fn board_bitboards() -> Result<(), String> {
-        let board =
-            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+    fn board_bitboards() -> Result<()> {
+        use Square::*;
+        let board = BoardBuilder::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")?.build();
         assert_eq!(board.color_us(), Color::White);
         assert_eq!(board.color_them(), Color::Black);
         // assert_eq!(board.en_passant(), Bitboard::empty());
         // assert_eq!(board.move_count(), 0);
         assert_eq!(board.pawns() & board.us(), Bitboard::RANK_2);
-        assert_eq!(board.rooks() & board.them(), a8 | h8);
-        assert_eq!(board.bishops() & board.us(), c1 | f1);
+        assert_eq!(board.rooks() & board.them(), A8 | H8);
+        assert_eq!(board.bishops() & board.us(), C1 | F1);
         assert_eq!(board.them(), Bitboard::RANK_7 | Bitboard::RANK_8);
         Ok(())
     }
@@ -931,26 +1006,25 @@ mod tests {
     fn parse_piece() -> Result<()> {
         let fen1 = "1/1/7/8/8/8/PPPPPPPP/RNBQKBNR";
         assert_eq!(
-            Board::parse_piece_placement(fen1).unwrap_err().to_string(),
+            BoardBuilder::parse_piece_placement(fen1).unwrap_err().to_string(),
             "expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR"
         );
-        assert!(Board::parse_piece_placement("8")
+        assert!(BoardBuilder::parse_piece_placement("8")
             .unwrap_err()
             .to_string()
             .starts_with("expected 8"));
-        assert!(Board::parse_piece_placement("8/8")
+        assert!(BoardBuilder::parse_piece_placement("8/8")
             .unwrap_err()
             .to_string()
             .starts_with("expected 8"));
         assert_eq!(
-            Board::parse_piece_placement("X7/8/8/8/8/8/8/8")
+            BoardBuilder::parse_piece_placement("X7/8/8/8/8/8/8/8")
                 .unwrap_err()
                 .to_string(),
             "Unknown piece 'X'"
         );
-        let buf =
-            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
-        assert_eq!(buf.get(a1), "R");
+        let buf = BoardBuilder::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")?.build();
+        assert_eq!(buf.get(Bitboard::A1), "R");
         assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
         Ok(())
     }

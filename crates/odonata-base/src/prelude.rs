@@ -1,25 +1,20 @@
-pub use crate::infra::utils::{file_create, file_open};
-pub use anyhow::Context;
-pub use itertools::Itertools;
-
 use std::fmt;
 
-pub use crate::{
-    piece::Ply,
-    piece::Hash,
-    bits::Bitboard,
-    piece::Piece,
-    boards::board::Board,
-    domain::SearchOptions,
-    domain::score::Score,
-    mv::Move,
-    piece::{Color, FlipSide, FlipVertical},
-    domain::timecontrol::TimeControl,
-    variation::Variation,
-    MoveList,
-};
+pub use anyhow::{Context as _, Result};
+pub use itertools::Itertools;
 
-pub use anyhow::Result;
+pub use crate::bits::{Bitboard, Square};
+pub use crate::boards::board::Board;
+pub use crate::domain::score::{Score, ToScore as _};
+pub use crate::domain::timecontrol::TimeControl;
+pub use crate::domain::SearchOptions;
+pub use crate::infra::math::Math;
+pub use crate::infra::param::{Configurable, Param};
+pub use crate::infra::utils::{file_create, file_open};
+pub use crate::mv::Move;
+pub use crate::piece::{Color, FlipSide, FlipVertical, Hash, Piece, Ply};
+pub use crate::variation::Variation;
+pub use crate::MoveList;
 
 pub struct Displayable<F>(pub F)
 where
@@ -38,10 +33,12 @@ where
 pub use test_log::test;
 
 pub mod testing {
-    pub use crate::{
-        bits::Bitboard, prelude::Board, domain::score::Score, mv::Move, prelude::Displayable,
-        variation::Variation, MoveList,
-    };
+    pub use crate::bits::Bitboard;
+    pub use crate::domain::score::Score;
+    pub use crate::mv::Move;
+    pub use crate::prelude::{Board, Displayable};
+    pub use crate::variation::Variation;
+    pub use crate::MoveList;
 
     pub trait Testing {
         fn squares(&self) -> Bitboard;
@@ -58,7 +55,7 @@ pub mod testing {
         }
 
         fn cp(&self) -> Score {
-            Score::parse_pgn(self).unwrap()
+            Score::parse_pgn_pawn_value(self).unwrap()
         }
 
         fn board(&self) -> Board {
@@ -84,8 +81,9 @@ pub use testing::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use test_log::test;
+
+    use crate::prelude::*;
 
     #[test]
     fn test_testing() {

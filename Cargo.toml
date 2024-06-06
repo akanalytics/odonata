@@ -1,15 +1,20 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["crates/odonata-*"]
 
 
 [workspace.package]
-version = "0.1.0"
+authors = [
+    "andy watkins <andy@webcalculator.com>",
+    "mark raistrick <mark.raistrick@gmail.com>",
+]
+rust-version = "1.78"
+version = "0.9.0"
 edition = "2021"
-authors = ["Unknown"]
-license = "GPL-2.0"
-description = "description"
+license = "AGPL-3.0 license"
+description = "A UCI compliant chess engine"
 repository = "https://github.com/akanalytics/odonata"
+homepage = "https://github.com/akanalytics/odonata"
 readme = "docs/README.md"
 keywords = ["chess"]
 categories = ["games"]
@@ -17,73 +22,72 @@ categories = ["games"]
 
 [workspace.dependencies]
 odonata-base = { path = "./crates/odonata-base" }
-odonata-hce = { path = "./crates/odonata-hce" }
+odonata-engine = { path = "./crates/odonata-engine" }
+
 arrayvec = { version = "0.7", features = ["serde"] }
-bitflags = { version = "2.4.0", features = ["serde"] }
-clap = { version = "4.3.2", features = ["derive"] }
-once_cell = "1.7"
+bitflags = { version = "2.5.0", features = ["serde"] }
+clap = { version = "4.5", features = ["derive"] }
+once_cell = "1.19"
+byteorder = "1.5.0"
 rand = "0.8"
 rand_chacha = "0.3"
+fs-err = "2.11"
 regex = "1.4"
 test-log = { version = "0.2", features = ["trace"] }
 anyhow = { version = "1.0", features = ["backtrace"] }
 backtrace = "0.3.64"
-crossbeam-utils = "0.8.8"
-config = "0.14"
-flexi_logger = { version = "0.27.1", features = ["colors"] }
+crossbeam-utils = "0.8"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
 format_num = "0.1"
 hdrhist = "0.5.0"
 include_dir = "0.7.2"
-indexmap = { version = "2.0", features = ["serde"] }
-itertools = "0.12"
+indexmap = { version = "2.2", features = ["serde"] }
+itertools = "0.13"
 log = { version = "0.4", features = ["release_max_level_debug"] }
 num-traits = "0.2"
 petgraph = "0.6.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_with = "3.3"
+serde_with = "3.8"
 static_init = "1.0"
 strum = "0.26"
 strum_macros = "0.26"
 tabled = "0.15.0"
 thread_local = "1.1.4"
 toml = { version = "0.8", features = ["display", "parse", "indexmap"] }
-tracing = { version = "0.1.37", features = [
-    "max_level_trace",
-    "release_max_level_debug",
-    "log",
-] }
-tabwriter = "1.2.1"
+tabwriter = "1.4"
 append-only-vec = "0.1.3"
 daisychain = { version = "0.0.5" }
 console = "0.15"
 xshell = "0.2"
 derive_more = "0.99"
-crossbeam = "0.8.2"
 pariter = "0.5.1"
 fslock = "0.2.1"
-rayon = "1.5"
+rayon = "1.10"
 timeout-readwrite = "0.3.2"
 # serde_json = "1.0"
 # serde_with = "1.9"
 alphanumeric-sort = "1.4.4"
 chrono = { version = "0.4" }
-handlebars = "4.3.5"
 nom = "7.1.1"
 nom-supreme = "0.8.0"
 perf-event = "0.4.7"
-plotters = { version = "0.3.4", default_features = false, features = [
+plotters = { version = "0.3.4", default-features = false, features = [
     "svg_backend",
     "full_palette",
     "colormaps",
     "all_series",
 ] }
-pprof = { version = "0.13.0", features = ["flamegraph"] }
+# pprof = { version = "0.13.0", features = ["flamegraph"] }
+pprof = { git = "https://github.com/Erigara/pprof-rs.git", branch = "fix_pointer_align", features = [
+    "flamegraph",
+] }
 serde_yaml = "0.9"
 # serde_regex = "1.1.0"
 statrs = "0.16.0"
 url = "2.3.1"
-ctrlc = "3.2.5"
+ctrlc = "3.4"
 glob = "0.3"
 # log = { version = "0.4", features = ["release_max_level_debug"] }
 argmin = { version = "0.8" }
@@ -95,12 +99,59 @@ indicatif = { version = "0.17", features = ["rayon"] }
 textplots = "0.8"
 boxcar = "0.2"
 postcard = { version = "1.0.8", features = ["use-std"] }
-env_logger = "0.11"
+# env_logger = "0.11"
+tracing = { version = "0.1.37", features = [
+    "max_level_trace",
+    "release_max_level_debug",
+    "log",
+] }
 tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "registry",
     "env-filter",
+    "ansi",
     "fmt",
 ] }
+tracing-appender = "0.2.3"
+pretty_assertions = "1.4.0"
+wide = "0.7.22"
+simba = "0.8.1"
+testresult = "0.4.0"
 
+# criterion = "0.5"
+
+
+[workspace.lints]
+# clippy.pedantic = { level = "warn", priority = 0 }
+clippy.correctness = { level = "warn", priority = 0 }
+clippy.style = { level = "warn", priority = 0 }
+clippy.complexity = { level = "warn", priority = 0 }
+clippy.cargo = { level = "warn", priority = 0 }
+clippy.perf = { level = "warn", priority = 0 }
+rust.dead_code = { level = "allow", priority = 2 }
+clippy.enum_glob_use = { level = "allow", priority = 2 }
+clippy.missing_errors_doc = { level = "allow", priority = 2 }
+clippy.missing_panics_doc = { level = "allow", priority = 2 }
+clippy.bool_assert_comparison = { level = "allow", priority = 2 }  # permit assert_ne!("a".is_empty(), true);
+clippy.wildcard_imports = { level = "allow", priority = 2 }
+clippy.if_not_else = { level = "allow", priority = 2 }             # permit if !test {} else {}
+clippy.module_name_repetitions = { level = "allow", priority = 2 }
+clippy.len_without_is_empty = { level = "allow", priority = 2 }
+
+# missing_errors_doc = "allow"
+# missing_panics_doc = "allow"
+# module_name_repetitions = "allow"
+# blocks_in_conditions = "allow"
+# must_use_candidate = "allow"
+# no-effect-underscore-binding = "allow"
+# items-after-statements = "allow"
+
+[profile.stack]
+inherits = "dev"
+opt-level = 0
+incremental = true
+debug = true       # allow profiling of the  main executable 
+# split-debuginfo = "unpacked"
+codegen-units = 256
 
 [profile.dev]
 opt-level = 3
@@ -137,6 +188,7 @@ inherits = "release"
 codegen-units = 16
 lto = "thin"
 split-debuginfo = "unpacked"
+
 
 # cgu=32,  lto=n/a => fast (255M/s)
 # cgu=1,   lto=n/a => perft=slow(202), search=slow(136)

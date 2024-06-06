@@ -1,13 +1,11 @@
-use odonata_base::{
-    domain::{node::Node, BoundType},
-    infra::metric::Event,
-    piece::{Ply, LEN_PLY},
-    prelude::*,
-    Epd,
-};
 use std::{fmt, mem};
 
-use itertools::Itertools;
+use odonata_base::domain::node::Node;
+use odonata_base::domain::BoundType;
+use odonata_base::infra::metric::Event;
+use odonata_base::piece::LEN_PLY;
+use odonata_base::prelude::*;
+use odonata_base::Epd;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -72,12 +70,7 @@ impl Tree {
             .unwrap_or_else(|| panic!("no parent: {var}"))
             .id;
         let id = NodeId(self.nodes.len() as i32);
-        let tn = TreeNode {
-            index,
-            id,
-            parent,
-            mv,
-        };
+        let tn = TreeNode { index, id, parent, mv };
         self.nodes.push(tn);
     }
 
@@ -87,11 +80,7 @@ impl Tree {
         let mut tn = &ROOT;
         for mv in var.moves() {
             let children = self.children_of(tn.id);
-            tn = children
-                .iter()
-                .filter(|&&tn| tn.mv == mv)
-                .exactly_one()
-                .ok()?;
+            tn = children.iter().filter(|&&tn| tn.mv == mv).exactly_one().ok()?;
         }
         Some(tn)
     }
@@ -185,9 +174,7 @@ fn displayable<'a>(t: &'a Tree, bd: &'a Board) -> impl Fn(&mut fmt::Formatter) -
 
     // the displayable function
     |f: &mut fmt::Formatter| -> fmt::Result {
-        let payload = |twig: &str, tn: &TreeNode| {
-            format!("{twig} {}", Displayable(|f| format_data(t, bd, tn, f)))
-        };
+        let payload = |twig: &str, tn: &TreeNode| format!("{twig} {}", Displayable(|f| format_data(t, bd, tn, f)));
         display_node(t, f, &payload, vec![], ROOT.id)
     }
 }
@@ -250,12 +237,7 @@ impl ChessTree {
 
 /// show variation and detail
 fn displayable2(ct: &ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::Result + '_ {
-    fn format_data2(
-        twig: &str,
-        ct: &ChessTree,
-        tn: &TreeNode,
-        f: &mut fmt::Formatter,
-    ) -> fmt::Result {
+    fn format_data2(twig: &str, ct: &ChessTree, tn: &TreeNode, f: &mut fmt::Formatter) -> fmt::Result {
         let var = ct.tree.variation_of(tn.id);
         let san = if let Some(stem) = &var.stem() {
             ct.board.make_moves_old(stem).to_san(tn.mv)
@@ -283,11 +265,7 @@ fn displayable2(ct: &ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::Result +
         };
         if f.alternate() {
             let left = format!("{twig} {nt} {san}");
-            write!(
-                f,
-                "{left:<30} {sc:<6} {window} {e} ({uci}) P{p}D{d} {qs}",
-                e = nd.e
-            )?;
+            write!(f, "{left:<30} {sc:<6} {window} {e} ({uci}) P{p}D{d} {qs}", e = nd.e)?;
         } else {
             let left = format!("{twig} {san}");
             write!(f, "{left}")?;
@@ -297,9 +275,7 @@ fn displayable2(ct: &ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::Result +
 
     // the displayable function
     |f: &mut fmt::Formatter| -> fmt::Result {
-        let payload2 = |twig: &str, tn: &TreeNode| {
-            format!("{:#}", Displayable(|f| format_data2(twig, ct, tn, f)))
-        };
+        let payload2 = |twig: &str, tn: &TreeNode| format!("{:#}", Displayable(|f| format_data2(twig, ct, tn, f)));
         display_node(&ct.tree, f, &payload2, vec![], ROOT.id)
     }
 }
@@ -502,11 +478,7 @@ impl Trail {
     }
 
     pub fn ignore_move(&mut self, n: &Node, sc: Score, _mv: Move, _e: Event) {
-        debug_assert_eq!(
-            n.node_type(sc),
-            BoundType::UpperAll,
-            "node type {n} sc {sc}"
-        );
+        debug_assert_eq!(n.node_type(sc), BoundType::UpperAll, "node type {n} sc {sc}");
     }
 
     /// we dont actually make the move - we futility prune it first
@@ -619,12 +591,12 @@ impl fmt::Display for Trail {
 
 #[cfg(test)]
 mod tests {
-    use crate::search::engine::ThreadedSearch;
+    use odonata_base::catalog::Catalog;
+    use odonata_base::infra::utils::ToStringOr;
+    use test_log::test;
 
     use super::*;
-    use crate::engine::Engine;
-    use odonata_base::{self, catalog::Catalog, infra::utils::ToStringOr, variation::Variation};
-    use test_log::test;
+    use crate::search::engine::ThreadedSearch;
 
     #[test]
     fn trail() {
@@ -644,8 +616,8 @@ mod tests {
     fn display_tree() {
         let pos = Catalog::starting_position();
         let mut eng = ThreadedSearch::new();
-        eng.search.explainer.tree_crit.enabled = true;
-        eng.search.explainer.tree_crit.max_ply = 5;
+        // eng.search.explainer.tree_crit.enabled = true;
+        // eng.search.explainer.tree_crit.max_ply = 5;
         let sr = eng.search(pos.clone(), TimeControl::Depth(2)).unwrap();
         println!(
             "score: {sc} {pv}",
@@ -705,10 +677,7 @@ mod tests {
         assert_eq!(tree.variation_of(id_of_a3a6b3.id), a3a6b3);
 
         println!("{tree}");
-        println!(
-            "{tree}",
-            tree = Displayable(displayable(&tree, &Board::starting_pos()))
-        );
+        println!("{tree}", tree = Displayable(displayable(&tree, &Board::starting_pos())));
 
         Ok(())
     }

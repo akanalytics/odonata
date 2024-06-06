@@ -1,11 +1,13 @@
-use odonata_base::{prelude::*, infra::{component::Component, metric::{Event, Metrics}}, domain::node::Node};
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use odonata_base::domain::node::Node;
+use odonata_base::infra::component::Component;
+use odonata_base::infra::metric::{Event, Metrics};
+use odonata_base::prelude::*;
 
 use super::algo::Search;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct ReverseFutility {
     pub enabled:      bool,
     in_check:         bool,
@@ -43,16 +45,44 @@ impl Default for ReverseFutility {
             prune_fw_node:    false,
             prune_eval_mate:  false,
             prune_alpha_mate: true,
-            prune_beta_mate:  false,
-            max_depth:        6,
+            prune_beta_mate:  true,
+            max_depth:        20,
             min_pieces:       0,
-            min_pieces_depth: 0,
-            margin1:          100,
-            margin2:          200,
+            min_pieces_depth: 1,
+            margin1:          90,
+            margin2:          180,
             margin3:          300,
-            margin4:          2000,
+            margin4:          400,
             margin_ply:       100,
         }
+    }
+}
+
+impl Configurable for ReverseFutility {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.in_check.set(p.get("in_check"))?;
+        self.prune_zugzwang.set(p.get("prune_zugzwang"))?;
+        self.prune_extensions.set(p.get("prune_extensions"))?;
+        self.prune_fw_node.set(p.get("prune_fw_node"))?;
+        self.prune_eval_mate.set(p.get("prune_eval_mate"))?;
+        self.prune_alpha_mate.set(p.get("prune_alpha_mate"))?;
+        self.prune_beta_mate.set(p.get("prune_beta_mate"))?;
+        self.max_depth.set(p.get("max_depth"))?;
+        self.min_pieces.set(p.get("min_pieces"))?;
+        self.min_pieces_depth.set(p.get("min_pieces_depth"))?;
+        self.margin1.set(p.get("margin1"))?;
+        self.margin2.set(p.get("margin2"))?;
+        self.margin3.set(p.get("margin3"))?;
+        self.margin4.set(p.get("margin4"))?;
+        self.margin_ply.set(p.get("margin_ply"))?;
+        Ok(p.is_modified())
+    }
+}
+
+impl fmt::Display for ReverseFutility {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{self:#?}")
     }
 }
 
@@ -130,13 +160,6 @@ impl Search {
         }
         Metrics::incr_node(n, Event::RevFutFail);
         None
-    }
-}
-
-impl fmt::Display for ReverseFutility {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        Ok(())
     }
 }
 

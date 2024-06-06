@@ -1,16 +1,13 @@
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use std::cell::Cell;
+use std::fmt::Debug;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::{fmt, mem};
 
-use crate::{infra::utils::DecimalFormatter, piece::Hash};
-use std::{
-    cell::Cell,
-    fmt,
-    fmt::Debug,
-    mem,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
+use crate::infra::utils::DecimalFormatter;
+use crate::prelude::*;
 
 #[derive(Default, Clone, PartialEq, Eq, Serialize)]
 pub struct AlignedVec<T> {
@@ -51,24 +48,16 @@ impl<T: Default> fmt::Display for AlignedVec<T> {
         writeln!(f, "aligned:        {}", self.aligned)?;
         writeln!(f, "cacheline_size: {}", self.cacheline_size)?;
         writeln!(f, "n_resizes:      {}", self.n_resizes)?;
-        writeln!(
-            f,
-            "bkt size bytes: {}",
-            mem::size_of::<T>() * self.bucket_size
-        )?;
-        writeln!(
-            f,
-            "&vec[0]:        {:>64b}",
-            (&self.vec[0]) as *const _ as usize
-        )?;
-        (0..10.clamp(0, self.bucket_count())).for_each(|i| {
-            writeln!(
-                f,
-                "&bucket[{i}]:     {:>64b}",
-                &(self.bucket(i as u64)[0]) as *const _ as usize
-            )
-            .unwrap()
-        });
+        writeln!(f, "bkt size bytes: {}", mem::size_of::<T>() * self.bucket_size)?;
+        // writeln!(f, "&vec[0]:        {:>64b}", (&self.vec[0]) as *const _ as usize)?;
+        // (0..10.clamp(0, self.bucket_count())).for_each(|i| {
+        //     writeln!(
+        //         f,
+        //         "&bucket[{i}]:     {:>64b}",
+        //         &(self.bucket(i as u64)[0]) as *const _ as usize
+        //     )
+        //     .unwrap()
+        // });
         writeln!(f, "cacheline:      {:>64b}", self.cacheline_size)?;
         Ok(())
     }
@@ -83,13 +72,7 @@ impl<T: Default> AlignedVec<T> {
         cacheline_size: usize,
     ) -> Self {
         let mut me = Self::default();
-        me.resize(
-            min_capacity,
-            bucket_size,
-            aligned,
-            overlapping_buckets,
-            cacheline_size,
-        );
+        me.resize(min_capacity, bucket_size, aligned, overlapping_buckets, cacheline_size);
         me
     }
 
@@ -126,7 +109,7 @@ impl<T: Default> AlignedVec<T> {
     }
 
     pub fn bucket_count(&self) -> usize {
-        self.capacity() / self.bucket_size
+        self.capacity() / self.bucket_size.max(1)
     }
 
     #[inline]
@@ -189,19 +172,16 @@ impl<T: Default + PartialEq + Debug> AlignedVec<T> {
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let count = self
-            .iter()
-            .take(200)
-            .filter(|&t| *t != T::default())
-            .count();
+        let count = self.iter().take(200).filter(|&t| *t != T::default()).count();
         (count * 1000 / self.capacity().min(200).max(1)) as u32
     }
 }
 
 #[cfg(test)]
 mod tests1 {
-    use super::*;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     #[ignore]
@@ -237,14 +217,23 @@ mod tests1 {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[serde(from = "usize", into = "usize")]
+#[derive(Clone)]
 pub struct UnsharedTable<T: Copy + Default> {
     array: Vec<(Cell<Hash>, Cell<T>)>,
 
     pub hits:       Cell<u64>,
     pub misses:     Cell<u64>,
     pub collisions: Cell<u64>,
+}
+
+impl<T: Copy + Default> Configurable for UnsharedTable<T> {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        let mut size = 0;
+        if size.set(p.get("size"))? {
+            *self = Self::from(size);
+        }
+        Ok(p.is_modified())
+    }
 }
 
 impl<T: Copy + Default> fmt::Display for UnsharedTable<T> {
@@ -262,6 +251,12 @@ impl<T: Copy + Default> fmt::Display for UnsharedTable<T> {
     }
 }
 
+impl<T: Copy + Default> fmt::Debug for UnsharedTable<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
 // impl<T: Copy> Default for UnsharedTable<T> {
 //     fn default() -> Self {
 //         // const INIT: Cell<Option<T>> = Cell::new(None);
@@ -275,16 +270,16 @@ impl<T: Copy + Default> fmt::Display for UnsharedTable<T> {
 // }
 
 impl<T: Copy + Default> From<usize> for UnsharedTable<T> {
-    fn from(value: usize) -> Self {
-        Self::with_size(value)
+    fn from(size: usize) -> Self {
+        Self::with_size(size)
     }
 }
 
-impl<T: Copy + Default> Into<usize> for UnsharedTable<T> {
-    fn into(self) -> usize {
-        self.capacity()
-    }
-}
+// impl<T: Copy + Default> Into<usize> for UnsharedTable<T> {
+//     fn into(self) -> usize {
+//         self.capacity()
+//     }
+// }
 
 impl<T: Copy + Default> UnsharedTable<T> {
     // work around for array initilization > 32
@@ -292,12 +287,15 @@ impl<T: Copy + Default> UnsharedTable<T> {
     // const INIT: (Cell<Hash>, Cell<T>) = ;
 
     pub fn with_size(capacity: usize) -> Self {
+        assert!(capacity > 0);
         Self {
             // array: vec![Self::INIT; capacity],
-            array: (0..capacity)
+            array:      (0..capacity)
                 .map(|_| (Cell::new(0), Cell::new(T::default())))
                 .collect_vec(),
-            ..Self::default()
+            hits:       Default::default(),
+            misses:     Default::default(),
+            collisions: Default::default(),
         }
     }
 
@@ -337,12 +335,7 @@ impl<T: Copy + Default> UnsharedTable<T> {
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let count = self
-            .array
-            .iter()
-            .take(200)
-            .filter(|&c| c.0.get() != 0)
-            .count();
+        let count = self.array.iter().take(200).filter(|&c| c.0.get() != 0).count();
         count as u32 * 1000 / std::cmp::min(self.array.len() as u32, 200)
     }
 
@@ -423,14 +416,7 @@ impl Debug for SharedTable {
 // with adjustments for bit-sizing of items and multi-buckets
 //
 impl SharedTable {
-    pub fn resize(
-        &mut self,
-        capacity: usize,
-        buckets: usize,
-        aligned: bool,
-        _overlapping: bool,
-        _cacheline: usize,
-    ) {
+    pub fn resize(&mut self, capacity: usize, buckets: usize, aligned: bool, _overlapping: bool, _cacheline: usize) {
         self.capacity = capacity.next_power_of_two();
         self.bucket_size = buckets;
         self.mask = capacity - 1;
@@ -474,11 +460,7 @@ impl SharedTable {
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let count = self
-            .iter()
-            .take(200)
-            .filter(|&t| *t != HashEntry::default())
-            .count();
+        let count = self.iter().take(200).filter(|&t| *t != HashEntry::default()).count();
         (count * 1000 / self.capacity().min(200).max(1)) as u32
     }
 
@@ -532,18 +514,17 @@ fn aligned_vec(capacity: usize) -> Vec<HashEntry> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{domain::score::Score, infra::profiler::PerfProfiler};
+    use std::mem::size_of;
+
+    use test_log::test;
 
     use super::*;
-    use std::mem::size_of;
+    use crate::infra::profiler::PerfProfiler;
 
     #[test]
     fn tt_size() {
         assert_eq!(size_of::<AlignToCacheLine>(), 64, "AlignToCacheLine");
-        assert_eq!(
-            UnsharedTable::<Score>::with_size_bytes(300_000).capacity(),
-            18750
-        );
+        assert_eq!(UnsharedTable::<Score>::with_size_bytes(300_000).capacity(), 18750);
     }
 
     #[test]

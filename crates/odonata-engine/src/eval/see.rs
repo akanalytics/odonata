@@ -1,14 +1,12 @@
-use odonata_base::{
-    boards::{Board, BoardCalcs},
-    infra::component::Component,
-    mv::Move,
-    piece::FlipSide,
-    Bitboard, Piece, PreCalc,
-};
-use serde::{Deserialize, Serialize};
 use std::cmp;
 
-use crate::Weight;
+use odonata_base::boards::BoardCalcs;
+use odonata_base::infra::component::Component;
+use odonata_base::prelude::*;
+use odonata_base::PreCalc;
+use serde::{Deserialize, Serialize};
+
+use crate::eval::weight::Weight;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -21,8 +19,16 @@ impl Default for See {
     fn default() -> Self {
         Self {
             enabled: true,
-            promo:   false,
+            promo:   true,
         }
+    }
+}
+
+impl Configurable for See {
+    fn set(&mut self, p: Param) -> Result<bool> {
+        self.enabled.set(p.get("enabled"))?;
+        self.promo.set(p.get("promo"))?;
+        Ok(p.is_modified())
     }
 }
 
@@ -60,7 +66,7 @@ impl See {
         let bb = PreCalc::instance();
         let mut gain: [i32; 40] = [0; 40];
         let mut d = 0;
-        let mut from = mv.from().as_bb();
+        let mut attacker = Some(mv.from());
         let to = mv.to().as_bb();
         let mut occ = board.black() | board.white();
         let mut attacker_color = board.color_us();
@@ -69,16 +75,16 @@ impl See {
         attackers_xray -= board.non_line_pieces() | attackers_bw;
 
         gain[0] = CLASSICAL_WEIGHTS[mv.capture_piece(board).unwrap()].s() as i32;
-        while from.any() {
-            let mut mover = board.piece_unchecked(from.first_square());
+        while let Some(from) = attacker {
+            let mut mover = board.piece_unchecked(from);
             // check for a pawn promo during capture
             if self.promo && mover == Piece::Pawn && to.intersects(Bitboard::RANKS_18) {
                 mover = Piece::Queen;
                 gain[d] += CLASSICAL_WEIGHTS[Piece::Queen].s() as i32;
                 // TODO not quite right coz of pawn loss
             }
-            attackers_bw -= from;
-            occ -= from;
+            attackers_bw -= from.as_bb();
+            occ -= from.as_bb();
             attacker_color = attacker_color.flip_side();
 
             // xray attackers
@@ -91,10 +97,10 @@ impl See {
                 }
             }
 
-            from = board.least_valuable_piece(attackers_bw & board.color(attacker_color));
-            if mover == Piece::King && from.any() {
-                // last move was king, but he cant move into check
-                // so break before adding another trophy gain
+            attacker = board.least_valuable_piece(attackers_bw & board.color(attacker_color));
+            if mover == Piece::King && attacker.is_some() {
+                // last move was king, and after exchange there is an attack on the king, but he cant move into check
+                // so break before adding the gain
                 break;
             }
             d += 1;
@@ -127,10 +133,12 @@ impl See {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use anyhow::Result;
     use odonata_base::catalog::Catalog;
+    use odonata_base::infra::profiler::PerfProfiler;
+    use odonata_base::other::tags::EpdOps as _;
     use test_log::test;
+
+    use super::*;
 
     #[test]
     fn test_see() {
@@ -177,10 +185,7 @@ mod tests {
         )?;
         let mv = b.parse_san_move("Bc5")?;
         let see_value = see.eval_move_see(&b, mv);
-        assert_eq!(
-            see_value,
-            Piece::Rook.centipawns() - Piece::Bishop.centipawns()
-        );
+        assert_eq!(see_value, Piece::Rook.centipawns() - Piece::Bishop.centipawns());
 
         // without promos, we just appear to be a rook up
         // but we are a rook+queen less a pawn up
@@ -223,10 +228,7 @@ mod tests {
         };
         let mv = b.parse_san_move("Pxb8=Q")?;
         let see_value = see.eval_move_see(&b, mv);
-        assert_eq!(
-            see_value,
-            Piece::Rook.centipawns() + Piece::Knight.centipawns()
-        );
+        assert_eq!(see_value, Piece::Rook.centipawns() + Piece::Knight.centipawns());
 
         // Qxr (+r), rxQ (-Q), nxr (+r) (+2r-q)
         let b = Board::parse_diagram(
@@ -247,10 +249,27 @@ mod tests {
 
         let mv = b.parse_san_move("Qxb8")?;
         let see_value = see.eval_move_see(&b, mv);
-        assert_eq!(
-            see_value,
-            2 * Piece::Rook.centipawns() - Piece::Queen.centipawns()
-        );
+        assert_eq!(see_value, 2 * Piece::Rook.centipawns() - Piece::Queen.centipawns());
         Ok(())
+    }
+
+    #[test]
+    fn bench_see() {
+        let mut pr = PerfProfiler::new("see");
+        let see = See::default();
+        let mut score = 0;
+        for epd in Catalog::win_at_chess().iter() {
+            let b = epd.board();
+            let captures = b
+                .legal_moves()
+                .iter()
+                .filter(|mv| mv.is_capture())
+                .cloned()
+                .collect_vec();
+            for mv in captures.into_iter() {
+                score += pr.bench(|| see.eval_move_see(&b, mv));
+            }
+        }
+        assert_eq!(score, -301_275);
     }
 }

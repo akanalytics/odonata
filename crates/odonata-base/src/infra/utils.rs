@@ -1,17 +1,18 @@
-use anyhow::{Context, Result};
-use format_num::*;
-use itertools::Itertools;
-use std::{
-    collections::HashMap,
-    fmt,
-    fs::File,
-    io::BufRead,
-    ops::{Bound, RangeBounds},
-    path::Path,
-    time::Duration,
-};
+use std::collections::HashMap;
+use std::fmt;
+use std::fs::File;
+use std::io::BufRead;
+use std::ops::{Bound, RangeBounds};
+use std::path::Path;
+use std::time::Duration;
 
-use crate::{domain::node::Timing, infra::metric::Metrics, piece::Ply, prelude::*};
+use format_num::*;
+use tabled::settings::Style;
+use tabled::Table;
+
+use crate::domain::node::Timing;
+use crate::infra::metric::Metrics;
+use crate::prelude::*;
 
 // /// things that can be used to lookup in an array
 // pub trait Indexer<'t, T> {
@@ -30,6 +31,14 @@ use crate::{domain::node::Timing, infra::metric::Metrics, piece::Ply, prelude::*
 
 /// compares two things and reports differences or perhaps just the first
 ///  difference in a human readable form
+
+pub fn type_suffix(type_name: &str) -> &str {
+    if let Some(i) = type_name.rfind("::") {
+        &type_name[i + 2..]
+    } else {
+        type_name
+    }
+}
 
 pub trait Uci: Sized {
     /// format does not include the object name
@@ -62,28 +71,6 @@ impl UciString {
     }
 }
 
-// https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
-#[inline]
-pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {
-    1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
-}
-
-#[inline]
-pub fn sigmoid(centipawns: f32) -> f32 {
-    1.0 / (1.0 + f32::exp(-centipawns))
-}
-
-// 1 / [1 + exp(-300 / k=200)]
-//
-#[inline]
-pub fn logistic_sigmoid_f64(centipawns: f64) -> f64 {
-    1.0 / (1.0 + f64::exp(-centipawns))
-}
-
-pub fn logistic_steepness_to_base10(steepness: f64) -> f64 {
-    f64::ln(10.0) * steepness
-}
-
 pub fn file_open(filename: impl AsRef<Path>) -> anyhow::Result<File> {
     let f = File::open(&filename).with_context(|| {
         format!(
@@ -104,6 +91,11 @@ pub fn file_create(filename: impl AsRef<Path>) -> anyhow::Result<File> {
         )
     })?;
     Ok(f)
+}
+
+/// puts a ";" or "#" for example at the begiining of all lines
+pub fn prefix_comment(s: &str, comment: char) -> String {
+    format!("{comment} {}", s.replace('\n', &format!("\n{comment} ")))
 }
 
 // #[inline]
@@ -135,31 +127,20 @@ pub fn file_create(filename: impl AsRef<Path>) -> anyhow::Result<File> {
 //
 //    Sn = a[(rn – 1)/(r – 1)] if r ≠ 1 and r > 1
 //
-pub fn calculate_branching_factor_by_nodes_and_depth(
-    nodes: u64,
-    depth: Ply,
-) -> anyhow::Result<f64> {
+pub fn calculate_branching_factor_by_nodes_and_depth(nodes: u64, depth: Ply) -> anyhow::Result<f64> {
     let f = |bf: f64| {
         (0..=depth)
             .map(|d: i32| (depth + 1 - d) as f64 * bf.powi(d))
             .sum::<f64>()
             - nodes as f64
     };
-    anyhow::ensure!(
-        depth > 0 && nodes > 0,
-        "Depth {depth} and nodes {nodes} must be > 0"
-    );
+    anyhow::ensure!(depth > 0 && nodes > 0, "Depth {depth} and nodes {nodes} must be > 0");
     let guess = (nodes as f64).powf(1.0 / depth as f64);
     trace!("initial guess = {guess} on nodes = {nodes} depth = {depth}");
     solver_bisection(&f, (0.0, guess), 40, 1e-6)
 }
 
-pub fn solver_bisection<FUNC>(
-    f: &FUNC,
-    mut interval: (f64, f64),
-    max_iters: usize,
-    epsilon: f64,
-) -> anyhow::Result<f64>
+pub fn solver_bisection<FUNC>(f: &FUNC, mut interval: (f64, f64), max_iters: usize, epsilon: f64) -> anyhow::Result<f64>
 where
     FUNC: Fn(f64) -> f64,
 {
@@ -293,8 +274,8 @@ where
 }
 
 pub fn read_file(filename: impl AsRef<Path> + Clone) -> Result<Vec<String>> {
-    info!(
-        "Reading lines from file {file} with current dir {pwd}",
+    debug!(
+        "reading lines from file {file} with current dir {pwd}",
         file = filename.as_ref().display(),
         pwd = std::env::current_dir().unwrap_or_default().display()
     );
@@ -334,15 +315,42 @@ pub trait DurationFormatter {
     fn human(&self) -> String;
 }
 
-impl<N> IntegerFormatter for N
-where
-    N: Into<i128> + Copy,
-{
+// impl<N> IntegerFormatter for N
+// where
+//     N: Into<i128> + Copy,
+// {
+//     fn human(&self) -> String {
+//         format_num!(",d", Into::<i128>::into(*self) as f64)
+//     }
+// }
+
+impl IntegerFormatter for usize {
     fn human(&self) -> String {
-        format_num!(",d", Into::<i128>::into(*self) as f64)
+        format_num!(",d", *self as f64)
     }
 }
 
+impl IntegerFormatter for u64 {
+    fn human(&self) -> String {
+        format_num!(",d", *self as f64)
+    }
+}
+impl IntegerFormatter for i64 {
+    fn human(&self) -> String {
+        format_num!(",d", *self as f64)
+    }
+}
+impl IntegerFormatter for u32 {
+    fn human(&self) -> String {
+        format_num!(",d", *self as f64)
+    }
+}
+
+impl IntegerFormatter for i32 {
+    fn human(&self) -> String {
+        format_num!(",d", *self as f64)
+    }
+}
 
 impl DurationFormatter for Duration {
     fn hhmmss(&self) -> String {
@@ -434,6 +442,21 @@ impl Formatting {
     pub fn duration(d: Duration) -> String {
         DurationNewType(d).to_string()
     }
+
+    /// HashMap key is row (from top) and column. (0,0) is top left. (n,0) is bottom left
+    pub fn to_table(cells: HashMap<(usize, usize), String>, empty_cell: &str) -> Table {
+        let max_row = cells.keys().map(|(r, _c)| *r).max().unwrap_or_default();
+        let max_col = cells.keys().map(|(_r, c)| *c).max().unwrap_or_default();
+        let mut grid = vec![vec![empty_cell.to_string(); max_col + 1]; max_row + 1];
+        for ((r, c), v) in cells.into_iter() {
+            grid[r][c] = v;
+        }
+        let mut t = tabled::Table::from_iter(grid);
+        t.with(Style::modern());
+        // .with(Height::increase(5))
+        // .with(Disable::row(Rows::first()));
+        t
+    }
 }
 
 pub struct DurationNewType(pub Duration);
@@ -457,13 +480,13 @@ impl fmt::Display for DurationNewType {
         if days > 0 {
             write!(f, "{} day{} ", days, pluralize(days))?;
         }
-        if hours > 0 {
+        if days > 0 || hours > 0 {
             write!(f, "{}h ", hours)?;
         }
-        if mins > 0 {
-            write!(f, "{}m ", mins)?;
+        if days > 0 || hours > 0 || mins > 0 {
+            write!(f, "{:>2}m ", mins)?;
         }
-        write!(f, "{:.3}s", secs)?;
+        write!(f, "{:>6.3}s", secs)?;
         Ok(())
     }
 }
@@ -641,8 +664,19 @@ impl StringUtils for str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use test_log::test;
+
+    use super::*;
+
+    #[test]
+    fn test_to_table() {
+        let mut cells = HashMap::new();
+        cells.insert((0, 0), "0,0".to_string());
+        cells.insert((0, 1), "0,1".to_string());
+        cells.insert((0, 3), "0,3".to_string());
+        cells.insert((2, 3), "2,3".to_string());
+        println!("{:^5}", Formatting::to_table(cells, "*"));
+    }
 
     #[test]
     fn test_keyword_iter() {
@@ -651,10 +685,7 @@ mod tests {
         let greedy_word = Some("TakeRest");
         println!("\n{text}");
         let mut i = KeywordIter::new(&words, greedy_word, text);
-        assert_eq!(
-            i.next(),
-            Some(("Mary".into(), " had a little lambda".into()))
-        );
+        assert_eq!(i.next(), Some(("Mary".into(), " had a little lambda".into())));
         assert_eq!(i.next(), None);
 
         let text = "Mary had a little lambda TakeRest Mary had a little dog";
@@ -778,14 +809,9 @@ mod tests {
 
     #[test]
     fn test_formatter() {
-        assert_eq!(
-            Formatting::hhmmss(Duration::from_millis(12345678)).as_str(),
-            "03:25:46"
-        );
-        assert_eq!(
-            Duration::from_millis(12345678).hhmmss_ms().as_str(),
-            "03:25:46.678"
-        );
+        assert_eq!(Formatting::hhmmss(Duration::from_millis(12345678)).as_str(), "03:25:46");
+        assert_eq!(Duration::from_millis(12345678).hhmmss_ms().as_str(), "03:25:46.678");
+        assert_eq!(Duration::from_millis(11345678).human(), "3h  9m  5.678s");
         assert_eq!(Formatting::f64(12345567.0).as_str(), "12.3 M");
         assert_eq!(Formatting::f64(0.0).as_str(), "0.00");
         assert_eq!(Formatting::f64(1234567890123.0).as_str(), "1.23T");
